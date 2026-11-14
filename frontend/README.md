@@ -3,7 +3,7 @@
 > **Fuente de verdad: SRS v1.1 (13/11/2026).** El plan está en [`../PLAN-ACTUALIZACION-SRS.md`](../PLAN-ACTUALIZACION-SRS.md). Las fases 1 (identidad SNIPP en escala de grises) y 2 (quitar extras y corregir reglas en M1–M5) ya están aplicadas; ver "Actualización al SRS v1.1" al final. Las secciones de lotes de abajo describen cómo se construyeron; donde contradigan al SRS, gana el SRS y la sección final.
 
 - `mobile/`: app de clientes, Expo SDK 58 + React Native (JavaScript) + Expo Router.
-- `web/`: panel para Jefe, Empleado y Administrador (React + Tailwind). Pendiente, empieza en el lote W1.
+- `web/`: panel para Jefe, Empleado y Administrador (React 19 + Tailwind CSS 4 + React Router, con Vite). Hecho: lote W1.
 
 ## Correr la app móvil
 
@@ -18,6 +18,21 @@ En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=..
 
 Cuenta de demostración para el inicio de sesión: `andrea.valenzuela@gmail.com` / `compas2025`.
 Cualquier otra combinación muestra el error de credenciales; registrarse con ese mismo correo muestra "correo ya registrado".
+
+## Correr la plataforma web
+
+```bash
+cd frontend/web
+npm install
+npm run dev      # http://localhost:5173
+```
+
+En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`); en producción `/` abre "Entrar".
+
+Cuentas de demostración (contraseña `snipp2026` para las tres):
+- Administrador: `admin@snipp.mx` (Daniela Ibarra)
+- Jefe de Barbería Los Compas: `martin.salazar@loscompas.mx` (Martín Salazar)
+- Empleado de Barbería Los Compas: `luis.ortega@gmail.com` (Luis Ortega)
 
 ## Estructura
 
@@ -159,6 +174,25 @@ Qué hace cada una:
 - **Notificaciones:** lista agrupada en Hoy, Ayer y Antes; cada una abre la cita o el pedido. Reservar, cancelar y reagendar en la demo agregan la notificación correspondiente. El push real con OneSignal está documentado en `src/services/notifications.js` (fase 5).
 
 Datos agregados: cita C-10318 (atendida, calificada y con reporte atendido), descripción y motivo en los reportes, pedido P-2279 listo para recoger, canje de 73 puntos en P-2264 y movimientos de puntos que suman 27 en Barbería Los Compas (`src/data/shop.js`), notificaciones de ejemplo (`src/data/notifications.js`).
+
+## Lote W1 (web): acceso y registro (hecho)
+
+Pantalla dividida: foto real del negocio a la izquierda y formulario a la derecha; debajo de 768 px la foto se oculta. Misma identidad SNIPP en escala de grises que la app (tokens en `web/src/index.css`), títulos en Montserrat y texto en Onest a 15 px.
+
+| Pantalla | Ruta | RF | Estados (`?estado=`) |
+| --- | --- | --- | --- |
+| Entrar (los tres roles comparten pantalla) | `/entrar` | RF-W03, RF-W04 | `credenciales`, `cargando`, `sin-conexion`, `error-servidor` |
+| Recuperar contraseña | `/recuperar` | RF-W03 | `enviado`, `cargando`, `sin-conexion`, `error-servidor` |
+| Crear contraseña nueva (desde el enlace del correo) | `/restablecer?token=` | RF-W03, RNF-G03 | `enlace-vencido`, `listo`, `sin-conexion`, `error-servidor` |
+| Registro de Jefe con negocio y plan | `/registro/negocio` | RF-W01, RF-W27, RN-13 | `correo-registrado`, `cargando-planes`, `sin-planes`, `sin-conexion`, `error-servidor`, `listo` |
+| Registro de Empleado sin negocio | `/registro/empleado` | RF-W02 | `correo-registrado`, `sin-conexion`, `error-servidor`, `listo` |
+| Después de entrar | `/panel` | RF-W03 | Provisional: muestra con qué cuenta y rol entraste y deja cerrar sesión. El lote W2 lo reemplaza por el panel. |
+
+Detalles:
+- **Registro de Jefe:** pide nombre, correo, teléfono, contraseña, nombre del negocio y plan, que son los datos de RF-W01. Los planes vienen de los que crea el Administrador (RF-W27); en `data/demo.js` hay tres de ejemplo: Mensual $499, Semestral $2,694 y Anual $4,990. Dice "Tu primer mes es gratis: el cobro empieza el sábado 12 de diciembre", calculado a un mes de hoy. Sin planes publicados no deja registrarse.
+- **Registro de Empleado:** nombre, correo y contraseña. La cuenta queda sin negocio y explica cómo unirse a uno: por invitación del Jefe o mandando una solicitud (RF-W10, lote W5).
+- **Recuperar:** responde igual exista o no el correo, para no revelar qué correos tienen cuenta. La página de contraseña nueva sirve también para los clientes de la app.
+- Las llamadas a la API están simuladas en `web/src/services/auth.js`.
 
 ## Fotos
 

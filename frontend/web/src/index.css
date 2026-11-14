@@ -1,0 +1,38 @@
+@import "tailwindcss";
+@import "@fontsource/montserrat/600.css";
+@import "@fontsource/montserrat/700.css";
+@import "@fontsource/onest/400.css";
+@import "@fontsource/onest/500.css";
+@import "@fontsource/onest/600.css";
+
+/* SNIPP web: same grayscale identity as the app (SRS v1.1, decision D1).
+   Photos keep their color; the interface does not use any. */
+@theme {
+  --color-paper: #F5F5F5;
+  --color-raised: #FFFFFF;
+  --color-sunken: #E8E8E8;
+  --color-sunken-pressed: #DADADA;
+  --color-ink: #141414;
+  --color-ink-pressed: #333333;
+  --color-ink-soft: #595959;
+  --color-gray-light: #BDBDBD;
+  --color-divider: #DCDCDC;
+
+  --font-title: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Onest", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-control: 10px;
+  --radius-photo: 16px;
+}
+
+@layer base {
+  html { font-size: 15px; }
+  body {
+    @apply bg-paper font-body text-ink antialiased;
+    font-feature-settings: "tnum" 0;
+  }
+  h1, h2, h3 { @apply font-title; letter-spacing: -0.02em; }
+  :focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+}
+
+@utility tabular { font-variant-numeric: tabular-nums; }

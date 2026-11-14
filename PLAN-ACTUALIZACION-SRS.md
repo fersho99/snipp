@@ -23,7 +23,7 @@ Este plan explica cómo llevar las plantillas de frontend ya construidas, y las 
 | --- | --- |
 | App móvil, lotes M1 a M5 (cuenta, búsqueda, reserva, mis citas, tienda y pago) | **Ajustados** (fases 1 y 2 aplicadas el 14/11/2026): SNIPP, escala de grises, Q1–Q13 quitados, C1–C11 corregidos. |
 | App móvil, lote M6 (pedidos, reseñas, reportes, puntos, notificaciones) | **Hecho** como plantilla el 14/11/2026 (fase 3). Falta conectar la API y OneSignal (fase 5). |
-| Plataforma web (Jefe, Empleado, Administrador) | **Pendiente**, no hay código (sección 6). |
+| Plataforma web (Jefe, Empleado, Administrador) | Lote W1 (acceso y registro) **hecho** como plantilla el 14/11/2026 en `frontend/web`. W2 a W9 pendientes (sección 6). |
 | API, base de datos, Stripe real, OneSignal, servidor | Fuera de este frontend; son dependencias (sección 7). |
 | Repositorio GitHub (RNF-G08) | En github.com/fersho99/snipp, rama `main`. |
 
@@ -248,7 +248,9 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-M14 | `/reportes` | Hecho |
 | RF-M15 | `/puntos`, canje en `/carrito` | Hecho |
 | RF-M16 | `/notificaciones`; push con OneSignal documentado en `services/notifications.js` | Hecho (push real en fase 5) |
-| RF-W01 a RF-W28 | Plataforma web, lotes W1 a W9 | Pendiente |
+| RF-W01, RF-W02, RF-W03 | `/registro/negocio`, `/registro/empleado`, `/entrar`, `/recuperar`, `/restablecer` | Hecho |
+| RF-W27 | Planes que se eligen al registrarse (W1); gestión del Administrador en W9 | Parcial |
+| RF-W04 a RF-W26, RF-W28 | Plataforma web, lotes W2 a W9 | Pendiente |
 | RNF-M01 a RNF-M04, RNF-W01 a RNF-W05 | Sección 7.1 | Pendiente de medir |
 | RNF-G01 a RNF-G08 | Sección 7.2 | Dependencia de back-end e infraestructura |
 
