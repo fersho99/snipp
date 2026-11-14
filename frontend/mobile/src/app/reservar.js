@@ -9,6 +9,7 @@ import { BookingCalendar, BookingSentence, SlotGrid } from '../components/Bookin
 import useConnectivity from '../hooks/useConnectivity';
 import { activeServices, bookableStaff, getBranch, isVisible } from '../data/catalog';
 import { appointmentStore } from '../data/appointments';
+import { notificationStore } from '../data/notifications';
 import { employees, services } from '../data/demo';
 import {
   blocksNote, fromHhmm, fromIso, groupSlots, hhmm, iso, lastBookableDate, minutesLabel, slotsFor, staffFor,
@@ -125,6 +126,13 @@ export default function Booking() {
     }
     // The new appointment takes its slot right away (RF-M06).
     const folio = appointmentStore.add({ serviceId: service.id, employeeId: slot.employeeId, branchId: branch.id, date: iso(date), start: slot.start, status: 'confirmada' });
+    // RF-M16: the API sends the confirmation push right after booking.
+    notificationStore.push({
+      kind: 'confirmacion',
+      title: `Cita confirmada: ${service.name.toLowerCase()} el ${longDate(date).split(' de ')[0]}`,
+      body: `Con ${employees.find((e) => e.id === slot.employeeId).name} en ${branch.name} a las ${minutesLabel(slot.start)}. Folio ${folio}.`,
+      route: `/cita/${folio}`,
+    });
     router.replace({ pathname: '/reserva-confirmada', params: { folio } });
   };
 

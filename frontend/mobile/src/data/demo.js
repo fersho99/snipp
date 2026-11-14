@@ -61,7 +61,7 @@ export const client = {
   email: 'andrea.valenzuela@gmail.com',
   phone: '653 118 4420',
   photo: null, // no photo uploaded yet
-  points: [{ businessId: 'los-compas', businessName: 'Barbería Los Compas', points: 27 }],
+  // Loyalty points live in data/shop.js (movements per business, RF-M15).
 };
 
 export const nextAppointment = {

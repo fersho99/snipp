@@ -66,6 +66,25 @@ const SCREENS = [
       { title: 'Pedido confirmado P-2291', path: '/pedido-confirmado', states: [] },
     ],
   },
+  {
+    group: 'Cuenta, pedidos, reseñas, reportes, puntos y notificaciones',
+    items: [
+      { title: 'Cuenta (pestaña)', path: '/cuenta', states: [['Cargando', 'cargando'], ['Sin conexión', 'sin-conexion']] },
+      { title: 'Mis pedidos', path: '/pedidos', states: [['Sin pedidos', 'sin-pedidos'], ['Cargando', 'cargando'], ['Error', 'error'], ['Sin conexión', 'sin-conexion']] },
+      { title: 'Pedido listo para recoger P-2279', path: '/pedido/P-2279', states: [['Cargando', 'cargando'], ['Sin conexión', 'sin-conexion']] },
+      { title: 'Pedido entregado P-2264 (con puntos)', path: '/pedido/P-2264', states: [] },
+      { title: 'Pedido cancelado y reembolsado P-2250', path: '/pedido/P-2250', states: [] },
+      { title: 'Calificar C-10431', path: '/calificar?cita=C-10431', states: [['Error al publicar', 'error-enviar'], ['Sin conexión', 'sin-conexion']] },
+      { title: 'Calificar una cita ya calificada (C-10402)', path: '/calificar?cita=C-10402', states: [] },
+      { title: 'Calificar una cita no atendida (C-10370)', path: '/calificar?cita=C-10370', states: [] },
+      { title: 'Reportar: elegir la cita', path: '/reportar', states: [['Sin conexión', 'sin-conexion']] },
+      { title: 'Reportar a Luis por C-10431', path: '/reportar?cita=C-10431', states: [['Error al enviar', 'error-enviar']] },
+      { title: 'Reportar una cita ya reportada (C-10370)', path: '/reportar?cita=C-10370', states: [] },
+      { title: 'Mis reportes', path: '/reportes', states: [['Sin reportes', 'sin-reportes'], ['Cargando', 'cargando'], ['Sin conexión', 'sin-conexion']] },
+      { title: 'Puntos', path: '/puntos', states: [['Sin puntos', 'sin-puntos'], ['Cargando', 'cargando'], ['Sin conexión', 'sin-conexion']] },
+      { title: 'Notificaciones', path: '/notificaciones', states: [['Permiso desactivado', 'permiso-desactivado'], ['Sin notificaciones', 'sin-notificaciones'], ['Cargando', 'cargando'], ['Sin conexión', 'sin-conexion']] },
+    ],
+  },
 ];
 
 export default function ScreenIndex() {
@@ -74,7 +93,7 @@ export default function ScreenIndex() {
     <Screen>
       <Txt variant="display" accessibilityRole="header" style={{ marginTop: space.l }}>Pantallas de SNIPP</Txt>
       <Txt variant="bodySoft" style={{ marginTop: space.s }}>
-        Lotes M1 (cuenta), M2 (búsqueda y sucursal) M3 (reserva), M4 (mis citas) y M5 (tienda y pago), con sus estados. Toca una para abrirla.
+        Lotes M1 a M6 de la app (RF-M01 a RF-M16), con sus estados. Toca una para abrirla.
       </Txt>
       {SCREENS.map((g) => (
         <View key={g.group} style={{ marginTop: space.xxl }}>

@@ -10,8 +10,9 @@ import { ErrorNote, OfflineState, PhotoPlaceholder, Skeleton } from '../../compo
 import { StatusLine } from '../../components/Appointment';
 import useConnectivity from '../../hooks/useConnectivity';
 import {
-  CANCEL_HOURS, NOW_NEAR_C10482, appointmentStore, canReport, canReview, changeWindow, describe, statusOf, useAppointment,
+  CANCEL_HOURS, NOW_NEAR_C10482, appointmentStore, canReport, canReview, changeWindow, describe, reportStatusOf, statusOf, useAppointment,
 } from '../../data/appointments';
+import { notificationStore } from '../../data/notifications';
 import { DEMO_TODAY, employees } from '../../data/demo';
 import { money, photoFile } from '../../theme/format';
 import { color, font, radius, sheetShadow, space, touch } from '../../theme/tokens';
@@ -148,6 +149,12 @@ export default function AppointmentDetail() {
         d={d}
         onConfirm={() => {
           appointmentStore.update(appt.folio, { status: 'cancelada-cliente' });
+          notificationStore.push({
+            kind: 'cancelacion',
+            title: `Cancelaste tu cita del ${d.dateLabel.split(' de ')[0]}`,
+            body: `${d.service.name} de las ${d.timeLabel} con ${d.employee.name} en ${d.branch.name}. No hay ningún cargo.`,
+            route: `/cita/${appt.folio}`,
+          });
           setSheet(false);
           router.setParams({ aviso: 'cancelada' });
         }}
@@ -162,6 +169,7 @@ function Notice({ aviso, appt, d }) {
     reagendada: `Listo. Cambiaste tu cita al ${d.dateLabel} a las ${d.timeLabel}. ${d.employee.name.split(' ')[0]} ya tiene el aviso.`,
     aceptada: `Aceptaste el cambio. Te atiende ${d.employee.name} el ${d.dateLabel} a las ${d.timeLabel}.`,
     cancelada: `Cancelaste esta cita. ${d.branch.name} ya recibió el aviso y no hay ningún cargo.`,
+    calificada: `Gracias. Tu reseña ya aparece en la página de ${d.branch.name}, que ahora tiene ${d.branch.rating} de calificación con ${d.branch.reviewCount} reseñas.`,
   }[aviso];
   if (!text) return null;
   return (
@@ -182,7 +190,13 @@ function PastActions({ appt }) {
         <Txt variant="body">Calificaste esta cita con {appt.review.stars} {appt.review.stars === 1 ? 'estrella' : 'estrellas'}: “{appt.review.text}”</Txt>
       ) : null}
       {appt.report ? (
-        <Txt variant="body">Enviaste un reporte el {appt.report.sentOn}. Estado: {appt.report.state}. Solo lo ven el Jefe del negocio y el Administrador de SNIPP.</Txt>
+        <View style={{ gap: space.xs }}>
+          <StatusLine status={{ ...reportStatusOf(appt.report), label: `Reporte ${reportStatusOf(appt.report).label.toLowerCase()}` }} />
+          <Txt variant="body">
+            Enviaste un reporte sobre {describe(appt).employee.name} el {appt.report.sentOn}. Solo lo ven el Jefe de {describe(appt).branch.name} y el Administrador de SNIPP.
+          </Txt>
+          <Button variant="link" label="Ver mis reportes" onPress={() => router.push('/reportes')} style={{ alignSelf: 'flex-start' }} />
+        </View>
       ) : null}
       {appt.status === 'empleado-no-se-presento' ? (
         <Txt variant="small">No puedes calificar esta cita porque no se dio el servicio.</Txt>

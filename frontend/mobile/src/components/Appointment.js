@@ -41,7 +41,7 @@ export function DateBlock({ date, muted }) {
 const TABS = [
   { path: '/inicio', label: 'Inicio', Icon: HouseIcon },
   { path: '/citas', label: 'Mis citas', Icon: CalendarBlankIcon },
-  { path: '/perfil', label: 'Cuenta', Icon: UserIcon, push: true },
+  { path: '/cuenta', label: 'Cuenta', Icon: UserIcon },
 ];
 
 // Bottom navigation for the top-level client screens.

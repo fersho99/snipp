@@ -138,6 +138,16 @@ export const visibleBranches = () => branches.filter(isVisible);
 
 export const getBranch = (id) => branches.find((b) => b.id === id);
 
+// RF-M12: a new review goes first in the list and updates the average.
+export function addReview(branchId, review) {
+  const b = getBranch(branchId);
+  const total = (b.rating ?? 0) * b.reviewCount + review.stars;
+  b.reviewCount += 1;
+  b.rating = Math.round((total / b.reviewCount) * 10) / 10;
+  b.reviews = [review, ...b.reviews];
+  return { rating: b.rating, reviewCount: b.reviewCount };
+}
+
 export const priceFrom = (branch) => Math.min(...activeServices(branch).map((s) => s.price));
 
 export const cheapestService = (branch) => activeServices(branch).reduce((a, b) => (b.price < a.price ? b : a));

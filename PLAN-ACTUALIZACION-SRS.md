@@ -22,10 +22,10 @@ Este plan explica cómo llevar las plantillas de frontend ya construidas, y las 
 | Parte | Estado |
 | --- | --- |
 | App móvil, lotes M1 a M5 (cuenta, búsqueda, reserva, mis citas, tienda y pago) | **Ajustados** (fases 1 y 2 aplicadas el 14/11/2026): SNIPP, escala de grises, Q1–Q13 quitados, C1–C11 corregidos. |
-| App móvil, lote M6 (pedidos, reseñas, reportes, puntos, notificaciones) | **Pendiente** (sección 5). |
+| App móvil, lote M6 (pedidos, reseñas, reportes, puntos, notificaciones) | **Hecho** como plantilla el 14/11/2026 (fase 3). Falta conectar la API y OneSignal (fase 5). |
 | Plataforma web (Jefe, Empleado, Administrador) | **Pendiente**, no hay código (sección 6). |
 | API, base de datos, Stripe real, OneSignal, servidor | Fuera de este frontend; son dependencias (sección 7). |
-| Repositorio GitHub (RNF-G08) | La carpeta del proyecto **no** está en git todavía. |
+| Repositorio GitHub (RNF-G08) | En github.com/fersho99/snipp, rama `main`. |
 
 ---
 
@@ -233,7 +233,7 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | ID | Pantalla o ruta | Estado |
 | --- | --- | --- |
 | RF-M01 | `/registro` | Hecho |
-| RF-M02 | `/entrar`, cerrar sesión en `/perfil` | Hecho |
+| RF-M02 | `/entrar`, cerrar sesión en `/cuenta` | Hecho |
 | RF-M03 | `/recuperar`, `/recuperar-enviado` | Hecho |
 | RF-M04 | `/perfil` | Hecho |
 | RF-M05 | `/inicio`, `/resultados`, `/sucursal/[id]` | Hecho |
@@ -242,12 +242,12 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-M08 | `/cambio/[folio]` | Hecho |
 | RF-M09 | `/tienda/[sucursal]`, `/producto/[id]`, `/carrito` | Hecho |
 | RF-M10 | `/carrito`, `/pedido-confirmado` | Hecho (pago real en fase 5) |
-| RF-M11 | Mis pedidos | Pendiente |
-| RF-M12 | Calificar | Pendiente |
-| RF-M13 | Reportar | Pendiente |
-| RF-M14 | Mis reportes | Pendiente |
-| RF-M15 | Puntos (carrito ya canjea) | Pendiente (pantalla de puntos) |
-| RF-M16 | Push y notificaciones | Pendiente |
+| RF-M11 | `/pedidos`, `/pedido/[folio]` | Hecho |
+| RF-M12 | `/calificar` | Hecho |
+| RF-M13 | `/reportar` | Hecho |
+| RF-M14 | `/reportes` | Hecho |
+| RF-M15 | `/puntos`, canje en `/carrito` | Hecho |
+| RF-M16 | `/notificaciones`; push con OneSignal documentado en `services/notifications.js` | Hecho (push real en fase 5) |
 | RF-W01 a RF-W28 | Plataforma web, lotes W1 a W9 | Pendiente |
 | RNF-M01 a RNF-M04, RNF-W01 a RNF-W05 | Sección 7.1 | Pendiente de medir |
 | RNF-G01 a RNF-G08 | Sección 7.2 | Dependencia de back-end e infraestructura |

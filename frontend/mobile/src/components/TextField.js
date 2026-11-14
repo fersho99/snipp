@@ -20,6 +20,7 @@ const TextField = forwardRef(function TextField(
         style={[
           styles.field,
           !editable && styles.readOnly,
+          inputProps.multiline && styles.multiField,
           focused && styles.focused,
           !!error && styles.errored,
         ]}
@@ -37,7 +38,8 @@ const TextField = forwardRef(function TextField(
           cursorColor={color.ink}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          style={styles.input}
+          style={[styles.input, inputProps.multiline && styles.multiInput]}
+          textAlignVertical={inputProps.multiline ? 'top' : undefined}
           {...inputProps}
         />
         {secure ? (
@@ -78,6 +80,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   readOnly: { backgroundColor: 'transparent', paddingLeft: 0 },
+  multiField: { alignItems: 'stretch' },
+  multiInput: { minHeight: 136, paddingTop: 14, paddingBottom: 14, lineHeight: 23 },
   focused: { borderColor: color.inkSoft, backgroundColor: color.raised },
   errored: { borderColor: color.ink },
   prefix: { marginRight: space.s },

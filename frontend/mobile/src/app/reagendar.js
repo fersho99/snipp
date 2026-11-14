@@ -9,6 +9,7 @@ import { BookingCalendar, SlotGrid } from '../components/Booking';
 import useConnectivity from '../hooks/useConnectivity';
 import { CANCEL_HOURS, NOW_NEAR_C10482, appointmentStore, changeWindow, describe, useAppointment } from '../data/appointments';
 import { DEMO_TODAY, employees } from '../data/demo';
+import { notificationStore } from '../data/notifications';
 import { groupSlots, iso, lastBookableDate, minutesLabel, slotsFor } from '../data/availability';
 import { longDate, minutes, shortDate } from '../theme/format';
 import { space } from '../theme/tokens';
@@ -72,6 +73,12 @@ export default function Reschedule() {
     setSaving(true);
     await new Promise((r) => setTimeout(r, 900));
     appointmentStore.update(appt.folio, { date: iso(date), start: slot.start, employeeId, status: 'confirmada', change: null });
+    notificationStore.push({
+      kind: 'reagendada',
+      title: `Tu cita cambió al ${longDate(date).split(' de ')[0]} a las ${slot.label}`,
+      body: `${d.service.name} con ${employee.name} en ${d.branch.name}. Sigue con el folio ${appt.folio}.`,
+      route: `/cita/${appt.folio}`,
+    });
     setSaving(false);
     const target = `/cita/${appt.folio}?aviso=reagendada`;
     if (router.canDismiss?.()) router.dismissTo(target);

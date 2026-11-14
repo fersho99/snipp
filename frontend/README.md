@@ -131,9 +131,34 @@ Composición:
 
 Pago: `src/services/payments.js` deja escrito el flujo real con `@stripe/stripe-react-native` (PaymentSheet) y por ahora simula el resultado. Para conectarlo falta: el backend que cree el PaymentIntent y confirme con el webhook, instalar el SDK y hacer un build de desarrollo (PaymentSheet no corre en Expo Go ni en web). El monto siempre lo calcula el servidor.
 
-Datos agregados (en `src/data/shop.js`): existencias de Los Compas Norte (pomada 3, cera 5) y Navaja Fina (aceite 4, pomada 8); Estudio Marisol sin productos; descripciones y modo de uso; regla de puntos de ejemplo ($10 = 1 punto, 1 punto = $1, la del lote W8); pedidos anteriores P-2264 (entregado) y P-2250 (cancelado con reembolso) para el lote M6. Solo la pomada usa una foto real (`producto-frasco.jpg`); los otros productos muestran el bloque con el nombre de archivo esperado.
+Datos agregados (en `src/data/shop.js`): existencias de Los Compas Norte (pomada 3, cera 5) y Navaja Fina (aceite 4, pomada 8); Estudio Marisol sin productos; descripciones y modo de uso; regla de puntos de ejemplo ($10 = 1 punto, 1 punto = $1, la del lote W8); pedidos anteriores P-2264 (entregado) y P-2250 (cancelado con reembolso), que usa el lote M6. Solo la pomada usa una foto real (`producto-frasco.jpg`); los otros productos muestran el bloque con el nombre de archivo esperado.
 
 También: el perfil de sucursal ahora tiene la sección "Productos para recoger aquí" con acceso a la tienda.
+
+## Lote M6: pedidos, reseñas, reportes, puntos y notificaciones (hecho)
+
+La pestaña **Cuenta** (`/cuenta`) es ahora la entrada a todo esto, además de Editar perfil y Cerrar sesión.
+
+| Pantalla | Ruta | RF | Estados (`?estado=`) |
+| --- | --- | --- | --- |
+| Cuenta | `/cuenta` | RF-M02, M11, M14 a M16 | `cargando`, `sin-conexion` |
+| Mis pedidos | `/pedidos` | RF-M11 | `sin-pedidos`, `cargando`, `error`, `sin-conexion` |
+| Detalle de pedido | `/pedido/P-2279` (listo), `P-2264` (entregado con puntos), `P-2250` (cancelado y reembolsado) | RF-M11, RN-06, RN-17 | `cargando`, `sin-conexion`, folio inexistente |
+| Calificar | `/calificar?cita=C-10431` | RF-M12, RN-08 | `error-enviar`, `sin-conexion`; bloqueado si ya se calificó (C-10402) o no se atendió (C-10370) |
+| Reportar | `/reportar` (elige la cita) o `/reportar?cita=C-10431` | RF-M13, RN-15 | `error-enviar`, `sin-conexion`; bloqueado si ya se reportó (C-10370) o no hay citas reportables |
+| Mis reportes | `/reportes` | RF-M14 | `sin-reportes`, `cargando`, `sin-conexion` |
+| Puntos | `/puntos` | RF-M15, RN-09 | `sin-puntos`, `cargando`, `sin-conexion` |
+| Notificaciones | `/notificaciones` | RF-M16 | `permiso-desactivado`, `sin-notificaciones`, `cargando`, `sin-conexion` |
+
+Qué hace cada una:
+- **Pedidos:** estados pagado, listo para recoger, entregado y cancelado con reembolso por Stripe. Muestra fechas de cada paso, sucursal donde se recoge, lo pagado, los puntos usados y ganados, y la referencia de pago.
+- **Calificar:** 1 a 5 estrellas y reseña. Al publicar, la reseña aparece primero en la página de la sucursal y el promedio se recalcula (Los Compas pasa de 212 a 213 reseñas).
+- **Reportar:** cita relacionada, motivo (trato, puntualidad, higiene, calidad del servicio u otro) y descripción, con el texto C12: "Solo lo ven el Jefe de [negocio] y el Administrador de SNIPP. [Empleado] no verá tu reporte ni tus datos." Al enviarse queda en estado "Enviado".
+- **Mis reportes:** cada reporte con su estado (enviado, en revisión, atendido).
+- **Puntos:** saldo por negocio, regla del negocio, movimientos (citas atendidas, compras, canjes) y acceso a la tienda donde se canjean. El saldo sale de los movimientos y el pago en el carrito descuenta y suma puntos.
+- **Notificaciones:** lista agrupada en Hoy, Ayer y Antes; cada una abre la cita o el pedido. Reservar, cancelar y reagendar en la demo agregan la notificación correspondiente. El push real con OneSignal está documentado en `src/services/notifications.js` (fase 5).
+
+Datos agregados: cita C-10318 (atendida, calificada y con reporte atendido), descripción y motivo en los reportes, pedido P-2279 listo para recoger, canje de 73 puntos en P-2264 y movimientos de puntos que suman 27 en Barbería Los Compas (`src/data/shop.js`), notificaciones de ejemplo (`src/data/notifications.js`).
 
 ## Fotos
 

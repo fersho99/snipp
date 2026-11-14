@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { CameraIcon } from 'phosphor-react-native';
 import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
@@ -11,6 +11,7 @@ import TextField from '../components/TextField';
 import { ErrorNote, OfflineState, Skeleton } from '../components/States';
 import useConnectivity from '../hooks/useConnectivity';
 import { client } from '../data/demo';
+import { pointBalances } from '../data/shop';
 import { color, space, touch } from '../theme/tokens';
 
 const AVATAR = 88;
@@ -72,7 +73,7 @@ export default function EditProfile() {
   };
 
   const initials = name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
-  const points = client.points[0];
+  const points = pointBalances()[0];
 
   return (
     <Screen footer={<Button label="Guardar cambios" onPress={save} loading={saving} disabled={!dirty} />}>
@@ -101,7 +102,7 @@ export default function EditProfile() {
 
       <View style={styles.identity}>
         <Txt variant="title" accessibilityRole="header">{saved.name}</Txt>
-        <Txt variant="small" numeric>{points.points} puntos en {points.businessName}</Txt>
+        {points ? <Txt variant="small" numeric>{points.points} puntos en {points.businessName}</Txt> : null}
       </View>
 
       <View style={styles.form}>
@@ -139,8 +140,6 @@ export default function EditProfile() {
           </Txt>
         ) : null}
       </View>
-
-      <Button variant="link" label="Cerrar sesión" onPress={() => router.replace('/entrar')} style={{ marginTop: space.xxl }} />
     </Screen>
   );
 }

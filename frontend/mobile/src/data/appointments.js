@@ -1,8 +1,8 @@
 // Andrea's appointments plus a tiny in-memory store, so cancelling,
 // rescheduling or accepting a change shows up on every screen of the demo.
 import { useSyncExternalStore } from 'react';
-import { DEMO_TODAY, employees, services } from './demo';
-import { getBranch } from './catalog';
+import { DEMO_TODAY, client, employees, services } from './demo';
+import { addReview, getBranch } from './catalog';
 import { fromIso, minutesLabel, setBookedProvider } from './availability';
 import { longDate } from '../theme/format';
 
@@ -25,8 +25,16 @@ const initial = [
   { folio: 'C-10431', serviceId: 'fade', employeeId: 'luis', branchId: 'los-compas-centro', date: '2026-10-31', start: 17 * 60, status: 'atendida', review: null, report: null },
   { folio: 'C-10402', serviceId: 'corte-clasico', employeeId: 'ramon', branchId: 'los-compas-centro', date: '2026-10-17', start: 12 * 60, status: 'atendida', review: { stars: 5, text: 'Ramón trabaja con mucha calma.' }, report: null },
   { folio: 'C-10388', serviceId: 'unas', employeeId: 'fernanda', branchId: 'estudio-marisol', date: '2026-10-10', start: 11 * 60, status: 'no-asistio' },
-  { folio: 'C-10370', serviceId: 'fade', employeeId: 'luis', branchId: 'los-compas-centro', date: '2026-10-03', start: 18 * 60, status: 'empleado-no-se-presento', report: { sentOn: '3 de octubre', state: 'en revisión' } },
+  {
+    folio: 'C-10370', serviceId: 'fade', employeeId: 'luis', branchId: 'los-compas-centro', date: '2026-10-03', start: 18 * 60, status: 'empleado-no-se-presento',
+    report: { sentOn: '3 de octubre', state: 'en revisión', reason: 'puntualidad', text: 'Llegué a las 6:00 pm y Luis no estaba. Esperé 25 minutos y nadie me avisó que no iba a venir.' },
+  },
   { folio: 'C-10355', serviceId: 'tinte', employeeId: 'karla', branchId: 'estudio-marisol', date: '2026-09-26', start: 10 * 60, status: 'cancelada-cliente' },
+  {
+    folio: 'C-10318', serviceId: 'corte-barba', employeeId: 'ramon', branchId: 'los-compas-centro', date: '2026-09-12', start: 16 * 60, status: 'atendida',
+    review: { stars: 3, text: 'La barba quedó bien definida, pero la capa tenía cabello del cliente anterior.' },
+    report: { sentOn: '12 de septiembre', state: 'atendido', reason: 'higiene', text: 'La capa que me pusieron tenía cabello del cliente anterior y Ramón no la cambió cuando se lo dije.' },
+  },
 ];
 
 let state = initial.map((a) => ({ ...a }));
@@ -124,5 +132,49 @@ export function statusOf(a) {
 }
 
 // What the client may still do with a past appointment.
+// RN-08: one review per attended appointment.
+// RN-15: one report per appointment, only if attended or "Empleado no se presentó".
 export const canReview = (a) => a.status === 'atendida' && !a.review;
 export const canReport = (a) => ['atendida', 'empleado-no-se-presento'].includes(a.status) && !a.report;
+
+export const TODAY_LABEL = '12 de noviembre';
+
+// RF-M12: the review is published on the business page and counts in its average.
+export function submitReview(folio, { stars, text }) {
+  const a = state.find((x) => x.folio === folio);
+  const d = describe(a);
+  appointmentStore.update(folio, { review: { stars, text } });
+  return addReview(a.branchId, {
+    id: `r-${folio}`,
+    author: client.name,
+    stars,
+    date: TODAY_LABEL,
+    service: `${d.service.name} con ${d.employee.name}`,
+    text,
+  });
+}
+
+// RF-M13: reasons listed in the SRS.
+export const REPORT_REASONS = [
+  { id: 'trato', label: 'Trato' },
+  { id: 'puntualidad', label: 'Puntualidad' },
+  { id: 'higiene', label: 'Higiene' },
+  { id: 'calidad', label: 'Calidad del servicio' },
+  { id: 'otro', label: 'Otro' },
+];
+export const reasonLabel = (id) => REPORT_REASONS.find((r) => r.id === id)?.label ?? id;
+
+// RF-M13: goes to the Jefe of that business; the employee never sees it (RN-15).
+export function submitReport(folio, { reason, text }) {
+  appointmentStore.update(folio, { report: { sentOn: TODAY_LABEL, state: 'enviado', reason, text } });
+}
+
+// RF-M14: enviado | en revisión | atendido (the Jefe changes it on the web).
+export function reportStatusOf(report) {
+  switch (report.state) {
+    case 'enviado': return { label: 'Enviado', tone: 'pending' };
+    case 'en revisión': return { label: 'En revisión', tone: 'pending' };
+    case 'atendido': return { label: 'Atendido', tone: 'done' };
+    default: return { label: report.state, tone: 'soft' };
+  }
+}
