@@ -5,7 +5,9 @@ import Recover from './pages/Recover'
 import ResetPassword from './pages/ResetPassword'
 import RegisterBusiness from './pages/RegisterBusiness'
 import RegisterEmployee from './pages/RegisterEmployee'
-import PanelEntry from './pages/PanelEntry'
+import PanelLayout from './components/PanelLayout'
+import Section, { PanelHome } from './pages/panel/Section'
+import OverduePayment from './pages/OverduePayment'
 
 // Remounts each screen when its query changes, so the screen index can jump
 // between states (?estado=...) of the same page.
@@ -23,7 +25,11 @@ export default function App() {
       <Route path="/restablecer" element={<Keyed><ResetPassword /></Keyed>} />
       <Route path="/registro/negocio" element={<Keyed><RegisterBusiness /></Keyed>} />
       <Route path="/registro/empleado" element={<Keyed><RegisterEmployee /></Keyed>} />
-      <Route path="/panel" element={<PanelEntry />} />
+      <Route path="/panel" element={<PanelLayout />}>
+        <Route index element={<PanelHome />} />
+        <Route path=":section" element={<Section />} />
+      </Route>
+      <Route path="/pago-pendiente" element={<OverduePayment />} />
       <Route path="*" element={<Navigate to="/entrar" replace />} />
     </Routes>
   )

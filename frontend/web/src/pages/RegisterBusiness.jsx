@@ -32,7 +32,7 @@ export default function RegisterBusiness() {
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [failure, setFailure] = useState((estado === 'sin-conexion' ? new ApiError('offline') : estado === 'error-servidor' ? new ApiError('server') : estado === 'correo-registrado' ? new ApiError('email-taken') : null))
-  const [created, setCreated] = useState(estado === 'listo' ? { name: 'Martín Salazar', business: 'Barbería Los Compas', planId: 'mensual' } : null)
+  const [created, setCreated] = useState(estado === 'listo' ? { name: 'Martín Salazar', business: { name: 'Barbería Los Compas' }, planId: 'mensual' } : null)
 
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -65,7 +65,7 @@ export default function RegisterBusiness() {
     const plan = allPlans.find((p) => p.id === created.planId)
     return (
       <AuthLayout photo="fade">
-        <Note tone="done" title={`${created.business} ya está registrado`} />
+        <Note tone="done" title={`${created.business.name} ya está registrado`} />
         <h1 className="mt-6 text-[28px] font-bold leading-tight">
           Listo, {firstName(created.name)}. Tu prueba gratis dura hasta el {longDate(trialEnds)}
         </h1>

@@ -12,7 +12,17 @@ const SCREENS = [
       { title: 'Crear contraseña nueva (desde el enlace)', path: '/restablecer?token=demo', states: [['Enlace vencido', 'enlace-vencido'], ['Contraseña cambiada', 'listo'], ['Sin conexión', 'sin-conexion']] },
       { title: 'Registro de Jefe con negocio y plan', path: '/registro/negocio', states: [['Correo ya registrado', 'correo-registrado'], ['Cargando planes', 'cargando-planes'], ['Sin planes publicados', 'sin-planes'], ['Sin conexión', 'sin-conexion'], ['Negocio registrado', 'listo']] },
       { title: 'Registro de Empleado sin negocio', path: '/registro/empleado', states: [['Correo ya registrado', 'correo-registrado'], ['Sin conexión', 'sin-conexion'], ['Cuenta creada', 'listo']] },
-      { title: 'Después de entrar (lo reemplaza el lote W2)', path: '/panel', states: [] },
+    ],
+  },
+  {
+    group: 'Lote W2: estructura del panel',
+    items: [
+      { title: 'Panel del Jefe (Martín Salazar), con selector de sucursal', path: '/panel?como=jefe', states: [['Prueba gratuita termina en 7 días', 'aviso-prueba'], ['Suscripción vence en 7 días', 'aviso-suscripcion'], ['Suscripción vencida', 'vencida'], ['Sin sucursales', 'sin-sucursales'], ['Cargando', 'cargando'], ['Sin conexión', 'sin-conexion'], ['Error del servidor', 'error-servidor']] },
+      { title: 'Panel del Empleado (Luis Ortega)', path: '/panel?como=empleado', states: [['Suscripción vencida', 'vencida'], ['Prueba por vencer (el Empleado no ve el aviso)', 'aviso-prueba']] },
+      { title: 'Empleado entrando a una sección del Jefe (sin acceso)', path: '/panel/reportes?como=empleado', states: [] },
+      { title: 'Empleado sin negocio (Sofía Ramos)', path: '/panel?como=sin-negocio', states: [] },
+      { title: 'Panel del Administrador (Daniela Ibarra)', path: '/panel?como=admin', states: [] },
+      { title: 'Administrador entrando a una sección del Jefe (sin acceso)', path: '/panel/agenda?como=admin', states: [] },
     ],
   },
 ]

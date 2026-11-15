@@ -2,6 +2,8 @@
 
 Documento base: *Especificación de Requerimientos del Software, Sistema digital multiplataforma para la gestión de servicios estéticos, versión 1.1 (13/11/2026)*.
 
+Revisión del 14/11/2026: el SRS se volvió a entregar (`SRS_v1.1.pdf`) y se comparó página por página con la versión anterior (`SRS-final.pdf`). Solo cambia la tabla de firmas (5.4): ahora firman Julián Uriarte Cázares como responsable administrativo y Axel Ramírez Cárdenas como responsable desarrollador, en lugar de Fernando Flores Velázquez (administrativo) y Julián Uriarte Cázares (desarrollador). Ningún RF, RNF, RN, alcance ni criterio de aceptación cambió, así que este plan sigue igual.
+
 Este plan explica cómo llevar las plantillas de frontend ya construidas, y las que faltan, a lo que dice el SRS: ni más ni menos. Cada cambio cita el requerimiento (RF, RNF o RN) que lo justifica. Si algo no aparece en el SRS, se quita o queda en la sección 9 para que el equipo decida.
 
 ---
@@ -23,7 +25,7 @@ Este plan explica cómo llevar las plantillas de frontend ya construidas, y las 
 | --- | --- |
 | App móvil, lotes M1 a M5 (cuenta, búsqueda, reserva, mis citas, tienda y pago) | **Ajustados** (fases 1 y 2 aplicadas el 14/11/2026): SNIPP, escala de grises, Q1–Q13 quitados, C1–C11 corregidos. |
 | App móvil, lote M6 (pedidos, reseñas, reportes, puntos, notificaciones) | **Hecho** como plantilla el 14/11/2026 (fase 3). Falta conectar la API y OneSignal (fase 5). |
-| Plataforma web (Jefe, Empleado, Administrador) | Lote W1 (acceso y registro) **hecho** como plantilla el 14/11/2026 en `frontend/web`. W2 a W9 pendientes (sección 6). |
+| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro) y W2 (estructura del panel) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W3 a W9 pendientes (sección 6). |
 | API, base de datos, Stripe real, OneSignal, servidor | Fuera de este frontend; son dependencias (sección 7). |
 | Repositorio GitHub (RNF-G08) | En github.com/fersho99/snipp, rama `main`. |
 
@@ -250,7 +252,10 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-M16 | `/notificaciones`; push con OneSignal documentado en `services/notifications.js` | Hecho (push real en fase 5) |
 | RF-W01, RF-W02, RF-W03 | `/registro/negocio`, `/registro/empleado`, `/entrar`, `/recuperar`, `/restablecer` | Hecho |
 | RF-W27 | Planes que se eligen al registrarse (W1); gestión del Administrador en W9 | Parcial |
-| RF-W04 a RF-W26, RF-W28 | Plataforma web, lotes W2 a W9 | Pendiente |
+| RF-W04 | Menú del panel según el rol y bloqueo de secciones ajenas (`/panel/:seccion`) | Hecho (la API debe aplicar la misma regla, RNF-W04) |
+| RF-W25 | Aviso al Jefe 7 días antes de que venza la prueba o la suscripción (W2); pagar y renovar con Stripe en W9 | Parcial |
+| RF-W26, RN-13 | `/pago-pendiente` al entrar (Jefe y Empleados) y aviso fijo en el panel mientras siga vencida; ocultar el negocio en la app ya está en la móvil (C5) | Hecho |
+| RF-W05 a RF-W24, RF-W28 | Plataforma web, lotes W3 a W9 | Pendiente |
 | RNF-M01 a RNF-M04, RNF-W01 a RNF-W05 | Sección 7.1 | Pendiente de medir |
 | RNF-G01 a RNF-G08 | Sección 7.2 | Dependencia de back-end e infraestructura |
 

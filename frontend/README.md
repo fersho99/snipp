@@ -29,10 +29,13 @@ npm run dev      # http://localhost:5173
 
 En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`); en producción `/` abre "Entrar".
 
-Cuentas de demostración (contraseña `snipp2026` para las tres):
+Cuentas de demostración (contraseña `snipp2026` para todas):
 - Administrador: `admin@snipp.mx` (Daniela Ibarra)
 - Jefe de Barbería Los Compas: `martin.salazar@loscompas.mx` (Martín Salazar)
-- Empleado de Barbería Los Compas: `luis.ortega@gmail.com` (Luis Ortega)
+- Empleado de Barbería Los Compas, sucursal Centro: `luis.ortega@gmail.com` (Luis Ortega)
+- Empleado sin negocio: `sofia.ramos@gmail.com` (Sofía Ramos)
+
+En el índice de desarrollo, `/panel?como=jefe|empleado|sin-negocio|admin` abre el panel con esa cuenta sin escribir la contraseña (solo en `npm run dev`).
 
 ## Estructura
 
@@ -193,6 +196,23 @@ Detalles:
 - **Registro de Empleado:** nombre, correo y contraseña. La cuenta queda sin negocio y explica cómo unirse a uno: por invitación del Jefe o mandando una solicitud (RF-W10, lote W5).
 - **Recuperar:** responde igual exista o no el correo, para no revelar qué correos tienen cuenta. La página de contraseña nueva sirve también para los clientes de la app.
 - Las llamadas a la API están simuladas en `web/src/services/auth.js`.
+
+### Lote W2 (web): estructura del panel
+
+| Ruta | Qué es | Estados (`?estado=`) |
+| --- | --- | --- |
+| `/panel` | Abre la sección de inicio de cada rol: Jefe → Inicio, Empleado → Mis citas (o Mi perfil si no tiene negocio), Administrador → Negocios | `cargando`, `sin-conexion`, `error-servidor` |
+| `/panel/:seccion` | Menú lateral con solo las secciones del rol (RF-W04, RN-10). Una sección de otro rol, aunque se escriba la dirección, muestra "No tienes acceso a esta sección" | – |
+| Selector de sucursal | Solo el Jefe. Lo siguen Inicio, Agenda, Pedidos y Productos. Las sucursales desactivadas siguen en la lista con "(desactivada)" | `sin-sucursales` |
+| Aviso de vencimiento | Solo el Jefe, desde 7 días antes de que termine la prueba gratuita o el periodo pagado (RF-W25) | `aviso-prueba`, `aviso-suscripcion` |
+| `/pago-pendiente` | Al entrar con la suscripción vencida, el Jefe y cada Empleado ven que el negocio no se muestra en la app ni recibe reservas, que las citas ya agendadas se respetan y que al pagar vuelve solo (RF-W26, RN-13). Después pueden entrar al panel, donde queda un aviso fijo | `vencida` |
+
+- Menú del Jefe: Inicio, Agenda, Pedidos · Sucursales y servicios, Empleados, Productos e inventario, Puntos de lealtad · Reportes de clientes, Reseñas · Suscripción.
+- Menú del Empleado: Mis citas, Pedidos, Mi historial de citas · Mi perfil. Sin negocio, solo Mi perfil. No ve Reportes (RN-10).
+- Menú del Administrador: Negocios, Planes, Reseñas reportadas.
+- Debajo de 1024 px el menú se abre como panel lateral con el botón "Menú" (tableta, RNF-W03).
+- Cada sección todavía muestra en qué lote se construye (W3 a W9) y qué requerimientos cubre.
+- Los datos del negocio, sucursales y suscripción están simulados en `web/src/services/panel.js` y `web/src/data/demo.js`; el menú por rol, en `web/src/data/nav.js`.
 
 ## Fotos
 

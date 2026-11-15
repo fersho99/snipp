@@ -2,7 +2,8 @@
 // In production these are calls to the API over HTTPS (RNF-G02); passwords
 // are stored hashed (RNF-G01) and expired or invalid tokens are rejected (RNF-G03).
 // `estado` lets the screen index force a state (credenciales, correo-registrado, ...).
-import { accounts, DEMO_PASSWORD } from '../data/demo'
+import { accounts, DEMO_PASSWORD, DEMO_TODAY } from '../data/demo'
+import { addMonths } from '../theme'
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const registered = new Set(accounts.map((a) => a.email))
@@ -33,6 +34,18 @@ function save(next) {
 }
 export const currentSession = () => session
 
+// Remembers, for this session, that the overdue-payment message was shown
+// at sign-in (RF-W26), so it is not shown again on every page.
+export function markOverdueSeen() {
+  if (session) save({ ...session, overdueSeen: true })
+}
+
+// Screen index only (development): opens the panel as a demo account.
+export function devSignIn(email) {
+  const account = accounts.find((a) => a.email === email)
+  if (account) save({ ...account })
+}
+
 function fail(estado) {
   if (estado === 'sin-conexion') throw new ApiError('offline')
   if (estado === 'error-servidor') throw new ApiError('server')
@@ -57,7 +70,14 @@ export async function registerBoss({ name, email, phone, businessName, planId },
   const key = email.trim().toLowerCase()
   if (estado === 'correo-registrado' || registered.has(key)) throw new ApiError('email-taken')
   registered.add(key)
-  const account = { email: key, role: 'jefe', name: name.trim(), phone, business: businessName.trim(), planId }
+  // The new business starts with its free month and no branches yet (RN-13, RF-W05).
+  const business = {
+    id: `negocio-${Date.now()}`,
+    name: businessName.trim(),
+    branches: [],
+    subscription: { kind: 'prueba', planId, endsOn: addMonths(DEMO_TODAY, 1).toISOString() },
+  }
+  const account = { email: key, role: 'jefe', name: name.trim(), phone, planId, businessId: business.id, business }
   save(account)
   return account
 }
@@ -68,7 +88,7 @@ export async function registerEmployee({ name, email }, estado) {
   const key = email.trim().toLowerCase()
   if (estado === 'correo-registrado' || registered.has(key)) throw new ApiError('email-taken')
   registered.add(key)
-  const account = { email: key, role: 'empleado', name: name.trim(), business: null }
+  const account = { email: key, role: 'empleado', name: name.trim(), businessId: null }
   save(account)
   return account
 }
