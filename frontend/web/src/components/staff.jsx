@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react'
 import { Checkbox } from './ui'
 import { historyFor } from '../data/staff'
+import { useStaffStore } from '../services/staff'
 import { count, dayMonth, timeOfDay } from '../theme'
 
 const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -67,7 +68,9 @@ const PAGE = 15
 // cancelled and rescheduled, and each action with its date and who did it.
 // `self` is true when the Empleado looks at their own history.
 export function History({ employeeId, self = false }) {
-  const events = useMemo(() => historyFor(employeeId), [employeeId])
+  const generated = useMemo(() => historyFor(employeeId), [employeeId])
+  const { log } = useStaffStore()
+  const events = useMemo(() => [...log.filter((e) => e.employeeId === employeeId).reverse(), ...generated], [log, employeeId, generated])
   const [filter, setFilter] = useState('todas')
   const [shown, setShown] = useState(PAGE)
   const totals = { confirmada: 0, cancelada: 0, reagendada: 0 }

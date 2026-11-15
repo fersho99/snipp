@@ -30,7 +30,7 @@ const S = {
   reportes: { label: 'Reportes', Icon: Flag, batch: 'W7', rf: 'RF-W14' },
   resenas: { label: 'Reseñas', Icon: Star, batch: 'W7', rf: 'RF-W23' },
   suscripcion: { label: 'Suscripción', Icon: CreditCard, batch: 'W9', rf: 'RF-W25' },
-  citas: { label: 'Mis citas', Icon: CalendarBlank, batch: 'W6', rf: 'RF-W15, RF-W18' },
+  citas: { label: 'Agenda', Icon: CalendarBlank, batch: 'W6', rf: 'RF-W15, RF-W18' },
   historial: { label: 'Mi historial de citas', Icon: ClockCounterClockwise, batch: 'W5', rf: 'RF-W17' },
   perfil: { label: 'Mi perfil', Icon: UserCircle, batch: 'W5', rf: 'RF-W11, RF-W12' },
   negocios: { label: 'Negocios', Icon: Buildings, batch: 'W9', rf: 'RF-W27, RF-W28' },

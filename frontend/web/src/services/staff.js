@@ -5,7 +5,7 @@
 // appointment changes (RF-W16, RN-04).
 import { useSyncExternalStore } from 'react'
 import { DEMO_TODAY, employees as baseEmployees, pendingRequests } from '../data/demo'
-import { directory, staffProfiles, upcomingAppointments } from '../data/staff'
+import { buildAppointments, directory, seedBlocks, staffProfiles } from '../data/staff'
 import { ApiError } from './auth'
 import { getDemoEstado } from './panel'
 
@@ -43,7 +43,9 @@ function seed(estado) {
   return {
     staff,
     profiles,
-    upcoming: upcomingAppointments.map((a) => ({ ...a })),
+    appointments: buildAppointments(DEMO_TODAY),
+    blocks: seedBlocks.map((b) => ({ ...b })),
+    log: [], // history entries added in this session (RF-W17)
     requests: pendingRequests.map((r) => ({ ...r })),
     invitations,
     arrivals: [],
@@ -54,7 +56,8 @@ function seed(estado) {
 
 let state = seed(null)
 const listeners = new Set()
-const set = (fn) => {
+// Also used by services/agenda.js, which works on the same appointments.
+export const set = (fn) => {
   state = fn(state)
   listeners.forEach((l) => l())
 }
@@ -80,26 +83,40 @@ const minutesOf = (hhmm) => {
   const [h, m] = hhmm.split(':').map(Number)
   return h * 60 + m
 }
-const overlaps = (a, b) => a.start < new Date(b.start.getTime() + b.minutes * 60000) && b.start < new Date(a.start.getTime() + a.minutes * 60000)
+export const overlaps = (a, b) => a.start < new Date(b.start.getTime() + b.minutes * 60000) && b.start < new Date(a.start.getTime() + a.minutes * 60000)
 
-// Is this Empleado working and free for that appointment? (RN-02, RN-11)
-export function isFree(s, employeeId, appt) {
+// An appointment still to happen that keeps its slot taken.
+export const ACTIVE = ['confirmada', 'cambio']
+export const isUpcoming = (a) => ACTIVE.includes(a.status) && a.start >= DEMO_TODAY
+const end = (a) => new Date(a.start.getTime() + a.minutes * 60000)
+
+// Is this slot inside the Empleado's work schedule and outside their blocks? (RF-W10, RF-W15)
+export function worksAt(s, employeeId, start, minutes) {
+  const e = s.staff[employeeId]
+  if (!e) return false
+  const hours = e.schedule[start.getDay()]
+  if (!hours) return false
+  const startMin = start.getHours() * 60 + start.getMinutes()
+  if (startMin < minutesOf(hours[0]) || startMin + minutes > minutesOf(hours[1])) return false
+  const stop = new Date(start.getTime() + minutes * 60000)
+  return !s.blocks.some((b) => b.employeeId === employeeId && start < b.to && stop > b.from)
+}
+
+// Is this Empleado working and free for that appointment? (RN-01, RN-11)
+export function isFree(s, employeeId, appt, at = appt.start) {
   const e = s.staff[employeeId]
   if (!e || !e.bookable || e.status !== 'activo' || e.branchId !== appt.branchId) return false
-  const hours = e.schedule[appt.start.getDay()]
-  if (!hours) return false
-  const startMin = appt.start.getHours() * 60 + appt.start.getMinutes()
-  if (startMin < minutesOf(hours[0]) || startMin + appt.minutes > minutesOf(hours[1])) return false
-  return !s.upcoming.some((o) => o.employeeId === employeeId && o.folio !== appt.folio && overlaps(o, appt))
+  if (!worksAt(s, employeeId, at, appt.minutes)) return false
+  const probe = { start: at, minutes: appt.minutes }
+  return !s.appointments.some((o) => o.employeeId === employeeId && o.folio !== appt.folio && ACTIVE.includes(o.status) && overlaps(o, probe))
 }
 
 // RN-11: the system proposes another Empleado of the branch who is free at
 // that time. When nobody is, a migrating Empleado keeps the appointment by
 // default; an unlinked one cannot, so it has to be cancelled (RF-W13).
 export function proposalsFor(s, employeeId, mode) {
-  return s.upcoming
-    .filter((a) => a.employeeId === employeeId)
-    .sort((a, b) => a.start - b.start)
+  return s.appointments
+    .filter((a) => a.employeeId === employeeId && isUpcoming(a))
     .map((a) => {
       const free = Object.keys(s.staff).filter((id) => id !== employeeId && isFree(s, id, a))
       return { appt: a, free, proposal: free[0] ?? (mode === 'migracion' ? 'mismo' : 'cancelar') }
@@ -107,7 +124,7 @@ export function proposalsFor(s, employeeId, mode) {
 }
 
 export const lastAppointmentOf = (s, employeeId) =>
-  s.upcoming.filter((a) => a.employeeId === employeeId).sort((a, b) => b.start - a.start)[0] ?? null
+  s.appointments.filter((a) => a.employeeId === employeeId && isUpcoming(a)).sort((a, b) => end(b) - end(a))[0] ?? null
 
 // ---------- Jefe actions ----------
 
@@ -159,12 +176,18 @@ export async function resolveAppointments(employeeId, decisions, mode) {
   let result
   set((s) => {
     const e = s.staff[employeeId]
-    const upcoming = s.upcoming
-      .filter((a) => !(a.employeeId === employeeId && decisions[a.folio] === 'cancelar'))
-      .map((a) => (a.employeeId === employeeId && decisions[a.folio] && !['mismo', 'cancelar'].includes(decisions[a.folio]) ? { ...a, employeeId: decisions[a.folio] } : a))
+    // A reassigned appointment waits for the client's answer (RN-04); a
+    // cancelled one keeps its record with who cancelled it.
+    const appointments = s.appointments.map((a) => {
+      if (a.employeeId !== employeeId || !isUpcoming(a)) return a
+      const d = decisions[a.folio]
+      if (d === 'cancelar') return { ...a, status: 'cancelada', cancelledBy: 'Jefe' }
+      if (d && d !== 'mismo') return { ...a, employeeId: d, status: 'cambio' }
+      return a
+    })
     const cancelled = Object.values(decisions).filter((d) => d === 'cancelar').length
     const reassigned = Object.values(decisions).filter((d) => !['mismo', 'cancelar'].includes(d)).length
-    const remaining = upcoming.filter((a) => a.employeeId === employeeId).sort((a, b) => b.start - a.start)
+    const remaining = appointments.filter((a) => a.employeeId === employeeId && isUpcoming(a))
     const staff = { ...s.staff }
     let notices = s.notices
     if (mode === 'desvincular') {
@@ -177,9 +200,15 @@ export async function resolveAppointments(employeeId, decisions, mode) {
       result = { done: true, cancelled, reassigned }
     } else {
       staff[employeeId] = { ...e, resolved: true }
-      result = { done: false, cancelled, reassigned, last: remaining[0] }
+      result = { done: false, cancelled, reassigned }
     }
-    return { ...s, upcoming, staff, notices }
+    const log = [
+      ...s.log,
+      ...s.appointments
+        .filter((a) => a.employeeId === employeeId && isUpcoming(a) && decisions[a.folio] === 'cancelar')
+        .map((a, i) => ({ id: `log-r-${s.log.length + i}`, employeeId, folio: a.folio, service: a.service, action: 'cancelada', by: 'Jefe', on: DEMO_TODAY })),
+    ]
+    return { ...s, appointments, staff, notices, log }
   })
   return result
 }

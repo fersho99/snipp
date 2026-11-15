@@ -208,7 +208,7 @@ Detalles:
 | `/pago-pendiente` | Al entrar con la suscripción vencida, el Jefe y cada Empleado ven que el negocio no se muestra en la app ni recibe reservas, que las citas ya agendadas se respetan y que al pagar vuelve solo (RF-W26, RN-13). Después pueden entrar al panel, donde queda un aviso fijo | `vencida` |
 
 - Menú del Jefe: Inicio, Agenda, Pedidos · Sucursales y servicios, Empleados, Productos e inventario, Puntos de lealtad · Reportes, Reseñas · Suscripción.
-- Menú del Empleado: Mis citas, Pedidos, Mi historial de citas · Mi perfil. Sin negocio, solo Mi perfil. No ve Reportes (RN-10).
+- Menú del Empleado: Agenda, Pedidos, Mi historial de citas · Mi perfil. Sin negocio, solo Mi perfil. No ve Reportes (RN-10).
 - Menú del Administrador: Negocios, Planes, Reseñas reportadas.
 - Debajo de 1024 px el menú se abre como panel lateral con el botón "Menú" (tableta, RNF-W03).
 - Cada sección todavía muestra en qué lote se construye (W3 a W9) y qué requerimientos cubre.
@@ -258,6 +258,20 @@ Detalles:
 - La solicitud de migración caduca a los 7 días sin respuesta; el Empleado puede volver a enviarla.
 - "Rechazar" una solicitud no aparece en el SRS; ver la decisión D9 del plan.
 - Los datos viven en memoria en `web/src/services/staff.js` y `web/src/data/staff.js`.
+
+### Lote W6 (web): agenda y citas
+
+| Ruta | Quién | Qué es | Estados (`?estado=`) |
+| --- | --- | --- | --- |
+| `/panel/agenda` | Jefe | Agenda de la sucursal del selector, por día (una columna por Empleado, con su horario, bloqueos y la hora actual) o por semana. Filtro por Empleado; con uno elegido, "Reasignarlas" y "Cancelarlas" para todas sus citas futuras (RF-W16) | `error-guardar` |
+| `/panel/citas` | Empleado | Su agenda: "Mis citas" o "Toda la sucursal"; puede ver todas pero solo cambiar las suyas (RF-W18, RN-03) | `error-guardar` |
+
+- **Cita** (al tocarla): cambiar estado (confirmada, atendida, no asistió, Empleado no se presentó, cancelada; las tres de en medio cuando ya llegó la hora), reagendar a una hora libre del mismo Empleado, pasarla a otro Empleado libre (solo Jefe) o cancelarla. Cada cambio avisa al cliente; si cambia la fecha, la hora o el Empleado, la cita queda "Esperando respuesta del cliente" hasta que la acepte, la reagende o la cancele desde la app (RN-04).
+- **Bloquear horario** (RF-W15): unas horas o días completos, con motivo (descanso, vacaciones u otro). La app deja de ofrecer ese horario. Si ya hay citas ahí, avisa que no se cancelan solas.
+- Las horas libres para reagendar respetan el horario del Empleado, sus bloqueos y sus otras citas (RN-01).
+- Las acciones de la agenda suman al historial del Empleado (RF-W17) con quién las hizo.
+- Las citas de ejemplo (del 9 al 21 de noviembre) se generan siempre iguales en `web/src/data/staff.js`; la agenda y la reasignación de W5 usan las mismas.
+- `npm run build` avisa que el paquete pasa de 500 kB; se puede dividir por rutas más adelante, no afecta a la plantilla.
 
 ## Fotos
 

@@ -53,6 +53,13 @@ const SCREENS = [
       { title: 'Empleado sin negocio: perfil y unirse a un negocio (Sofía Ramos)', path: '/panel/perfil?como=sin-negocio', states: [['Invitación recibida', 'invitacion']] },
     ],
   },
+  {
+    group: 'Lote W6: agenda y citas',
+    items: [
+      { title: 'Jefe: agenda de la sucursal por día y semana, estados, reagendar, reasignar, cancelar y bloquear', path: '/panel/agenda?como=jefe', states: [['Error al guardar', 'error-guardar']] },
+      { title: 'Empleado: su agenda (solo gestiona sus citas)', path: '/panel/citas?como=empleado', states: [['Error al guardar', 'error-guardar']] },
+    ],
+  },
 ]
 
 export default function DevIndex() {

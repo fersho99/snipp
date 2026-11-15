@@ -25,7 +25,7 @@ Este plan explica cómo llevar las plantillas de frontend ya construidas, y las 
 | --- | --- |
 | App móvil, lotes M1 a M5 (cuenta, búsqueda, reserva, mis citas, tienda y pago) | **Ajustados** (fases 1 y 2 aplicadas el 14/11/2026): SNIPP, escala de grises, Q1–Q13 quitados, C1–C11 corregidos. |
 | App móvil, lote M6 (pedidos, reseñas, reportes, puntos, notificaciones) | **Hecho** como plantilla el 14/11/2026 (fase 3). Falta conectar la API y OneSignal (fase 5). |
-| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro), W2 (estructura del panel), W3 (inicio del Jefe), W4 (sucursales y servicios) y W5 (Empleados) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W6 a W9 pendientes (sección 6). |
+| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro), W2 (estructura del panel), W3 (inicio del Jefe), W4 (sucursales y servicios), W5 (Empleados) y W6 (agenda y citas) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W7 a W9 pendientes (sección 6). |
 | API, base de datos, Stripe real, OneSignal, servidor | Fuera de este frontend; son dependencias (sección 7). |
 | Repositorio GitHub (RNF-G08) | En github.com/fersho99/snipp, rama `main`. |
 
@@ -271,7 +271,11 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-W12, RN-11 | Empleado: solicitar migración (enviada, caducada a los 7 días, aceptada). Jefe de destino: aceptar con horario. Jefe de origen: "migración pendiente" y reasignar cada cita futura con la propuesta del sistema (si nadie está libre, la atiende el mismo Empleado); se completa al no quedarle citas y el Jefe recibe el aviso | Hecho |
 | RF-W13, RN-12 | Desvincular: cada cita futura pasa a otro Empleado libre o se cancela con aviso; la cuenta sigue activa y el historial se queda en el negocio | Hecho |
 | RF-W17 | Historial de citas por Empleado (confirmadas, canceladas, reagendadas, con fecha y quién) para el Jefe y para el propio Empleado | Hecho |
-| RF-W15, RF-W16, RF-W18 a RF-W21, RF-W23, RF-W24, RF-W28 | Plataforma web, lotes W6 a W9 | Pendiente |
+| RF-W15 | "Bloquear horario" (unas horas o días completos, con motivo) para el Jefe y el Empleado; lista de horarios bloqueados con "Quitar"; avisa si ya hay citas en ese horario | Hecho |
+| RF-W16 | En la cita: pasar a otro Empleado libre, reagendar o cancelar. Con un Empleado elegido: reasignar o cancelar todas sus citas futuras; las que el otro no puede tomar se quedan y se listan | Hecho |
+| RF-W18, RN-03, RN-04 | `/panel/agenda` (Jefe) y `/panel/citas` (Empleado): día y semana, estados confirmada, atendida, no asistió, Empleado no se presentó y cancelada; reagendar solo a horas libres; el Empleado ve la sucursal pero solo cambia sus citas; cada cambio avisa al cliente y queda "Esperando respuesta del cliente" | Hecho |
+| RF-W17 | Además, cada confirmación, cancelación y reagendado hecho en la agenda suma al historial del Empleado con quién lo hizo | Hecho |
+| RF-W19 a RF-W21, RF-W23, RF-W24, RF-W28 | Plataforma web, lotes W7 a W9 | Pendiente |
 | RNF-M01 a RNF-M04, RNF-W01 a RNF-W05 | Sección 7.1 | Pendiente de medir |
 | RNF-G01 a RNF-G08 | Sección 7.2 | Dependencia de back-end e infraestructura |
 
