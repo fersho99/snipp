@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { WarningCircle } from '@phosphor-icons/react'
-import { plans } from '../data/demo'
+import { getPlans } from '../services/subscriptions'
 import { longDate } from '../theme'
 
 const left = (n) => (n === 0 ? 'Vence hoy.' : n === 1 ? 'Falta 1 día.' : `Faltan ${n} días.`)
@@ -16,7 +16,7 @@ export default function SubscriptionNotice({ role, business, status }) {
 
   if (status.status === 'por-vencer') {
     if (!isJefe) return null
-    const plan = plans.find((p) => p.id === sub.planId)
+    const plan = getPlans().find((p) => p.id === sub.planId)
     const title = sub.kind === 'prueba'
       ? `Tu mes de prueba gratuita termina el ${longDate(sub.endsOn)}`
       : `Tu suscripción${plan ? ` ${plan.name}` : ''} vence el ${longDate(sub.endsOn)}`

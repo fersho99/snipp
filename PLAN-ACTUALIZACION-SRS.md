@@ -25,7 +25,7 @@ Este plan explica cómo llevar las plantillas de frontend ya construidas, y las 
 | --- | --- |
 | App móvil, lotes M1 a M5 (cuenta, búsqueda, reserva, mis citas, tienda y pago) | **Ajustados** (fases 1 y 2 aplicadas el 14/11/2026): SNIPP, escala de grises, Q1–Q13 quitados, C1–C11 corregidos. |
 | App móvil, lote M6 (pedidos, reseñas, reportes, puntos, notificaciones) | **Hecho** como plantilla el 14/11/2026 (fase 3). Falta conectar la API y OneSignal (fase 5). |
-| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro), W2 (estructura del panel), W3 (inicio del Jefe), W4 (sucursales y servicios), W5 (Empleados), W6 (agenda y citas), W7 (reportes y reseñas) y W8 (productos, pedidos y lealtad) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W9 pendiente (sección 6). |
+| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 a W9 **hechos** como plantilla en `frontend/web` (14 y 15/11/2026): acceso y registro, estructura del panel, inicio del Jefe, sucursales y servicios, Empleados, agenda y citas, reportes y reseñas, productos, pedidos y lealtad, suscripción y Administrador. Falta conectar la API, Stripe y OneSignal (fase 5). |
 | API, base de datos, Stripe real, OneSignal, servidor | Fuera de este frontend; son dependencias (sección 7). |
 | Repositorio GitHub (RNF-G08) | En github.com/fersho99/snipp, rama `main`. |
 
@@ -227,6 +227,8 @@ Cada fase se revisa contra este plan antes de pasar a la siguiente.
 | D6 | ¿Se cambia la tipografía para que combine con el logo? El logo usa una sans geométrica tipo Montserrat; hoy la app usa Bricolage Grotesque y Onest. | Usar Montserrat en títulos para que combinen con el logo y dejar Onest en el texto. |
 | D7 | RF-W22 pide "ventas" por empleado, pero en el SRS las citas se pagan en la sucursal (RN-05) y los pedidos de la tienda no quedan ligados a un Empleado. | **Pendiente de confirmar.** Por ahora el dashboard muestra ventas por sucursal y, por Empleado, sus citas y su calificación. Si el cliente quiere ventas por Empleado, hay que definir cómo se asigna cada pedido y registrarlo en el control de cambios. |
 | D8 | En los datos de ejemplo de la app móvil, Ramón Cázares aparece en las dos sucursales de Los Compas, pero un Empleado está vinculado a una sola sucursal (glosario, RF-W10). | **Pendiente de corregir en la móvil.** En la web, Ramón queda en Centro y Los Compas Norte tiene a Óscar Félix. Falta pasar a Óscar la cita C-10486, las reseñas de Norte y la lista de profesionales de Norte en `mobile/src/data`. |
+| D10 | RF-W27 y RF-W28 no dicen si un plan se puede retirar ni si el Administrador puede dejar una reseña reportada. | Se agregó "Se ofrece" en cada plan (quien ya lo tiene lo conserva) y "Mantenerla" junto a "Eliminar reseña", para que la lista de reportes no se quede llena. Si el cliente no los quiere, se quitan. |
+| D11 | El SRS no dice qué ve el Jefe o el Empleado de un negocio suspendido por el Administrador. | **Pendiente de confirmar.** Por ahora solo se oculta en la app (RF-W28); el panel no muestra un mensaje de suspensión. |
 | D9 | RF-W10 dice que el Jefe vincula "aceptando su solicitud", pero no dice si puede rechazarla. | Se agregó "Rechazar" junto a "Aceptar" en las solicitudes de ingreso y migración, porque sin él una solicitud de ingreso (que no caduca) se quedaría para siempre. Si el cliente no lo quiere, se quita. |
 
 ---
@@ -254,9 +256,9 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-M15 | `/puntos`, canje en `/carrito` | Hecho |
 | RF-M16 | `/notificaciones`; push con OneSignal documentado en `services/notifications.js` | Hecho (push real en fase 5) |
 | RF-W01, RF-W02, RF-W03 | `/registro/negocio`, `/registro/empleado`, `/entrar`, `/recuperar`, `/restablecer` | Hecho |
-| RF-W27 | Planes que se eligen al registrarse (W1); gestión del Administrador en W9 | Parcial |
+| RF-W27 | `/panel/planes`: crear y editar planes (nombre, precio, duración) y si se ofrecen; un plan creado aparece al registrar un negocio. `/panel/negocios`: estado de pago de cada negocio y su último pago | Hecho |
 | RF-W04 | Menú del panel según el rol y bloqueo de secciones ajenas (`/panel/:seccion`) | Hecho (la API debe aplicar la misma regla, RNF-W04) |
-| RF-W25 | Aviso al Jefe 7 días antes de que venza la prueba o la suscripción (W2); pagar y renovar con Stripe en W9 | Parcial |
+| RF-W25 | Aviso 7 días antes (W2). `/panel/suscripcion`: plan y vencimiento, pagar o renovar con Stripe eligiendo plan (extiende la fecha desde el vencimiento o desde hoy si ya venció) e historial de pagos con referencia | Hecho (Stripe real en fase 5) |
 | RF-W26, RN-13 | `/pago-pendiente` al entrar (Jefe y Empleados) y aviso fijo en el panel mientras siga vencida; ocultar el negocio en la app ya está en la móvil (C5) | Hecho |
 | RF-W22 | `/panel/inicio`: citas, ventas, productos más vendidos y calificación promedio por sucursal, y citas y calificación por Empleado, con periodo (últimos 7 días, este mes, mes pasado o fechas elegidas) | Hecho (ver D7) |
 | RF-W14 | Aviso por cada reporte nuevo (número en el menú y lista en Inicio); `/panel/reportes`: bandeja con filtros por estado y Empleado, historial por Empleado; `/panel/reportes/:id`: en revisión y atendido (el cliente ve el cambio) y notas internas | Hecho |
@@ -281,7 +283,7 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-W20, RN-07 | Existencias por sucursal, "Ajustar existencias" con motivo y movimientos de inventario; las ventas bajan las existencias al pagarse; agotado no se puede comprar | Hecho |
 | RF-W21, RN-06 | `/panel/pedidos` (Jefe y Empleado): pagado → listo para recoger → entregado, y cancelar con reembolso de Stripe (referencia y motivo); el cliente ve cada cambio | Hecho (Stripe real en fase 5) |
 | RF-W24, RN-09 | `/panel/puntos`: pesos por punto en citas y en compras, y valor del punto al canjear, con ejemplos | Hecho |
-| RF-W25 (pago), RF-W27 (gestión), RF-W28 | Lote W9 | Pendiente |
+| RF-W28 | `/panel/negocios`: suspender y activar con confirmación (oculta o muestra el negocio en la app). `/panel/resenas-reportadas`: reseñas reportadas por los Jefes con su motivo; eliminar (sale de la app) o mantener | Hecho |
 | RNF-M01 a RNF-M04, RNF-W01 a RNF-W05 | Sección 7.1 | Pendiente de medir |
 | RNF-G01 a RNF-G08 | Sección 7.2 | Dependencia de back-end e infraestructura |
 

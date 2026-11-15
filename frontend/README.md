@@ -302,6 +302,21 @@ Detalles:
 - Los productos, existencias y pedidos P-2279, P-2264 y P-2250 son los mismos de la app móvil; las reglas de puntos de ejemplo (1 punto por cada $10, 1 punto = $1) también.
 - Los datos viven en memoria en `web/src/services/shop.js`.
 
+### Lote W9 (web): suscripción y Administrador
+
+| Ruta | Quién | Qué es | Estados (`?estado=`) |
+| --- | --- | --- | --- |
+| `/panel/suscripcion` | Jefe | Plan y vencimiento (en prueba, pagada, por vencer o pago pendiente); elegir plan y pagar o renovar con Stripe, que extiende la fecha desde el vencimiento o desde hoy si ya venció; historial de pagos con referencia (RF-W25, RN-13, RN-17) | `aviso-prueba`, `aviso-suscripcion`, `vencida`, `error-pago`, `sin-planes` |
+| `/panel/negocios` | Administrador | Cada negocio con su estado de pago, último pago y si se ve en la app; filtros por pago pendiente, por vencer, en prueba y suspendidos; suspender y activar con confirmación (RF-W27, RF-W28) | `error-guardar` |
+| `/panel/planes` | Administrador | Crear y editar planes (nombre, precio, duración en meses, si se ofrece); un plan creado aparece al registrar un negocio y al pagar (RF-W27) | `sin-planes`, `error-guardar` |
+| `/panel/resenas-reportadas` | Administrador | Reseñas que reportaron los Jefes, con el negocio, el motivo y la explicación; "Eliminar reseña" (sale de la app y de la calificación) o "Mantenerla"; el Jefe ve la decisión en Reseñas (RF-W28) | `error-guardar` |
+
+- Al pagar una suscripción vencida, el aviso de pago pendiente desaparece y el negocio vuelve a la app (RN-13).
+- El pago se simula: en producción ese paso abre el formulario de Stripe y SNIPP solo guarda la referencia (RN-17).
+- Las fechas de otro año llevan el año ("viernes 3 de diciembre de 2027").
+- Decisiones abiertas del plan: D10 ("Se ofrece" en planes y "Mantenerla" en reseñas) y D11 (qué ve el panel de un negocio suspendido).
+- Los datos viven en memoria en `web/src/services/subscriptions.js`.
+
 ## Fotos
 
 Las fotos originales se optimizaron a 1400 px en `mobile/assets/photos/`. Ojo: `barberia-fachada.jpg` tiene el letrero con texto deformado ("Hugo prago… El echa derrilo"); si se usa como portada conviene recortarlo o reemplazarlo por una fachada real.

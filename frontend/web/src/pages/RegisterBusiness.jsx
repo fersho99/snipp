@@ -4,7 +4,8 @@ import { Circle, RadioButton } from '@phosphor-icons/react'
 import AuthLayout from '../components/AuthLayout'
 import { Button, Note, Skeleton, TextField, TextLink } from '../components/ui'
 import { ApiError, networkMessage, registerBoss } from '../services/auth'
-import { DEMO_TODAY, plans as allPlans } from '../data/demo'
+import { DEMO_TODAY } from '../data/demo'
+import { getPlans } from '../services/subscriptions'
 import { addMonths, firstName, isEmail, longDate, money } from '../theme'
 
 const duration = (m) => (m === 1 ? 'cada mes' : m === 12 ? 'cada año' : `cada ${m} meses`)
@@ -17,7 +18,9 @@ export default function RegisterBusiness() {
   const [params] = useSearchParams()
   const estado = params.get('estado')
   const navigate = useNavigate()
-  const plans = estado === 'sin-planes' ? [] : allPlans
+  // Plans offered by the Administrator (RF-W27).
+  const allPlans = getPlans()
+  const plans = estado === 'sin-planes' ? [] : allPlans.filter((p) => p.offered)
   const trialEnds = addMonths(DEMO_TODAY, 1)
   const demo = estado && estado !== 'cargando-planes' && estado !== 'sin-planes'
 

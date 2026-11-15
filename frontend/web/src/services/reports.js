@@ -78,6 +78,7 @@ function seedReviews() {
     { id: 'r4', businessId: 'los-compas', branchId: 'los-compas-norte', author: 'Iván Soto', stars: 5, on: d(11, 6), service: 'Fade con Óscar Félix', text: 'Sin espera y el corte quedó igual que en la del centro.', reported: null },
     { id: 'r5', businessId: 'los-compas', branchId: 'los-compas-norte', author: 'Luz Gámez', stars: 4, on: d(10, 30), service: 'Corte clásico con Óscar Félix', text: 'Le corté el pelo a mi hijo de 8 años. Mucha paciencia con él.', reported: null },
     { id: 'r7', businessId: 'los-compas', branchId: 'los-compas-norte', author: 'Mario Leyva', stars: 2, on: d(10, 21), service: 'Corte + barba con Óscar Félix', text: 'El corte bien, pero la barba quedó dispareja y no me la quisieron retocar.', reported: null },
+    { id: 'm2', businessId: 'estudio-marisol', branchId: 'estudio-marisol', author: 'Paty Robles', stars: 1, on: d(11, 8), service: 'Uñas acrílicas con Fernanda Lugo', text: 'La que me atendió es una cochina y una ratera, ojalá le cierren el negocio. Su número es 653 110 2299 por si le quieren reclamar.', reported: { reason: 'Datos personales de alguien', detail: 'Publica el teléfono personal de Fernanda y la insulta.', on: d(11, 9, 10, 30), state: 'enviado' } },
     { id: 'r8', businessId: 'los-compas', branchId: 'los-compas-centro', author: 'Pedro Lugo', stars: 1, on: d(10, 15), service: 'Corte clásico con Ramón Cázares', text: 'Compren en la tienda online de cortes-baratos punto com, 50% de descuento en todo. Este negocio no sirve.', reported: { reason: 'Publicidad o spam', detail: '', on: d(10, 16, 9, 0), state: 'enviado' } },
   ]
 }
@@ -117,6 +118,14 @@ export async function addNote(id, author, text) {
   await wait(500)
   failIfForced()
   set((s) => ({ ...s, reports: s.reports.map((r) => (r.id === id ? { ...r, notes: [...r.notes, { id: `n-${Date.now()}`, on: DEMO_TODAY, author, text }] } : r)) }))
+}
+
+// RF-W28: the Administrator deletes the reported review (it leaves the app)
+// or keeps it; the Jefe who reported it sees the decision.
+export async function decideReview(id, decision) {
+  await wait(700)
+  failIfForced()
+  set((s) => ({ ...s, reviews: s.reviews.map((r) => (r.id === id ? { ...r, reported: { ...r.reported, state: decision, decidedOn: DEMO_TODAY } } : r)) }))
 }
 
 // RF-W23: the review stays visible until the Administrator decides (RF-W28).

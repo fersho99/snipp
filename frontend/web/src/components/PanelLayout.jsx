@@ -11,6 +11,7 @@ import { resetDemoBranches, useBusinessSetup } from '../services/branches'
 import { resetDemoStaff } from '../services/staff'
 import { resetDemoReports } from '../services/reports'
 import { resetDemoShop } from '../services/shop'
+import { applyLoadedSubscription, ensureBusiness, resetDemoSubscriptions, useSubscriptionsStore } from '../services/subscriptions'
 import { getPickedBranch, loadPanel, setDemoEstado, setPickedBranch, signOut, subscriptionStatus } from '../services/panel'
 
 // Screen index shortcut (development only): ?como=jefe | empleado | sin-negocio | admin
@@ -35,12 +36,14 @@ export default function PanelLayout() {
       resetDemoStaff(estado)
       resetDemoReports(estado)
       resetDemoShop(estado)
+      resetDemoSubscriptions(estado)
     } else if (estado) setDemoEstado(estado)
   })
 
   const session = currentSession()
   const setup = useBusinessSetup(session?.businessId ?? null, session?.business)
   const reportStore = useReportsStore()
+  const subs = useSubscriptionsStore()
   const [data, setData] = useState(null)
   const [failure, setFailure] = useState(null)
   const [branchId, setBranchId] = useState(getPickedBranch())
@@ -53,7 +56,15 @@ export default function PanelLayout() {
 
   useEffect(() => {
     if (!session) return
-    loadPanel(session).then(setData).catch(setFailure)
+    loadPanel(session)
+      .then((loaded) => {
+        if (loaded.business) {
+          ensureBusiness(loaded.business)
+          applyLoadedSubscription(loaded.business.id, loaded.business.subscription)
+        }
+        setData(loaded)
+      })
+      .catch(setFailure)
   }, [session, attempt])
 
   const retry = () => {
@@ -64,7 +75,11 @@ export default function PanelLayout() {
 
   if (!session) return <Navigate to="/entrar" replace />
 
-  const business = data?.business ?? null
+  // The subscription lives in its own store so paying it (RF-W25) updates
+  // the notices at once.
+  const loadedBusiness = data?.business ?? null
+  const liveSub = loadedBusiness ? subs.businesses.find((b) => b.id === loadedBusiness.id)?.subscription : null
+  const business = loadedBusiness ? { ...loadedBusiness, subscription: liveSub ?? loadedBusiness.subscription } : null
   const sub = business ? subscriptionStatus(business.subscription) : null
 
   // RF-W26: at sign-in, the Jefe and every Empleado see the overdue message first.

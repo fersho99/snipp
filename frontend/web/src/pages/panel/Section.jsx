@@ -12,9 +12,11 @@ import Reviews from './Reviews'
 import Products from './Products'
 import Orders from './Orders'
 import Loyalty from './Loyalty'
+import Subscription from './Subscription'
+import { Businesses, Plans, ReportedReviews } from './AdminPages'
 
 // Sections already built. The rest show which batch builds them.
-const PAGES = { inicio: Dashboard, sucursales: Branches, empleados: Employees, perfil: MyProfile, historial: MyHistory, agenda: Agenda, citas: Agenda, reportes: Reports, resenas: Reviews, productos: Products, pedidos: Orders, puntos: Loyalty }
+const PAGES = { inicio: Dashboard, sucursales: Branches, empleados: Employees, perfil: MyProfile, historial: MyHistory, agenda: Agenda, citas: Agenda, reportes: Reports, resenas: Reviews, productos: Products, pedidos: Orders, puntos: Loyalty, suscripcion: Subscription, negocios: Businesses, planes: Plans, 'resenas-reportadas': ReportedReviews }
 
 // /panel opens the home section of each role.
 export function PanelHome() {

@@ -82,6 +82,15 @@ const SCREENS = [
       { title: 'Jefe: reglas de puntos de lealtad', path: '/panel/puntos?como=jefe', states: [['Error al guardar', 'error-guardar']] },
     ],
   },
+  {
+    group: 'Lote W9: suscripción y Administrador',
+    items: [
+      { title: 'Jefe: suscripción, pagar o renovar con Stripe y pagos', path: '/panel/suscripcion?como=jefe', states: [['Por vencer', 'aviso-suscripcion'], ['Prueba por terminar', 'aviso-prueba'], ['Vencida', 'vencida'], ['Tarjeta rechazada', 'error-pago'], ['Sin planes', 'sin-planes']] },
+      { title: 'Administrador: negocios con estado de pago, activar y suspender', path: '/panel/negocios?como=admin', states: [['Error al guardar', 'error-guardar']] },
+      { title: 'Administrador: planes de suscripción', path: '/panel/planes?como=admin', states: [['Sin planes', 'sin-planes'], ['Error al guardar', 'error-guardar']] },
+      { title: 'Administrador: reseñas reportadas por los Jefes', path: '/panel/resenas-reportadas?como=admin', states: [['Error al guardar', 'error-guardar']] },
+    ],
+  },
 ]
 
 export default function DevIndex() {

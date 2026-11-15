@@ -19,7 +19,8 @@ export default function Reviews() {
   const [branchId, setBranchId] = useState('todas')
   const [reporting, setReporting] = useState(null)
   const [notice, setNotice] = useState(null)
-  const mine = reviews.filter((r) => r.businessId === business.id && (branchId === 'todas' || r.branchId === branchId)).sort((a, b) => b.on - a.on)
+  // A review the Administrator deleted no longer exists for the business (RF-W28).
+  const mine = reviews.filter((r) => r.businessId === business.id && r.reported?.state !== 'eliminada' && (branchId === 'todas' || r.branchId === branchId)).sort((a, b) => b.on - a.on)
   const branchName = (id) => branches.find((b) => b.id === id)?.name ?? ''
   const shownBranches = branchId === 'todas' ? branches : branches.filter((b) => b.id === branchId)
 
@@ -67,7 +68,9 @@ export default function Reviews() {
                 {r.reported ? (
                   <p className="mt-2 flex items-start gap-1.5 text-sm font-semibold">
                     <Flag size={16} weight="fill" className="mt-0.5 shrink-0" aria-hidden="true" />
-                    Reportada al Administrador el {longDate(r.reported.on)}: {r.reported.reason.toLowerCase()}. Sigue visible hasta que la revise.
+                    {r.reported.state === 'mantenida'
+                      ? `El Administrador revisó tu reporte del ${longDate(r.reported.on)} y decidió mantenerla.`
+                      : `Reportada al Administrador el ${longDate(r.reported.on)}: ${r.reported.reason.toLowerCase()}. Sigue visible hasta que la revise.`}
                   </p>
                 ) : null}
               </div>

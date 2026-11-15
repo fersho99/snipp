@@ -3,8 +3,11 @@ const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 
 const DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
 
 export const money = (n) => `$${n.toLocaleString('es-MX', { maximumFractionDigits: 0 })}`
-export const longDate = (d) => `${DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`
-export const dayMonth = (d) => `${d.getDate()} de ${MONTHS[d.getMonth()]}`
+// The year is only written when it is not the current one (demo: 2026).
+const CURRENT_YEAR = 2026
+const year = (d) => (d.getFullYear() === CURRENT_YEAR ? '' : ` de ${d.getFullYear()}`)
+export const longDate = (d) => `${DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}${year(d)}`
+export const dayMonth = (d) => `${d.getDate()} de ${MONTHS[d.getMonth()]}${year(d)}`
 export const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, d.getDate())
 export const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.trim())
 export const firstName = (s) => s.trim().split(/\s+/)[0] ?? ''
