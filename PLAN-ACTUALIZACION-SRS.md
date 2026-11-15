@@ -25,7 +25,7 @@ Este plan explica cómo llevar las plantillas de frontend ya construidas, y las 
 | --- | --- |
 | App móvil, lotes M1 a M5 (cuenta, búsqueda, reserva, mis citas, tienda y pago) | **Ajustados** (fases 1 y 2 aplicadas el 14/11/2026): SNIPP, escala de grises, Q1–Q13 quitados, C1–C11 corregidos. |
 | App móvil, lote M6 (pedidos, reseñas, reportes, puntos, notificaciones) | **Hecho** como plantilla el 14/11/2026 (fase 3). Falta conectar la API y OneSignal (fase 5). |
-| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro) y W2 (estructura del panel) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W3 a W9 pendientes (sección 6). |
+| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro), W2 (estructura del panel) y W3 (inicio del Jefe) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W4 a W9 pendientes (sección 6). |
 | API, base de datos, Stripe real, OneSignal, servidor | Fuera de este frontend; son dependencias (sección 7). |
 | Repositorio GitHub (RNF-G08) | En github.com/fersho99/snipp, rama `main`. |
 
@@ -225,6 +225,8 @@ Cada fase se revisa contra este plan antes de pasar a la siguiente.
 | D4 | ¿Se quita la línea de Términos y Aviso de privacidad del registro? | Quitarla para apegarse al SRS. Si la asesora la pide, se registra como cambio en el control de cambios. |
 | D5 | ¿Se deja de mostrar la marca y los últimos 4 dígitos de la tarjeta? | Sí: mostrar "Pagado con tarjeta (Stripe)" y la referencia de la transacción (RN-17, RNF-G04). |
 | D6 | ¿Se cambia la tipografía para que combine con el logo? El logo usa una sans geométrica tipo Montserrat; hoy la app usa Bricolage Grotesque y Onest. | Usar Montserrat en títulos para que combinen con el logo y dejar Onest en el texto. |
+| D7 | RF-W22 pide "ventas" por empleado, pero en el SRS las citas se pagan en la sucursal (RN-05) y los pedidos de la tienda no quedan ligados a un Empleado. | **Pendiente de confirmar.** Por ahora el dashboard muestra ventas por sucursal y, por Empleado, sus citas y su calificación. Si el cliente quiere ventas por Empleado, hay que definir cómo se asigna cada pedido y registrarlo en el control de cambios. |
+| D8 | En los datos de ejemplo de la app móvil, Ramón Cázares aparece en las dos sucursales de Los Compas, pero un Empleado está vinculado a una sola sucursal (glosario, RF-W10). | **Pendiente de corregir en la móvil.** En la web, Ramón queda en Centro y Los Compas Norte tiene a Óscar Félix. Falta pasar a Óscar la cita C-10486, las reseñas de Norte y la lista de profesionales de Norte en `mobile/src/data`. |
 
 ---
 
@@ -255,7 +257,10 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-W04 | Menú del panel según el rol y bloqueo de secciones ajenas (`/panel/:seccion`) | Hecho (la API debe aplicar la misma regla, RNF-W04) |
 | RF-W25 | Aviso al Jefe 7 días antes de que venza la prueba o la suscripción (W2); pagar y renovar con Stripe en W9 | Parcial |
 | RF-W26, RN-13 | `/pago-pendiente` al entrar (Jefe y Empleados) y aviso fijo en el panel mientras siga vencida; ocultar el negocio en la app ya está en la móvil (C5) | Hecho |
-| RF-W05 a RF-W24, RF-W28 | Plataforma web, lotes W3 a W9 | Pendiente |
+| RF-W22 | `/panel/inicio`: citas, ventas, productos más vendidos y calificación promedio por sucursal, y citas y calificación por Empleado, con periodo (últimos 7 días, este mes, mes pasado o fechas elegidas) | Hecho (ver D7) |
+| RF-W14 | Aviso por cada reporte nuevo: número junto a "Reportes" en el menú y lista en Inicio (W3); bandeja, estados y notas en W7 | Parcial |
+| RF-W10, RF-W12 | Solicitudes de ingreso y de migración por revisar en Inicio, con fecha de caducidad de la migración (W3); aceptar, horario y reasignación en W5 | Parcial |
+| RF-W05 a RF-W09, RF-W11, RF-W13, RF-W15 a RF-W21, RF-W23, RF-W24, RF-W28 | Plataforma web, lotes W4 a W9 | Pendiente |
 | RNF-M01 a RNF-M04, RNF-W01 a RNF-W05 | Sección 7.1 | Pendiente de medir |
 | RNF-G01 a RNF-G08 | Sección 7.2 | Dependencia de back-end e infraestructura |
 

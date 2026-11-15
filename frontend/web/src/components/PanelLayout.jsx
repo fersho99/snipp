@@ -6,6 +6,7 @@ import SubscriptionNotice from './SubscriptionNotice'
 import { accounts, ROLE_LABEL } from '../data/demo'
 import { navFor } from '../data/nav'
 import { currentSession, devSignIn, networkMessage } from '../services/auth'
+import { pendingFor } from '../services/dashboard'
 import { getPickedBranch, loadPanel, setDemoEstado, setPickedBranch, signOut, subscriptionStatus } from '../services/panel'
 
 // Screen index shortcut (development only): ?como=jefe | empleado | sin-negocio | admin
@@ -80,6 +81,7 @@ export default function PanelLayout() {
       onPickBranch={pickBranch}
       ready={ready}
       onExit={exit}
+      badges={session.role === 'jefe' && business ? { reportes: pendingFor(business.id).reports.length } : {}}
     />
   )
 
@@ -150,7 +152,7 @@ export default function PanelLayout() {
   )
 }
 
-function Sidebar({ session, business, branches, activeBranch, onPickBranch, ready, onExit }) {
+function Sidebar({ session, business, branches, activeBranch, onPickBranch, ready, onExit, badges }) {
   const groups = navFor(session.role, !!session.businessId)
   const ownBranch = session.role === 'empleado' ? branches.find((b) => b.id === session.branchId) : null
 
@@ -203,6 +205,13 @@ function Sidebar({ session, business, branches, activeBranch, onPickBranch, read
                         {isActive ? <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-ink" aria-hidden="true" /> : null}
                         <Icon size={20} weight={isActive ? 'fill' : 'regular'} aria-hidden="true" />
                         {label}
+                        {/* RF-W14: one notice per new client report */}
+                        {badges[id] ? (
+                          <span className="tabular ml-auto min-w-6 rounded-full bg-ink px-1.5 text-center text-xs font-semibold leading-6 text-white">
+                            {badges[id]}
+                            <span className="sr-only"> {badges[id] === 1 ? 'nuevo' : 'nuevos'}</span>
+                          </span>
+                        ) : null}
                       </>
                     )}
                   </NavLink>

@@ -25,6 +25,41 @@ export const businesses = {
   },
 }
 
+// Employees linked to each branch (RF-W10). Itzel works the front desk, so
+// clients do not book appointments with her.
+export const employees = [
+  { id: 'luis', name: 'Luis Ortega', specialty: 'Fades y barba', businessId: 'los-compas', branchId: 'los-compas-centro', bookable: true },
+  { id: 'ramon', name: 'Ramón Cázares', specialty: 'Corte clásico, navaja', businessId: 'los-compas', branchId: 'los-compas-centro', bookable: true },
+  { id: 'itzel', name: 'Itzel Duarte', specialty: 'Recepción', businessId: 'los-compas', branchId: 'los-compas-centro', bookable: false },
+  { id: 'oscar', name: 'Óscar Félix', specialty: 'Fades y diseños', businessId: 'los-compas', branchId: 'los-compas-norte', bookable: true },
+]
+
+// Store products of each branch (RF-W19). Same catalog as the mobile app.
+export const products = [
+  { id: 'pomada', name: 'Pomada mate 100 g', price: 230 },
+  { id: 'aceite', name: 'Aceite para barba 30 ml', price: 190 },
+  { id: 'shampoo', name: 'Shampoo matizador 300 ml', price: 310 },
+  { id: 'cera', name: 'Cera fijación media', price: 210 },
+]
+export const branchProducts = {
+  'los-compas-centro': ['pomada', 'aceite', 'shampoo', 'cera'],
+  'los-compas-norte': ['pomada', 'cera'],
+}
+
+// Client reports the Jefe has not opened yet (RF-W14). Each one is a notice
+// in the panel until the Jefe reviews it in Reportes (batch W7).
+export const newReports = [
+  { id: 'R-118', businessId: 'los-compas', employeeId: 'ramon', branchId: 'los-compas-centro', reason: 'Trato', folio: 'C-10512', receivedOn: new Date(2026, 10, 11, 19, 40) },
+  { id: 'R-119', businessId: 'los-compas', employeeId: 'oscar', branchId: 'los-compas-norte', reason: 'Puntualidad', folio: 'C-10520', receivedOn: new Date(2026, 10, 12, 9, 15) },
+]
+
+// Requests waiting for the Jefe: to join a branch (RF-W10) or to migrate
+// from another business (RF-W12). Unanswered, they expire after 7 days (RN-11).
+export const pendingRequests = [
+  { id: 'S-31', businessId: 'los-compas', kind: 'ingreso', name: 'Sofía Ramos', branchId: 'los-compas-centro', sentOn: new Date(2026, 10, 10) },
+  { id: 'S-32', businessId: 'los-compas', kind: 'migracion', name: 'Diego Armenta', from: 'Barbería El Faro', branchId: 'los-compas-norte', sentOn: new Date(2026, 10, 6) },
+]
+
 // Demo accounts. The password for all of them is in frontend/README.md.
 export const DEMO_PASSWORD = 'snipp2026'
 export const accounts = [

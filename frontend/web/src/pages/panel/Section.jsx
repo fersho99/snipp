@@ -1,6 +1,10 @@
 import { Link, Navigate, useOutletContext, useParams } from 'react-router'
 import { LockSimple } from '@phosphor-icons/react'
 import { homeFor, navFor, SECTIONS } from '../../data/nav'
+import Dashboard from './Dashboard'
+
+// Sections already built. The rest show which batch builds them.
+const PAGES = { inicio: Dashboard }
 
 // /panel opens the home section of each role.
 export function PanelHome() {
@@ -23,6 +27,8 @@ export default function Section() {
 
   const s = SECTIONS[section]
   const needsBranch = s.branch && session.role === 'jefe'
+  const Page = PAGES[section]
+  if (Page && !(needsBranch && !branches.length)) return <Page />
 
   return (
     <div className="max-w-3xl">
@@ -44,9 +50,11 @@ export default function Section() {
         </div>
       ) : null}
 
-      <p className="mt-10 border-l-[3px] border-gray-light pl-4 text-sm text-ink-soft">
-        Plantilla pendiente: esta sección se construye en el lote {s.batch} ({s.rf}).
-      </p>
+      {Page ? null : (
+        <p className="mt-10 border-l-[3px] border-gray-light pl-4 text-sm text-ink-soft">
+          Plantilla pendiente: esta sección se construye en el lote {s.batch} ({s.rf}).
+        </p>
+      )}
     </div>
   )
 }

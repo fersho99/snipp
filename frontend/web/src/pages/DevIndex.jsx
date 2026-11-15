@@ -25,6 +25,12 @@ const SCREENS = [
       { title: 'Administrador entrando a una sección del Jefe (sin acceso)', path: '/panel/agenda?como=admin', states: [] },
     ],
   },
+  {
+    group: 'Lote W3: inicio del Jefe',
+    items: [
+      { title: 'Métricas por sucursal y por empleado, reportes nuevos y solicitudes', path: '/panel/inicio?como=jefe', states: [['Sin pendientes', 'sin-pendientes'], ['Periodo sin registros', 'sin-datos'], ['Calculando métricas', 'cargando-metricas'], ['Error al calcular', 'error-metricas'], ['Sin sucursales', 'sin-sucursales']] },
+    ],
+  },
 ]
 
 export default function DevIndex() {

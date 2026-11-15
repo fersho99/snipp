@@ -27,7 +27,7 @@ const S = {
   empleados: { label: 'Empleados', Icon: Users, batch: 'W5', rf: 'RF-W10 a RF-W13, RF-W17' },
   productos: { label: 'Productos e inventario', Icon: Package, branch: true, batch: 'W8', rf: 'RF-W19, RF-W20' },
   puntos: { label: 'Puntos de lealtad', Icon: Gift, batch: 'W8', rf: 'RF-W24' },
-  reportes: { label: 'Reportes de clientes', Icon: Flag, batch: 'W7', rf: 'RF-W14' },
+  reportes: { label: 'Reportes', Icon: Flag, batch: 'W7', rf: 'RF-W14' },
   resenas: { label: 'Reseñas', Icon: Star, batch: 'W7', rf: 'RF-W23' },
   suscripcion: { label: 'Suscripción', Icon: CreditCard, batch: 'W9', rf: 'RF-W25' },
   citas: { label: 'Mis citas', Icon: CalendarBlank, batch: 'W6', rf: 'RF-W15, RF-W18' },

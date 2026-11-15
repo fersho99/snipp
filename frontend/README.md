@@ -33,7 +33,7 @@ Cuentas de demostración (contraseña `snipp2026` para todas):
 - Administrador: `admin@snipp.mx` (Daniela Ibarra)
 - Jefe de Barbería Los Compas: `martin.salazar@loscompas.mx` (Martín Salazar)
 - Empleado de Barbería Los Compas, sucursal Centro: `luis.ortega@gmail.com` (Luis Ortega)
-- Empleado sin negocio: `sofia.ramos@gmail.com` (Sofía Ramos)
+- Empleado sin negocio: `sofia.ramos@gmail.com` (Sofía Ramos); ya pidió unirse a Los Compas Centro
 
 En el índice de desarrollo, `/panel?como=jefe|empleado|sin-negocio|admin` abre el panel con esa cuenta sin escribir la contraseña (solo en `npm run dev`).
 
@@ -207,12 +207,25 @@ Detalles:
 | Aviso de vencimiento | Solo el Jefe, desde 7 días antes de que termine la prueba gratuita o el periodo pagado (RF-W25) | `aviso-prueba`, `aviso-suscripcion` |
 | `/pago-pendiente` | Al entrar con la suscripción vencida, el Jefe y cada Empleado ven que el negocio no se muestra en la app ni recibe reservas, que las citas ya agendadas se respetan y que al pagar vuelve solo (RF-W26, RN-13). Después pueden entrar al panel, donde queda un aviso fijo | `vencida` |
 
-- Menú del Jefe: Inicio, Agenda, Pedidos · Sucursales y servicios, Empleados, Productos e inventario, Puntos de lealtad · Reportes de clientes, Reseñas · Suscripción.
+- Menú del Jefe: Inicio, Agenda, Pedidos · Sucursales y servicios, Empleados, Productos e inventario, Puntos de lealtad · Reportes, Reseñas · Suscripción.
 - Menú del Empleado: Mis citas, Pedidos, Mi historial de citas · Mi perfil. Sin negocio, solo Mi perfil. No ve Reportes (RN-10).
 - Menú del Administrador: Negocios, Planes, Reseñas reportadas.
 - Debajo de 1024 px el menú se abre como panel lateral con el botón "Menú" (tableta, RNF-W03).
 - Cada sección todavía muestra en qué lote se construye (W3 a W9) y qué requerimientos cubre.
 - Los datos del negocio, sucursales y suscripción están simulados en `web/src/services/panel.js` y `web/src/data/demo.js`; el menú por rol, en `web/src/data/nav.js`.
+
+### Lote W3 (web): inicio del Jefe
+
+| Ruta | Qué es | Estados (`?estado=`) |
+| --- | --- | --- |
+| `/panel/inicio` | **Por revisar** (de todo el negocio): cada reporte nuevo de un cliente (RF-W14), las solicitudes de ingreso a una sucursal (RF-W10) y las de migración desde otro negocio, con el día en que caducan (RF-W12, RN-11). **Métricas de la sucursal** elegida en el selector, para un periodo: citas atendidas y no atendidas, ventas de la tienda, calificación promedio, productos más vendidos y una tabla por Empleado con sus citas y su calificación (RF-W22) | `sin-pendientes`, `sin-datos`, `cargando-metricas`, `error-metricas`, `sin-sucursales` |
+
+- Periodos: últimos 7 días, este mes, el mes pasado o "Elegir fechas" (desde y hasta). Las fechas se validan: la de inicio no puede ser posterior a la final ni anterior al inicio de los registros, y no hay registros después de hoy.
+- Los pedidos cancelados y reembolsados por Stripe no cuentan como venta (RN-06); el dato dice cuántos se dejaron fuera.
+- No hay comparación con el mes anterior ni "pedidos listos sin entregar": el SRS no los pide.
+- Por Empleado se muestran citas y calificación; las ventas van por sucursal porque el SRS no liga los pedidos a un Empleado (decisión D7 del plan, pendiente de confirmar).
+- El número junto a "Reportes" en el menú es el aviso de reportes nuevos; se ve en todas las páginas del Jefe.
+- Los registros de ejemplo se generan siempre iguales en `web/src/services/dashboard.js`, así que cualquier periodo da sumas que cuadran entre las cifras y la tabla.
 
 ## Fotos
 
