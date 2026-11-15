@@ -70,6 +70,18 @@ const SCREENS = [
       { title: 'Empleado entrando a Reportes (sin acceso)', path: '/panel/reportes?como=empleado', states: [] },
     ],
   },
+  {
+    group: 'Lote W8: productos, inventario, pedidos y lealtad',
+    items: [
+      { title: 'Jefe: productos e inventario de la sucursal, con movimientos', path: '/panel/productos?como=jefe', states: [['Sin productos', 'sin-productos'], ['Error al guardar', 'error-guardar']] },
+      { title: 'Jefe: agregar producto', path: '/panel/productos/nuevo?como=jefe', states: [['Error al guardar', 'error-guardar']] },
+      { title: 'Jefe: editar producto (Pomada mate, Centro)', path: '/panel/productos/los-compas-centro%3Apomada?como=jefe', states: [] },
+      { title: 'Pedidos de la sucursal (Jefe)', path: '/panel/pedidos?como=jefe', states: [['Sin pedidos', 'sin-pedidos']] },
+      { title: 'Pedido pagado: marcar listo, entregado o cancelar con reembolso', path: '/panel/pedidos/P-2281?como=jefe', states: [['Error al guardar', 'error-guardar'], ['Stripe no reembolsa', 'error-stripe']] },
+      { title: 'Pedidos de su sucursal (Empleado)', path: '/panel/pedidos?como=empleado', states: [] },
+      { title: 'Jefe: reglas de puntos de lealtad', path: '/panel/puntos?como=jefe', states: [['Error al guardar', 'error-guardar']] },
+    ],
+  },
 ]
 
 export default function DevIndex() {

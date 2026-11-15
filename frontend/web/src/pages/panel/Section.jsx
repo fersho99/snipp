@@ -9,9 +9,12 @@ import MyHistory from './MyHistory'
 import Agenda from './Agenda'
 import Reports from './Reports'
 import Reviews from './Reviews'
+import Products from './Products'
+import Orders from './Orders'
+import Loyalty from './Loyalty'
 
 // Sections already built. The rest show which batch builds them.
-const PAGES = { inicio: Dashboard, sucursales: Branches, empleados: Employees, perfil: MyProfile, historial: MyHistory, agenda: Agenda, citas: Agenda, reportes: Reports, resenas: Reviews }
+const PAGES = { inicio: Dashboard, sucursales: Branches, empleados: Employees, perfil: MyProfile, historial: MyHistory, agenda: Agenda, citas: Agenda, reportes: Reports, resenas: Reviews, productos: Products, pedidos: Orders, puntos: Loyalty }
 
 // /panel opens the home section of each role.
 export function PanelHome() {

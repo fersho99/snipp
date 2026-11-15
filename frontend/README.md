@@ -287,6 +287,21 @@ Detalles:
 - Los reportes R-102 (Luis, puntualidad) y R-088 (Ramón, higiene) son los mismos que ve la clienta Andrea en la app móvil.
 - Los datos viven en memoria en `web/src/services/reports.js`.
 
+### Lote W8 (web): productos, inventario, pedidos y lealtad
+
+| Ruta | Quién | Qué es | Estados (`?estado=`) |
+| --- | --- | --- | --- |
+| `/panel/productos` | Jefe | Productos de la sucursal del selector con precio y existencias (agotado o quedan pocas), "Ajustar existencias" con motivo y movimientos de inventario (RF-W19, RF-W20) | `sin-productos`, `error-guardar` |
+| `/panel/productos/nuevo` y `/panel/productos/:id` | Jefe | Foto (JPG o PNG hasta 5 MB), nombre, presentación, precio, existencias iniciales, descripción y cómo se usa; al editar, los movimientos de ese producto | `error-guardar` |
+| `/panel/pedidos` y `/panel/pedidos/:folio` | Jefe y Empleado | Por entregar, entregados, cancelados. Detalle con artículos, descuento con puntos, total pagado con Stripe y referencia. "Marcar listo para recoger", "Marcar entregado" y "Cancelar y reembolsar" con motivo (RF-W21, RN-06) | `sin-pedidos`, `error-guardar`, `error-stripe` |
+| `/panel/puntos` | Jefe | Pesos por punto en citas atendidas y en compras, y cuánto vale un punto al canjear, con ejemplos que cambian al escribir (RF-W24, RN-09) | `error-guardar` |
+
+- Las existencias bajan cuando se confirma el pago de un pedido (RN-07); por ejemplo, P-2281 (2 pomadas) aparece como −2 en los movimientos.
+- Al cancelar un pedido pagado, Stripe devuelve el total y las piezas regresan a las existencias (no salieron de la sucursal). Si Stripe falla, el pedido sigue pagado.
+- El Empleado ve y cambia los pedidos de su sucursal, pero no Productos ni Puntos (RN-10).
+- Los productos, existencias y pedidos P-2279, P-2264 y P-2250 son los mismos de la app móvil; las reglas de puntos de ejemplo (1 punto por cada $10, 1 punto = $1) también.
+- Los datos viven en memoria en `web/src/services/shop.js`.
+
 ## Fotos
 
 Las fotos originales se optimizaron a 1400 px en `mobile/assets/photos/`. Ojo: `barberia-fachada.jpg` tiene el letrero con texto deformado ("Hugo prago… El echa derrilo"); si se usa como portada conviene recortarlo o reemplazarlo por una fachada real.

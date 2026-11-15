@@ -25,7 +25,7 @@ Este plan explica cómo llevar las plantillas de frontend ya construidas, y las 
 | --- | --- |
 | App móvil, lotes M1 a M5 (cuenta, búsqueda, reserva, mis citas, tienda y pago) | **Ajustados** (fases 1 y 2 aplicadas el 14/11/2026): SNIPP, escala de grises, Q1–Q13 quitados, C1–C11 corregidos. |
 | App móvil, lote M6 (pedidos, reseñas, reportes, puntos, notificaciones) | **Hecho** como plantilla el 14/11/2026 (fase 3). Falta conectar la API y OneSignal (fase 5). |
-| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro), W2 (estructura del panel), W3 (inicio del Jefe), W4 (sucursales y servicios), W5 (Empleados), W6 (agenda y citas) y W7 (reportes y reseñas) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W8 y W9 pendientes (sección 6). |
+| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro), W2 (estructura del panel), W3 (inicio del Jefe), W4 (sucursales y servicios), W5 (Empleados), W6 (agenda y citas), W7 (reportes y reseñas) y W8 (productos, pedidos y lealtad) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W9 pendiente (sección 6). |
 | API, base de datos, Stripe real, OneSignal, servidor | Fuera de este frontend; son dependencias (sección 7). |
 | Repositorio GitHub (RNF-G08) | En github.com/fersho99/snipp, rama `main`. |
 
@@ -277,7 +277,11 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-W17 | Además, cada confirmación, cancelación y reagendado hecho en la agenda suma al historial del Empleado con quién lo hizo | Hecho |
 | RF-W23 | `/panel/resenas`: reseñas por sucursal con "Reportar al Administrador" y motivo; la reseña sigue visible hasta que decida el Administrador (W9) | Hecho |
 | RN-15, RN-16 | Reportes solo para el Jefe (el Empleado no tiene acceso ni ve los datos del cliente); el historial por Empleado cuenta solo los de este negocio | Hecho |
-| RF-W19 a RF-W21, RF-W24, RF-W28 | Plataforma web, lotes W8 y W9 | Pendiente |
+| RF-W19 | `/panel/productos` y `/panel/productos/:id`: alta y edición por sucursal con foto, nombre, presentación, precio, descripción y cómo se usa | Hecho |
+| RF-W20, RN-07 | Existencias por sucursal, "Ajustar existencias" con motivo y movimientos de inventario; las ventas bajan las existencias al pagarse; agotado no se puede comprar | Hecho |
+| RF-W21, RN-06 | `/panel/pedidos` (Jefe y Empleado): pagado → listo para recoger → entregado, y cancelar con reembolso de Stripe (referencia y motivo); el cliente ve cada cambio | Hecho (Stripe real en fase 5) |
+| RF-W24, RN-09 | `/panel/puntos`: pesos por punto en citas y en compras, y valor del punto al canjear, con ejemplos | Hecho |
+| RF-W25 (pago), RF-W27 (gestión), RF-W28 | Lote W9 | Pendiente |
 | RNF-M01 a RNF-M04, RNF-W01 a RNF-W05 | Sección 7.1 | Pendiente de medir |
 | RNF-G01 a RNF-G08 | Sección 7.2 | Dependencia de back-end e infraestructura |
 

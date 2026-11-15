@@ -10,6 +10,7 @@ import { useReportsStore } from '../services/reports'
 import { resetDemoBranches, useBusinessSetup } from '../services/branches'
 import { resetDemoStaff } from '../services/staff'
 import { resetDemoReports } from '../services/reports'
+import { resetDemoShop } from '../services/shop'
 import { getPickedBranch, loadPanel, setDemoEstado, setPickedBranch, signOut, subscriptionStatus } from '../services/panel'
 
 // Screen index shortcut (development only): ?como=jefe | empleado | sin-negocio | admin
@@ -33,6 +34,7 @@ export default function PanelLayout() {
       resetDemoBranches(DEV_ACCOUNTS[como].businessId, estado === 'sin-sucursales')
       resetDemoStaff(estado)
       resetDemoReports(estado)
+      resetDemoShop(estado)
     } else if (estado) setDemoEstado(estado)
   })
 
