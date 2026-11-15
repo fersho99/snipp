@@ -31,6 +31,16 @@ const SCREENS = [
       { title: 'Métricas por sucursal y por empleado, reportes nuevos y solicitudes', path: '/panel/inicio?como=jefe', states: [['Sin pendientes', 'sin-pendientes'], ['Periodo sin registros', 'sin-datos'], ['Calculando métricas', 'cargando-metricas'], ['Error al calcular', 'error-metricas'], ['Sin sucursales', 'sin-sucursales']] },
     ],
   },
+  {
+    group: 'Lote W4: sucursales y servicios',
+    items: [
+      { title: 'Lista de sucursales y anticipación para cancelar o reagendar', path: '/panel/sucursales?como=jefe', states: [['Sin sucursales', 'sin-sucursales'], ['Error al guardar', 'error-guardar'], ['Sin conexión al guardar', 'sin-conexion-guardar']] },
+      { title: 'Registrar sucursal', path: '/panel/sucursales/nueva?como=jefe', states: [['Error al guardar', 'error-guardar']] },
+      { title: 'Editar sucursal: datos, horario, fotos y desactivar', path: '/panel/sucursales/los-compas-norte?como=jefe', states: [['Error al guardar', 'error-guardar']] },
+      { title: 'Servicios de una sucursal', path: '/panel/sucursales/los-compas-centro?vista=servicios&como=jefe', states: [['Error al guardar', 'error-guardar']] },
+      { title: 'Sucursal que no es del negocio', path: '/panel/sucursales/estudio-marisol-centro?como=jefe', states: [] },
+    ],
+  },
 ]
 
 export default function DevIndex() {

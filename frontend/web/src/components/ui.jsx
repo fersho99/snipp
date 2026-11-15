@@ -1,6 +1,6 @@
 // Base pieces of the SNIPP web panel: grayscale, no boxes around blocks,
 // separation by space and a sunken tone. Focus is always visible.
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { CheckCircle, Eye, EyeSlash, WarningCircle } from '@phosphor-icons/react'
 import isotipo from '../assets/brand/snipp-isotipo.png'
@@ -105,4 +105,72 @@ export function Note({ tone = 'error', title, children, action }) {
 
 export function Skeleton({ className = '' }) {
   return <span className={`block animate-pulse rounded-md bg-sunken ${className}`} aria-hidden="true" />
+}
+
+// Multi-line field with the same look and messages as TextField.
+export function TextArea({ label, hint, error, className = '', rows = 4, ...props }) {
+  const id = useId()
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined
+  return (
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <label htmlFor={id} className="text-[15px] font-medium">{label}</label>
+      <textarea
+        id={id}
+        rows={rows}
+        aria-invalid={!!error || undefined}
+        aria-describedby={describedBy}
+        className={`rounded-control border-2 bg-sunken px-4 py-3 text-base text-ink outline-none transition-colors placeholder:text-ink-soft focus:bg-raised ${
+          error ? 'border-ink' : 'border-transparent focus:border-ink-soft'
+        }`}
+        {...props}
+      />
+      {error ? (
+        <p id={`${id}-error`} className="flex items-start gap-2 text-sm font-medium text-ink" role="alert">
+          <WarningCircle size={18} className="mt-px shrink-0" />
+          {error}
+        </p>
+      ) : hint ? (
+        <p id={`${id}-hint`} className="text-sm text-ink-soft">{hint}</p>
+      ) : null}
+    </div>
+  )
+}
+
+// Checkbox with its label on the right; the box is drawn in ink when checked.
+export function Checkbox({ label, hint, className = '', ...props }) {
+  const id = useId()
+  return (
+    <div className={`flex items-start gap-3 ${className}`}>
+      <input id={id} type="checkbox" className="mt-0.5 size-5 shrink-0 accent-ink" aria-describedby={hint ? `${id}-hint` : undefined} {...props} />
+      <div>
+        <label htmlFor={id} className="text-[15px] font-medium">{label}</label>
+        {hint ? <p id={`${id}-hint`} className="text-sm text-ink-soft">{hint}</p> : null}
+      </div>
+    </div>
+  )
+}
+
+// Modal confirmation. Uses the native <dialog>, so focus stays inside and Esc closes it.
+export function Dialog({ open, title, children, onClose, actions }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const d = ref.current
+    if (!d) return
+    if (open && !d.open) d.showModal()
+    if (!open && d.open) d.close()
+  }, [open])
+  return (
+    <dialog
+      ref={ref}
+      onClose={onClose}
+      className="m-auto w-[min(520px,calc(100vw-32px))] rounded-[14px] bg-raised p-0 text-ink backdrop:bg-ink/40"
+      aria-labelledby="dialog-title"
+    >
+      <div className="p-6 sm:p-7">
+        <h2 id="dialog-title" className="text-xl font-bold leading-snug">{title}</h2>
+        <div className="mt-3 flex flex-col gap-3">{children}</div>
+        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">{actions}</div>
+      </div>
+    </dialog>
+  )
 }

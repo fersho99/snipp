@@ -7,6 +7,7 @@ import { accounts, ROLE_LABEL } from '../data/demo'
 import { navFor } from '../data/nav'
 import { currentSession, devSignIn, networkMessage } from '../services/auth'
 import { pendingFor } from '../services/dashboard'
+import { resetDemoBranches, useBusinessSetup } from '../services/branches'
 import { getPickedBranch, loadPanel, setDemoEstado, setPickedBranch, signOut, subscriptionStatus } from '../services/panel'
 
 // Screen index shortcut (development only): ?como=jefe | empleado | sin-negocio | admin
@@ -27,10 +28,12 @@ export default function PanelLayout() {
     if (import.meta.env.DEV && DEV_ACCOUNTS[como]) {
       devSignIn(DEV_ACCOUNTS[como].email)
       setDemoEstado(estado)
+      resetDemoBranches(DEV_ACCOUNTS[como].businessId, estado === 'sin-sucursales')
     } else if (estado) setDemoEstado(estado)
   })
 
   const session = currentSession()
+  const setup = useBusinessSetup(session?.businessId ?? null, session?.business)
   const [data, setData] = useState(null)
   const [failure, setFailure] = useState(null)
   const [branchId, setBranchId] = useState(getPickedBranch())
@@ -60,7 +63,7 @@ export default function PanelLayout() {
   // RF-W26: at sign-in, the Jefe and every Empleado see the overdue message first.
   if (sub?.status === 'vencida' && !session.overdueSeen) return <Navigate to="/pago-pendiente" replace />
 
-  const branches = business?.branches ?? []
+  const branches = business ? setup?.branches ?? [] : []
   const activeBranch = branches.find((b) => b.id === branchId) ?? branches.find((b) => b.active) ?? branches[0] ?? null
   const pickBranch = (id) => {
     setPickedBranch(id)
@@ -144,7 +147,7 @@ export default function PanelLayout() {
         ) : (
           <>
             {business ? <SubscriptionNotice role={session.role} business={business} status={sub} /> : null}
-            <Outlet context={{ session, business, activeBranch, branches }} />
+            <Outlet context={{ session, business, activeBranch, branches, setup }} />
           </>
         )}
       </main>

@@ -1,5 +1,8 @@
 // Sample data for the web panel. Same story as the mobile app
 // (frontend/mobile/src/data/demo.js): "today" is Thursday 12 November 2026.
+import interior from '../assets/photos/barberia-interior.jpg'
+import fade from '../assets/photos/trabajo-fade.jpg'
+
 export const DEMO_TODAY = new Date(2026, 10, 12, 10, 0)
 
 // Subscription plans the Administrator manages (RF-W27). A plan created
@@ -10,16 +13,63 @@ export const plans = [
   { id: 'anual', name: 'Anual', price: 4990, months: 12 },
 ]
 
-// Businesses with their branches and subscription (RF-W05, RF-W25, RN-13).
+// Business hours per weekday, Sunday first (0) to Saturday (6), like Date.getDay().
+// null = closed. Same hours as the branch profiles in the mobile app.
+const MON_SAT = [null, ['10:00', '20:00'], ['10:00', '20:00'], ['10:00', '20:00'], ['10:00', '20:00'], ['10:00', '20:00'], ['10:00', '18:00']]
+
+// Services of each branch (RF-W07). Inactive ones are not offered in the app (RN-14).
+const BARBER_SERVICES = [
+  { id: 'corte-clasico', name: 'Corte clásico', description: 'Corte con tijera y máquina, lavado y peinado.', minutes: 40, price: 180, active: true },
+  { id: 'fade', name: 'Fade', description: 'Degradado a máquina desde cero, con navaja en el contorno.', minutes: 45, price: 220, active: true },
+  { id: 'barba', name: 'Arreglo de barba', description: 'Perfilado con navaja y toalla caliente.', minutes: 25, price: 120, active: true },
+  { id: 'corte-barba', name: 'Corte + barba', description: 'Corte clásico o fade más arreglo de barba.', minutes: 60, price: 280, active: true },
+]
+
+// Businesses with their branches, settings and subscription (RF-W05 to
+// RF-W09, RF-W25, RN-13).
+// minNoticeHours: how long before an appointment clients can still cancel
+// or reschedule in the app (RF-W08, 2 hours by default).
 // subscription.kind: 'prueba' (free first month) or 'pagada' (a paid plan).
 // endsOn is the last day covered; after it, without payment, it is overdue.
+// upcoming: appointments already booked from today on (shown before deactivating).
 export const businesses = {
   'los-compas': {
     id: 'los-compas',
     name: 'Barbería Los Compas',
+    minNoticeHours: 2,
     branches: [
-      { id: 'los-compas-centro', name: 'Los Compas Centro', address: 'Av. Obregón y Calle 5', active: true },
-      { id: 'los-compas-norte', name: 'Los Compas Norte', address: 'Av. Libertad y Calle 32', active: true },
+      {
+        id: 'los-compas-centro',
+        name: 'Los Compas Centro',
+        address: 'Av. Obregón y Calle 5, Col. Centro',
+        phone: '653 534 2210',
+        description: 'Barbería de barrio desde 2014. Fades, cortes clásicos y arreglo de barba con toalla caliente. Hay café mientras esperas y estacionamiento en la Calle 5.',
+        hours: MON_SAT,
+        images: [
+          { id: 'img-1', src: interior, name: 'barberia-interior.jpg' },
+          { id: 'img-2', src: fade, name: 'trabajo-fade.jpg' },
+        ],
+        coverId: 'img-1',
+        active: true,
+        upcoming: 23,
+        services: BARBER_SERVICES.map((x) => ({ ...x })),
+      },
+      {
+        id: 'los-compas-norte',
+        name: 'Los Compas Norte',
+        address: 'Av. Libertad y Calle 32, Col. Burócrata',
+        phone: '653 536 1184',
+        description: 'La segunda sucursal de Los Compas, con los mismos precios. Más tranquila entre semana antes de las 4:00 pm.',
+        hours: MON_SAT,
+        images: [
+          { id: 'img-3', src: fade, name: 'trabajo-fade.jpg' },
+          { id: 'img-4', src: interior, name: 'barberia-interior.jpg' },
+        ],
+        coverId: 'img-3',
+        active: true,
+        upcoming: 9,
+        services: BARBER_SERVICES.map((x) => ({ ...x })),
+      },
     ],
     subscription: { kind: 'pagada', planId: 'mensual', endsOn: new Date(2026, 11, 3) },
   },

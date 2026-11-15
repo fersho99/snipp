@@ -227,6 +227,21 @@ Detalles:
 - El número junto a "Reportes" en el menú es el aviso de reportes nuevos; se ve en todas las páginas del Jefe.
 - Los registros de ejemplo se generan siempre iguales en `web/src/services/dashboard.js`, así que cualquier periodo da sumas que cuadran entre las cifras y la tabla.
 
+### Lote W4 (web): sucursales y servicios
+
+| Ruta | Qué es | Estados (`?estado=`) |
+| --- | --- | --- |
+| `/panel/sucursales` | Lista de sucursales con portada, estado, dirección, teléfono, servicios activos y fotos. Abajo, la anticipación con la que los clientes pueden cancelar o reagendar en la app: 2 horas por defecto, para todo el negocio (RF-W08) | `sin-sucursales`, `error-guardar`, `sin-conexion-guardar` |
+| `/panel/sucursales/nueva` | Registrar sucursal: nombre, dirección, teléfono, descripción, horario por día y fotos (RF-W05). Al guardar abre la pestaña de servicios con el aviso de que sin servicios activos no se puede reservar | `error-guardar` |
+| `/panel/sucursales/:id` | Pestaña "Datos, horario y fotos": editar todo, agregar, cambiar o quitar fotos y elegir la portada (RF-W06). Abajo, desactivar con confirmación; desactivada, un aviso para reactivarla con sus datos intactos (RF-W09, RN-14). Una sucursal de otro negocio muestra "No encontramos esta sucursal" (RNF-W04) | `error-guardar` |
+| `/panel/sucursales/:id?vista=servicios` | Servicios de la sucursal: agregar, editar (nombre, descripción, duración, precio) y activar o desactivar; uno inactivo no se ofrece en la app y las citas ya agendadas se respetan (RF-W07, RN-14) | `error-guardar` |
+
+- Fotos: solo JPG o PNG de hasta 5 MB; cada archivo rechazado dice por qué (RNF-W05). La API las optimiza antes de mostrarlas en la app.
+- Validaciones: nombre, dirección y teléfono de 10 dígitos; en el horario, la hora de cierre después de la de apertura y al menos un día abierto; en servicios, duración en minutos enteros y precio mayor que cero.
+- El selector de sucursal del menú se actualiza al registrar, renombrar o desactivar una sucursal (la desactivada sale con "(desactivada)").
+- No hay "vista previa de cómo se ve en la app": el SRS no la pide.
+- Los datos viven en memoria en `web/src/services/branches.js`; al recargar la página vuelven los de ejemplo.
+
 ## Fotos
 
 Las fotos originales se optimizaron a 1400 px en `mobile/assets/photos/`. Ojo: `barberia-fachada.jpg` tiene el letrero con texto deformado ("Hugo prago… El echa derrilo"); si se usa como portada conviene recortarlo o reemplazarlo por una fachada real.

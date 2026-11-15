@@ -74,6 +74,7 @@ export async function registerBoss({ name, email, phone, businessName, planId },
   const business = {
     id: `negocio-${Date.now()}`,
     name: businessName.trim(),
+    minNoticeHours: 2,
     branches: [],
     subscription: { kind: 'prueba', planId, endsOn: addMonths(DEMO_TODAY, 1).toISOString() },
   }

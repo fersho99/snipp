@@ -2,9 +2,10 @@ import { Link, Navigate, useOutletContext, useParams } from 'react-router'
 import { LockSimple } from '@phosphor-icons/react'
 import { homeFor, navFor, SECTIONS } from '../../data/nav'
 import Dashboard from './Dashboard'
+import Branches from './Branches'
 
 // Sections already built. The rest show which batch builds them.
-const PAGES = { inicio: Dashboard }
+const PAGES = { inicio: Dashboard, sucursales: Branches }
 
 // /panel opens the home section of each role.
 export function PanelHome() {
@@ -15,8 +16,9 @@ export function PanelHome() {
 // One panel section. RF-W04: a section outside the role's menu is blocked
 // even when its address is typed by hand. The content of each section is
 // built in its own batch (W3 to W9); until then this page says which one.
-export default function Section() {
-  const { section } = useParams()
+export default function Section({ id, sub }) {
+  const params = useParams()
+  const section = id ?? params.section
   const { session, activeBranch, branches } = useOutletContext()
   const hasBusiness = !!session.businessId
   const allowed = navFor(session.role, hasBusiness).flatMap((g) => g.items).map((i) => i.id)
@@ -28,7 +30,7 @@ export default function Section() {
   const s = SECTIONS[section]
   const needsBranch = s.branch && session.role === 'jefe'
   const Page = PAGES[section]
-  if (Page && !(needsBranch && !branches.length)) return <Page />
+  if (Page && !(needsBranch && !branches.length)) return <Page sub={sub} />
 
   return (
     <div className="max-w-3xl">

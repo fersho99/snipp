@@ -25,7 +25,7 @@ Este plan explica cómo llevar las plantillas de frontend ya construidas, y las 
 | --- | --- |
 | App móvil, lotes M1 a M5 (cuenta, búsqueda, reserva, mis citas, tienda y pago) | **Ajustados** (fases 1 y 2 aplicadas el 14/11/2026): SNIPP, escala de grises, Q1–Q13 quitados, C1–C11 corregidos. |
 | App móvil, lote M6 (pedidos, reseñas, reportes, puntos, notificaciones) | **Hecho** como plantilla el 14/11/2026 (fase 3). Falta conectar la API y OneSignal (fase 5). |
-| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro), W2 (estructura del panel) y W3 (inicio del Jefe) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W4 a W9 pendientes (sección 6). |
+| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro), W2 (estructura del panel), W3 (inicio del Jefe) y W4 (sucursales y servicios) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W5 a W9 pendientes (sección 6). |
 | API, base de datos, Stripe real, OneSignal, servidor | Fuera de este frontend; son dependencias (sección 7). |
 | Repositorio GitHub (RNF-G08) | En github.com/fersho99/snipp, rama `main`. |
 
@@ -260,7 +260,12 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-W22 | `/panel/inicio`: citas, ventas, productos más vendidos y calificación promedio por sucursal, y citas y calificación por Empleado, con periodo (últimos 7 días, este mes, mes pasado o fechas elegidas) | Hecho (ver D7) |
 | RF-W14 | Aviso por cada reporte nuevo: número junto a "Reportes" en el menú y lista en Inicio (W3); bandeja, estados y notas en W7 | Parcial |
 | RF-W10, RF-W12 | Solicitudes de ingreso y de migración por revisar en Inicio, con fecha de caducidad de la migración (W3); aceptar, horario y reasignación en W5 | Parcial |
-| RF-W05 a RF-W09, RF-W11, RF-W13, RF-W15 a RF-W21, RF-W23, RF-W24, RF-W28 | Plataforma web, lotes W4 a W9 | Pendiente |
+| RF-W05, RF-W06 | `/panel/sucursales/nueva` y `/panel/sucursales/:id`: nombre, dirección, teléfono, descripción, horario por día y fotos (agregar, cambiar, quitar y elegir portada) | Hecho |
+| RF-W07 | Pestaña "Servicios" de cada sucursal: nombre, descripción, duración, precio y activo o inactivo | Hecho |
+| RF-W08 | "Anticipación para cancelar o reagendar" en `/panel/sucursales`, 2 horas por defecto, para todo el negocio | Hecho |
+| RF-W09, RN-14 | Desactivar con confirmación (dice cuántas citas agendadas tiene y que se respetan) y reactivar con los datos intactos | Hecho |
+| RNF-W05 | Solo JPG o PNG de hasta 5 MB, con mensaje por cada archivo rechazado; la optimización la hace la API | Hecho en el panel |
+| RF-W11, RF-W13, RF-W15 a RF-W21, RF-W23, RF-W24, RF-W28 | Plataforma web, lotes W5 a W9 | Pendiente |
 | RNF-M01 a RNF-M04, RNF-W01 a RNF-W05 | Sección 7.1 | Pendiente de medir |
 | RNF-G01 a RNF-G08 | Sección 7.2 | Dependencia de back-end e infraestructura |
 
