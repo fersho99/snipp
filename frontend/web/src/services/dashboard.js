@@ -2,7 +2,8 @@
 // (RF-W14, RF-W10, RF-W12). In production the API adds up the records of
 // the database for the chosen branch and period; here the records are
 // generated once, the same every time, so any period gives consistent sums.
-import { branchProducts, DEMO_TODAY, employees, newReports, products } from '../data/demo'
+import { branchProducts, DEMO_TODAY, employees, products } from '../data/demo'
+import { getReportsStore } from './reports'
 import { getStaffStore } from './staff'
 import { ApiError } from './auth'
 import { getDemoEstado } from './panel'
@@ -136,7 +137,7 @@ export async function loadDashboard(branchId, from, to) {
 export function pendingFor(businessId) {
   if (getDemoEstado() === 'sin-pendientes') return { reports: [], requests: [] }
   return {
-    reports: newReports.filter((r) => r.businessId === businessId),
+    reports: getReportsStore().reports.filter((r) => r.businessId === businessId && r.state === 'enviado'),
     requests: getStaffStore().requests.filter((s) => s.businessId === businessId),
   }
 }

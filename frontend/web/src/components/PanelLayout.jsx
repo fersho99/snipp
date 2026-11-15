@@ -6,9 +6,10 @@ import SubscriptionNotice from './SubscriptionNotice'
 import { accounts, ROLE_LABEL } from '../data/demo'
 import { navFor } from '../data/nav'
 import { currentSession, devSignIn, networkMessage } from '../services/auth'
-import { pendingFor } from '../services/dashboard'
+import { useReportsStore } from '../services/reports'
 import { resetDemoBranches, useBusinessSetup } from '../services/branches'
 import { resetDemoStaff } from '../services/staff'
+import { resetDemoReports } from '../services/reports'
 import { getPickedBranch, loadPanel, setDemoEstado, setPickedBranch, signOut, subscriptionStatus } from '../services/panel'
 
 // Screen index shortcut (development only): ?como=jefe | empleado | sin-negocio | admin
@@ -31,11 +32,13 @@ export default function PanelLayout() {
       setDemoEstado(estado)
       resetDemoBranches(DEV_ACCOUNTS[como].businessId, estado === 'sin-sucursales')
       resetDemoStaff(estado)
+      resetDemoReports(estado)
     } else if (estado) setDemoEstado(estado)
   })
 
   const session = currentSession()
   const setup = useBusinessSetup(session?.businessId ?? null, session?.business)
+  const reportStore = useReportsStore()
   const [data, setData] = useState(null)
   const [failure, setFailure] = useState(null)
   const [branchId, setBranchId] = useState(getPickedBranch())
@@ -86,7 +89,7 @@ export default function PanelLayout() {
       onPickBranch={pickBranch}
       ready={ready}
       onExit={exit}
-      badges={session.role === 'jefe' && business ? { reportes: pendingFor(business.id).reports.length } : {}}
+      badges={session.role === 'jefe' && business ? { reportes: reportStore.reports.filter((r) => r.businessId === business.id && r.state === 'enviado').length } : {}}
     />
   )
 

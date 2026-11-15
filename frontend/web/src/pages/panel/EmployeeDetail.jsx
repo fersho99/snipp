@@ -7,6 +7,7 @@ import Reassign from '../../components/Reassign'
 import { scheduleProblem, scheduleSummary } from '../../schedule'
 import { networkMessage } from '../../services/auth'
 import { lastAppointmentOf, saveSchedule, useStaffStore } from '../../services/staff'
+import { useReportsStore } from '../../services/reports'
 import { longDate, timeOfDay } from '../../theme'
 
 // One Empleado as the Jefe sees it: profile (the Empleado edits it, RF-W11),
@@ -19,6 +20,7 @@ export default function EmployeeDetail() {
   const navigate = useNavigate()
   const e = s.staff[employeeId]
   const [unlinking, setUnlinking] = useState(false)
+  const { reports } = useReportsStore()
 
   if (!e || e.businessId !== business.id) {
     return (
@@ -47,6 +49,16 @@ export default function EmployeeDetail() {
       </div>
       <p className="mt-4">{profile.specialties.length ? profile.specialties.join(' · ') : 'Sin especialidades'}{e.bookable ? '' : ' · No recibe citas'}</p>
       <p className="mt-1 text-sm text-ink-soft">La foto, el nombre visible y las especialidades los edita el Empleado desde su cuenta.</p>
+      {(() => {
+        // RF-W14: reports of this Empleado in this business only (RN-16).
+        const n = reports.filter((r) => r.businessId === business.id && r.employeeId === e.id).length
+        return (
+          <p className="mt-3 text-[15px]">
+            {n ? `${n === 1 ? '1 reporte' : `${n} reportes`} de clientes. ` : 'Sin reportes de clientes. '}
+            {n ? <Link to={`/panel/reportes?empleado=${e.id}`} className="font-medium underline underline-offset-4">Ver su historial de reportes</Link> : null}
+          </p>
+        )
+      })()}
 
       {migrating ? (
         <section className="mt-10" aria-labelledby="migracion">

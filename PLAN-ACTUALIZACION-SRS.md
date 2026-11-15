@@ -25,7 +25,7 @@ Este plan explica cómo llevar las plantillas de frontend ya construidas, y las 
 | --- | --- |
 | App móvil, lotes M1 a M5 (cuenta, búsqueda, reserva, mis citas, tienda y pago) | **Ajustados** (fases 1 y 2 aplicadas el 14/11/2026): SNIPP, escala de grises, Q1–Q13 quitados, C1–C11 corregidos. |
 | App móvil, lote M6 (pedidos, reseñas, reportes, puntos, notificaciones) | **Hecho** como plantilla el 14/11/2026 (fase 3). Falta conectar la API y OneSignal (fase 5). |
-| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro), W2 (estructura del panel), W3 (inicio del Jefe), W4 (sucursales y servicios), W5 (Empleados) y W6 (agenda y citas) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W7 a W9 pendientes (sección 6). |
+| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro), W2 (estructura del panel), W3 (inicio del Jefe), W4 (sucursales y servicios), W5 (Empleados), W6 (agenda y citas) y W7 (reportes y reseñas) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W8 y W9 pendientes (sección 6). |
 | API, base de datos, Stripe real, OneSignal, servidor | Fuera de este frontend; son dependencias (sección 7). |
 | Repositorio GitHub (RNF-G08) | En github.com/fersho99/snipp, rama `main`. |
 
@@ -259,7 +259,7 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-W25 | Aviso al Jefe 7 días antes de que venza la prueba o la suscripción (W2); pagar y renovar con Stripe en W9 | Parcial |
 | RF-W26, RN-13 | `/pago-pendiente` al entrar (Jefe y Empleados) y aviso fijo en el panel mientras siga vencida; ocultar el negocio en la app ya está en la móvil (C5) | Hecho |
 | RF-W22 | `/panel/inicio`: citas, ventas, productos más vendidos y calificación promedio por sucursal, y citas y calificación por Empleado, con periodo (últimos 7 días, este mes, mes pasado o fechas elegidas) | Hecho (ver D7) |
-| RF-W14 | Aviso por cada reporte nuevo: número junto a "Reportes" en el menú y lista en Inicio (W3); bandeja, estados y notas en W7 | Parcial |
+| RF-W14 | Aviso por cada reporte nuevo (número en el menú y lista en Inicio); `/panel/reportes`: bandeja con filtros por estado y Empleado, historial por Empleado; `/panel/reportes/:id`: en revisión y atendido (el cliente ve el cambio) y notas internas | Hecho |
 | RF-W10, RF-W12 | Solicitudes de ingreso y de migración por revisar en Inicio, con fecha de caducidad de la migración (W3); aceptar, horario y reasignación en W5 | Parcial |
 | RF-W05, RF-W06 | `/panel/sucursales/nueva` y `/panel/sucursales/:id`: nombre, dirección, teléfono, descripción, horario por día y fotos (agregar, cambiar, quitar y elegir portada) | Hecho |
 | RF-W07 | Pestaña "Servicios" de cada sucursal: nombre, descripción, duración, precio y activo o inactivo | Hecho |
@@ -275,7 +275,9 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-W16 | En la cita: pasar a otro Empleado libre, reagendar o cancelar. Con un Empleado elegido: reasignar o cancelar todas sus citas futuras; las que el otro no puede tomar se quedan y se listan | Hecho |
 | RF-W18, RN-03, RN-04 | `/panel/agenda` (Jefe) y `/panel/citas` (Empleado): día y semana, estados confirmada, atendida, no asistió, Empleado no se presentó y cancelada; reagendar solo a horas libres; el Empleado ve la sucursal pero solo cambia sus citas; cada cambio avisa al cliente y queda "Esperando respuesta del cliente" | Hecho |
 | RF-W17 | Además, cada confirmación, cancelación y reagendado hecho en la agenda suma al historial del Empleado con quién lo hizo | Hecho |
-| RF-W19 a RF-W21, RF-W23, RF-W24, RF-W28 | Plataforma web, lotes W7 a W9 | Pendiente |
+| RF-W23 | `/panel/resenas`: reseñas por sucursal con "Reportar al Administrador" y motivo; la reseña sigue visible hasta que decida el Administrador (W9) | Hecho |
+| RN-15, RN-16 | Reportes solo para el Jefe (el Empleado no tiene acceso ni ve los datos del cliente); el historial por Empleado cuenta solo los de este negocio | Hecho |
+| RF-W19 a RF-W21, RF-W24, RF-W28 | Plataforma web, lotes W8 y W9 | Pendiente |
 | RNF-M01 a RNF-M04, RNF-W01 a RNF-W05 | Sección 7.1 | Pendiente de medir |
 | RNF-G01 a RNF-G08 | Sección 7.2 | Dependencia de back-end e infraestructura |
 

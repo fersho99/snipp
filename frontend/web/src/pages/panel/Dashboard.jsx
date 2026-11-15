@@ -5,6 +5,7 @@ import { Button, Note, Skeleton } from '../../components/ui'
 import { DEMO_TODAY } from '../../data/demo'
 import { employeeName, loadDashboard, pendingFor, RECORDS_START } from '../../services/dashboard'
 import { networkMessage } from '../../services/auth'
+import { REPORT_REASONS } from '../../services/reports'
 import { addDays, count, dayMonth, fromInputDate, longDate, money, sameDay, timeOfDay, toInputDate } from '../../theme'
 
 const TODAY = new Date(DEMO_TODAY.getFullYear(), DEMO_TODAY.getMonth(), DEMO_TODAY.getDate())
@@ -291,8 +292,8 @@ function Pending({ reports, requests, branches }) {
             key={r.id}
             Icon={Flag}
             title={`Reporte nuevo sobre ${employeeName(r.employeeId)}`}
-            detail={`Motivo: ${r.reason} · ${branchName(r.branchId)} · cita ${r.folio} · recibido el ${longDate(r.receivedOn)}, ${timeOfDay(r.receivedOn)}`}
-            to="/panel/reportes"
+            detail={`Motivo: ${REPORT_REASONS[r.reason]} · ${branchName(r.branchId)} · cita ${r.folio} · recibido el ${longDate(r.sentOn)}, ${timeOfDay(r.sentOn)}`}
+            to={`/panel/reportes/${r.id}`}
             action="Ver reporte"
           />
         ))}

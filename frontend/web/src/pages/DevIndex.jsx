@@ -60,6 +60,16 @@ const SCREENS = [
       { title: 'Empleado: su agenda (solo gestiona sus citas)', path: '/panel/citas?como=empleado', states: [['Error al guardar', 'error-guardar']] },
     ],
   },
+  {
+    group: 'Lote W7: reportes y reseñas (solo Jefe)',
+    items: [
+      { title: 'Bandeja de reportes con filtros por estado y Empleado', path: '/panel/reportes?como=jefe', states: [['Sin reportes', 'sin-reportes']] },
+      { title: 'Reporte nuevo: seguimiento y notas internas', path: '/panel/reportes/R-118?como=jefe', states: [['Error al guardar', 'error-guardar']] },
+      { title: 'Historial de reportes de un Empleado (Luis Ortega)', path: '/panel/reportes?empleado=luis&como=jefe', states: [] },
+      { title: 'Reseñas del negocio con "Reportar al Administrador"', path: '/panel/resenas?como=jefe', states: [['Sin reseñas', 'sin-resenas'], ['Error al guardar', 'error-guardar']] },
+      { title: 'Empleado entrando a Reportes (sin acceso)', path: '/panel/reportes?como=empleado', states: [] },
+    ],
+  },
 ]
 
 export default function DevIndex() {

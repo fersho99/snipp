@@ -96,13 +96,6 @@ export const branchProducts = {
   'los-compas-norte': ['pomada', 'cera'],
 }
 
-// Client reports the Jefe has not opened yet (RF-W14). Each one is a notice
-// in the panel until the Jefe reviews it in Reportes (batch W7).
-export const newReports = [
-  { id: 'R-118', businessId: 'los-compas', employeeId: 'ramon', branchId: 'los-compas-centro', reason: 'Trato', folio: 'C-10512', receivedOn: new Date(2026, 10, 11, 19, 40) },
-  { id: 'R-119', businessId: 'los-compas', employeeId: 'oscar', branchId: 'los-compas-norte', reason: 'Puntualidad', folio: 'C-10520', receivedOn: new Date(2026, 10, 12, 9, 15) },
-]
-
 // Requests waiting for the Jefe: to join a branch (RF-W10) or to migrate
 // from another business (RF-W12). Unanswered, they expire after 7 days (RN-11).
 export const pendingRequests = [

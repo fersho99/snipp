@@ -273,6 +273,20 @@ Detalles:
 - Las citas de ejemplo (del 9 al 21 de noviembre) se generan siempre iguales en `web/src/data/staff.js`; la agenda y la reasignación de W5 usan las mismas.
 - `npm run build` avisa que el paquete pasa de 500 kB; se puede dividir por rutas más adelante, no afecta a la plantilla.
 
+### Lote W7 (web): reportes y reseñas (solo Jefe)
+
+| Ruta | Qué es | Estados (`?estado=`) |
+| --- | --- | --- |
+| `/panel/reportes` | Bandeja de reportes de clientes sobre los Empleados: filtros Nuevos, En revisión y Atendidos, y por Empleado; con un Empleado elegido, su historial de reportes en este negocio (RF-W14, RN-16) | `sin-reportes` |
+| `/panel/reportes/:id` | Texto del cliente, cita, sucursal; seguimiento con "Pasar a en revisión" y "Marcar como atendido" (el cliente ve el nuevo estado en "Mis reportes" de la app, RF-M14); notas internas que solo ve el Jefe | `error-guardar` |
+| `/panel/resenas` | Calificación de cada sucursal y reseñas más recientes, con filtro por sucursal. "Reportar al Administrador" pide el motivo (y la explicación si es "Otro"); la reseña sigue visible hasta que el Administrador decida (RF-W23) | `sin-resenas`, `error-guardar` |
+
+- El número junto a "Reportes" en el menú y la lista de Inicio cuentan los reportes nuevos; al pasarlos a revisión dejan de contar.
+- El Empleado no tiene acceso a Reportes ni a Reseñas, ni escribiendo la dirección (RN-10, RN-15).
+- En la ficha de cada Empleado aparece cuántos reportes tiene, con enlace a su historial.
+- Los reportes R-102 (Luis, puntualidad) y R-088 (Ramón, higiene) son los mismos que ve la clienta Andrea en la app móvil.
+- Los datos viven en memoria en `web/src/services/reports.js`.
+
 ## Fotos
 
 Las fotos originales se optimizaron a 1400 px en `mobile/assets/photos/`. Ojo: `barberia-fachada.jpg` tiene el letrero con texto deformado ("Hugo prago… El echa derrilo"); si se usa como portada conviene recortarlo o reemplazarlo por una fachada real.
