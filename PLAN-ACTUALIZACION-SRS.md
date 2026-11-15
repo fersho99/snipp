@@ -262,7 +262,7 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-W26, RN-13 | `/pago-pendiente` al entrar (Jefe y Empleados) y aviso fijo en el panel mientras siga vencida; ocultar el negocio en la app ya está en la móvil (C5) | Hecho |
 | RF-W22 | `/panel/inicio`: citas, ventas, productos más vendidos y calificación promedio por sucursal, y citas y calificación por Empleado, con periodo (últimos 7 días, este mes, mes pasado o fechas elegidas) | Hecho (ver D7) |
 | RF-W14 | Aviso por cada reporte nuevo (número en el menú y lista en Inicio); `/panel/reportes`: bandeja con filtros por estado y Empleado, historial por Empleado; `/panel/reportes/:id`: en revisión y atendido (el cliente ve el cambio) y notas internas | Hecho |
-| RF-W10, RF-W12 | Solicitudes de ingreso y de migración por revisar en Inicio, con fecha de caducidad de la migración (W3); aceptar, horario y reasignación en W5 | Parcial |
+| RF-W10, RF-W12 (aviso) | Solicitudes de ingreso y de migración por revisar en Inicio, con fecha de caducidad de la migración (W3); aceptarlas, el horario y la reasignación están en W5 (ver abajo) | Hecho |
 | RF-W05, RF-W06 | `/panel/sucursales/nueva` y `/panel/sucursales/:id`: nombre, dirección, teléfono, descripción, horario por día y fotos (agregar, cambiar, quitar y elegir portada) | Hecho |
 | RF-W07 | Pestaña "Servicios" de cada sucursal: nombre, descripción, duración, precio y activo o inactivo | Hecho |
 | RF-W08 | "Anticipación para cancelar o reagendar" en `/panel/sucursales`, 2 horas por defecto, para todo el negocio | Hecho |
