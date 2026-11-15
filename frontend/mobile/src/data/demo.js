@@ -33,6 +33,7 @@ export const businesses = [
 export const employees = [
   { id: 'luis', name: 'Luis Ortega', specialty: 'Fades y barba', businessId: 'los-compas' },
   { id: 'ramon', name: 'Ramón Cázares', specialty: 'Corte clásico, navaja', businessId: 'los-compas' },
+  { id: 'oscar', name: 'Óscar Félix', specialty: 'Fades y diseños', businessId: 'los-compas' },
   { id: 'karla', name: 'Karla Ruiz', specialty: 'Color y mechas', businessId: 'estudio-marisol' },
   { id: 'fernanda', name: 'Fernanda Lugo', specialty: 'Uñas acrílicas', businessId: 'estudio-marisol' },
   { id: 'itzel', name: 'Itzel Duarte', specialty: 'Recepción', businessId: 'los-compas' },

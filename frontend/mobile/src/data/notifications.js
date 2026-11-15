@@ -16,7 +16,7 @@ let state = [
   {
     id: 'n7', kind: 'cancelacion', day: 'ayer', when: '7:40 pm', read: false, route: '/cita/C-10486',
     title: 'Los Compas Norte canceló tu cita del sábado 21',
-    body: 'Tu corte clásico de las 12:00 pm con Ramón Cázares. Puedes reservar otro horario.',
+    body: 'Tu corte clásico de las 12:00 pm con Óscar Félix. Puedes reservar otro horario.',
   },
   {
     id: 'n6', kind: 'pedido-listo', day: 'ayer', when: '11:30 am', read: true, route: '/pedido/P-2279',

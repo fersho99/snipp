@@ -13,8 +13,8 @@ export const CANCEL_HOURS = 2; // branch setting, default 2 hours
 const initial = [
   { folio: 'C-10482', serviceId: 'fade', employeeId: 'luis', branchId: 'los-compas-centro', date: '2026-11-19', start: 17 * 60 + 30, status: 'confirmada' },
   {
-    folio: 'C-10486', serviceId: 'corte-clasico', employeeId: 'ramon', branchId: 'los-compas-norte', date: '2026-11-21', start: 12 * 60, status: 'cancelada-negocio',
-    businessNote: 'Ramón tiene que cubrir la sucursal del centro ese día. Disculpa el cambio.', changedAt: 'ayer a las 7:40 pm',
+    folio: 'C-10486', serviceId: 'corte-clasico', employeeId: 'oscar', branchId: 'los-compas-norte', date: '2026-11-21', start: 12 * 60, status: 'cancelada-negocio',
+    businessNote: 'Óscar no va a estar en la sucursal ese día. Disculpa el cambio.', changedAt: 'ayer a las 7:40 pm',
   },
   {
     folio: 'C-10490', serviceId: 'corte-clasico', employeeId: 'luis', branchId: 'los-compas-centro', date: '2026-11-24', start: 18 * 60, status: 'cambio',

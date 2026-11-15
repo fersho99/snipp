@@ -14,6 +14,7 @@ const BOOKED_LENGTH = 45; // typical length of an existing appointment
 export const staffServices = {
   luis: ['corte-clasico', 'fade', 'barba', 'corte-barba'],
   ramon: ['corte-clasico', 'barba', 'corte-barba'],
+  oscar: ['corte-clasico', 'fade', 'barba', 'corte-barba'],
   karla: ['tinte', 'mechas'],
   fernanda: ['unas'],
 };
@@ -30,6 +31,7 @@ const breaks = {
 const daysOff = {
   luis: ['2026-11-26', '2026-11-27'],
   ramon: ['2026-12-23'],
+  oscar: ['2026-11-18', '2026-11-19', '2026-11-20'], // same vacation the web agenda shows
 };
 
 // Days the demo shows as fully booked for a professional.

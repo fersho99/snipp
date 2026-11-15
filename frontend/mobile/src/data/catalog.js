@@ -23,7 +23,7 @@ export const businessStatus = {
 };
 const inactiveBranches = []; // branch ids deactivated by their Jefe
 const inactiveServices = {}; // { branchId: [serviceId] }
-export const employeeStatus = { luis: 'activo', ramon: 'activo', karla: 'activo', fernanda: 'activo', itzel: 'activo' }; // or 'migracion-pendiente'
+export const employeeStatus = { luis: 'activo', ramon: 'activo', oscar: 'activo', karla: 'activo', fernanda: 'activo', itzel: 'activo' }; // or 'migracion-pendiente'
 
 const svc = (ids) => ids.map((id) => services.find((s) => s.id === id));
 const staff = (ids) => ids.map((id) => employees.find((e) => e.id === id));
@@ -74,10 +74,10 @@ export const branches = [
     description: 'La segunda sucursal de Los Compas, con los mismos precios. Más tranquila entre semana antes de las 4:00 pm.',
     hours: MON_SAT_10_20,
     services: svc(['corte-clasico', 'fade', 'barba', 'corte-barba']),
-    staff: staff(['ramon']),
+    staff: staff(['oscar']), // each Empleado belongs to one branch (RF-W10)
     reviews: [
-      { id: 'r4', author: 'Iván Soto', stars: 5, date: '6 de noviembre', service: 'Fade con Ramón Cázares', text: 'Sin espera y el corte quedó igual que en la del centro.' },
-      { id: 'r5', author: 'Luz Gámez', stars: 4, date: '30 de octubre', service: 'Corte clásico con Ramón Cázares', text: 'Le corté el pelo a mi hijo de 8 años. Mucha paciencia con él.' },
+      { id: 'r4', author: 'Iván Soto', stars: 5, date: '6 de noviembre', service: 'Fade con Óscar Félix', text: 'Sin espera y el corte quedó igual que en la del centro.' },
+      { id: 'r5', author: 'Luz Gámez', stars: 4, date: '30 de octubre', service: 'Corte clásico con Óscar Félix', text: 'Le corté el pelo a mi hijo de 8 años. Mucha paciencia con él.' },
     ],
   },
   {
