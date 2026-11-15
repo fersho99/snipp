@@ -3,9 +3,12 @@ import { LockSimple } from '@phosphor-icons/react'
 import { homeFor, navFor, SECTIONS } from '../../data/nav'
 import Dashboard from './Dashboard'
 import Branches from './Branches'
+import Employees from './Employees'
+import MyProfile from './MyProfile'
+import MyHistory from './MyHistory'
 
 // Sections already built. The rest show which batch builds them.
-const PAGES = { inicio: Dashboard, sucursales: Branches }
+const PAGES = { inicio: Dashboard, sucursales: Branches, empleados: Employees, perfil: MyProfile, historial: MyHistory }
 
 // /panel opens the home section of each role.
 export function PanelHome() {

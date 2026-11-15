@@ -242,6 +242,23 @@ Detalles:
 - No hay "vista previa de cómo se ve en la app": el SRS no la pide.
 - Los datos viven en memoria en `web/src/services/branches.js`; al recargar la página vuelven los de ejemplo.
 
+### Lote W5 (web): Empleados
+
+| Ruta | Quién | Qué es | Estados (`?estado=`) |
+| --- | --- | --- | --- |
+| `/panel/empleados` | Jefe | Invitar por correo a una sucursal; solicitudes de ingreso y de migración con "Aceptar" (pide el horario de trabajo) y "Rechazar"; "Por llegar" (migraciones aceptadas e invitaciones enviadas); Empleados por sucursal con especialidades, horario y migración pendiente (RF-W10) | `migracion-pendiente`, `error-guardar` |
+| `/panel/empleados/:id` | Jefe | Perfil (lo edita el Empleado), horario de trabajo editable, historial de citas (RF-W17) y desvincular (RF-W13). Con migración pendiente: "¿Quién toma sus citas?" (RF-W12, RN-11) | `migracion-pendiente`, `error-guardar` |
+| `/panel/perfil` | Empleado | Foto, nombre visible y especialidades (RF-W11). Con negocio: solicitar migración, solicitud enviada, caducada o aceptada (RF-W12). Sin negocio: aceptar una invitación o pedir unirse a una sucursal (RF-W10) | `migracion-enviada`, `migracion-caducada`, `migracion-aceptada`, `invitacion`, `error-guardar` |
+| `/panel/historial` | Empleado | Su propio historial de citas, igual al que ve su Jefe (RF-W17) | – |
+
+- **Reasignar citas** (migración y desvincular): para cada cita futura el sistema propone a otro Empleado de la sucursal que trabaje a esa hora y esté libre; el Jefe la confirma o la cambia. Si nadie está libre, en una migración la atiende el mismo Empleado y en un desvínculo se cancela con aviso al cliente. Reagendar a otro día se hace desde la Agenda (W6).
+- La migración se completa cuando al Empleado no le quedan citas; el Jefe ve el aviso en Empleados. Las citas, reseñas e historial se quedan en el negocio (RN-12).
+- Óscar Félix es el único Empleado de Los Compas Norte: al desvincularlo nadie está libre para sus citas (caso de RN-11).
+- Itzel Duarte es recepcionista: no recibe citas, así que no tiene historial de citas.
+- La solicitud de migración caduca a los 7 días sin respuesta; el Empleado puede volver a enviarla.
+- "Rechazar" una solicitud no aparece en el SRS; ver la decisión D9 del plan.
+- Los datos viven en memoria en `web/src/services/staff.js` y `web/src/data/staff.js`.
+
 ## Fotos
 
 Las fotos originales se optimizaron a 1400 px en `mobile/assets/photos/`. Ojo: `barberia-fachada.jpg` tiene el letrero con texto deformado ("Hugo prago… El echa derrilo"); si se usa como portada conviene recortarlo o reemplazarlo por una fachada real.

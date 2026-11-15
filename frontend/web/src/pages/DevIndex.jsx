@@ -41,6 +41,18 @@ const SCREENS = [
       { title: 'Sucursal que no es del negocio', path: '/panel/sucursales/estudio-marisol-centro?como=jefe', states: [] },
     ],
   },
+  {
+    group: 'Lote W5: Empleados',
+    items: [
+      { title: 'Jefe: Empleados por sucursal, invitar y solicitudes de ingreso y migración', path: '/panel/empleados?como=jefe', states: [['Ramón con migración pendiente', 'migracion-pendiente'], ['Error al guardar', 'error-guardar']] },
+      { title: 'Jefe: perfil, horario, historial y desvincular (Luis Ortega)', path: '/panel/empleados/luis?como=jefe', states: [['Error al guardar', 'error-guardar']] },
+      { title: 'Jefe: reasignar las citas de Ramón (migración pendiente)', path: '/panel/empleados/ramon?como=jefe&estado=migracion-pendiente', states: [] },
+      { title: 'Jefe: Óscar, único Empleado de Norte (nadie libre para sus citas)', path: '/panel/empleados/oscar?como=jefe', states: [] },
+      { title: 'Empleado: mi perfil y solicitar migración (Luis Ortega)', path: '/panel/perfil?como=empleado', states: [['Solicitud enviada', 'migracion-enviada'], ['Solicitud caducada', 'migracion-caducada'], ['Migración aceptada (pendiente)', 'migracion-aceptada'], ['Error al guardar', 'error-guardar']] },
+      { title: 'Empleado: mi historial de citas', path: '/panel/historial?como=empleado', states: [] },
+      { title: 'Empleado sin negocio: perfil y unirse a un negocio (Sofía Ramos)', path: '/panel/perfil?como=sin-negocio', states: [['Invitación recibida', 'invitacion']] },
+    ],
+  },
 ]
 
 export default function DevIndex() {

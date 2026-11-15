@@ -8,6 +8,7 @@ import { navFor } from '../data/nav'
 import { currentSession, devSignIn, networkMessage } from '../services/auth'
 import { pendingFor } from '../services/dashboard'
 import { resetDemoBranches, useBusinessSetup } from '../services/branches'
+import { resetDemoStaff } from '../services/staff'
 import { getPickedBranch, loadPanel, setDemoEstado, setPickedBranch, signOut, subscriptionStatus } from '../services/panel'
 
 // Screen index shortcut (development only): ?como=jefe | empleado | sin-negocio | admin
@@ -29,6 +30,7 @@ export default function PanelLayout() {
       devSignIn(DEV_ACCOUNTS[como].email)
       setDemoEstado(estado)
       resetDemoBranches(DEV_ACCOUNTS[como].businessId, estado === 'sin-sucursales')
+      resetDemoStaff(estado)
     } else if (estado) setDemoEstado(estado)
   })
 

@@ -30,6 +30,7 @@ export default function App() {
         <Route path=":section" element={<Section />} />
         <Route path="sucursales/nueva" element={<Section id="sucursales" sub="nueva" />} />
         <Route path="sucursales/:branchId" element={<Section id="sucursales" sub="editar" />} />
+        <Route path="empleados/:employeeId" element={<Section id="empleados" sub="detalle" />} />
       </Route>
       <Route path="/pago-pendiente" element={<OverduePayment />} />
       <Route path="*" element={<Navigate to="/entrar" replace />} />

@@ -106,8 +106,8 @@ export const newReports = [
 // Requests waiting for the Jefe: to join a branch (RF-W10) or to migrate
 // from another business (RF-W12). Unanswered, they expire after 7 days (RN-11).
 export const pendingRequests = [
-  { id: 'S-31', businessId: 'los-compas', kind: 'ingreso', name: 'Sofía Ramos', branchId: 'los-compas-centro', sentOn: new Date(2026, 10, 10) },
-  { id: 'S-32', businessId: 'los-compas', kind: 'migracion', name: 'Diego Armenta', from: 'Barbería El Faro', branchId: 'los-compas-norte', sentOn: new Date(2026, 10, 6) },
+  { id: 'S-31', businessId: 'los-compas', kind: 'ingreso', name: 'Sofía Ramos', email: 'sofia.ramos@gmail.com', branchId: 'los-compas-centro', sentOn: new Date(2026, 10, 10) },
+  { id: 'S-32', businessId: 'los-compas', kind: 'migracion', name: 'Diego Armenta', email: 'diego.armenta@gmail.com', from: 'Barbería El Faro', branchId: 'los-compas-norte', sentOn: new Date(2026, 10, 6) },
 ]
 
 // Demo accounts. The password for all of them is in frontend/README.md.

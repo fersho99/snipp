@@ -25,7 +25,7 @@ Este plan explica cómo llevar las plantillas de frontend ya construidas, y las 
 | --- | --- |
 | App móvil, lotes M1 a M5 (cuenta, búsqueda, reserva, mis citas, tienda y pago) | **Ajustados** (fases 1 y 2 aplicadas el 14/11/2026): SNIPP, escala de grises, Q1–Q13 quitados, C1–C11 corregidos. |
 | App móvil, lote M6 (pedidos, reseñas, reportes, puntos, notificaciones) | **Hecho** como plantilla el 14/11/2026 (fase 3). Falta conectar la API y OneSignal (fase 5). |
-| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro), W2 (estructura del panel), W3 (inicio del Jefe) y W4 (sucursales y servicios) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W5 a W9 pendientes (sección 6). |
+| Plataforma web (Jefe, Empleado, Administrador) | Lotes W1 (acceso y registro), W2 (estructura del panel), W3 (inicio del Jefe), W4 (sucursales y servicios) y W5 (Empleados) **hechos** como plantilla el 14/11/2026 en `frontend/web`. W6 a W9 pendientes (sección 6). |
 | API, base de datos, Stripe real, OneSignal, servidor | Fuera de este frontend; son dependencias (sección 7). |
 | Repositorio GitHub (RNF-G08) | En github.com/fersho99/snipp, rama `main`. |
 
@@ -227,6 +227,7 @@ Cada fase se revisa contra este plan antes de pasar a la siguiente.
 | D6 | ¿Se cambia la tipografía para que combine con el logo? El logo usa una sans geométrica tipo Montserrat; hoy la app usa Bricolage Grotesque y Onest. | Usar Montserrat en títulos para que combinen con el logo y dejar Onest en el texto. |
 | D7 | RF-W22 pide "ventas" por empleado, pero en el SRS las citas se pagan en la sucursal (RN-05) y los pedidos de la tienda no quedan ligados a un Empleado. | **Pendiente de confirmar.** Por ahora el dashboard muestra ventas por sucursal y, por Empleado, sus citas y su calificación. Si el cliente quiere ventas por Empleado, hay que definir cómo se asigna cada pedido y registrarlo en el control de cambios. |
 | D8 | En los datos de ejemplo de la app móvil, Ramón Cázares aparece en las dos sucursales de Los Compas, pero un Empleado está vinculado a una sola sucursal (glosario, RF-W10). | **Pendiente de corregir en la móvil.** En la web, Ramón queda en Centro y Los Compas Norte tiene a Óscar Félix. Falta pasar a Óscar la cita C-10486, las reseñas de Norte y la lista de profesionales de Norte en `mobile/src/data`. |
+| D9 | RF-W10 dice que el Jefe vincula "aceptando su solicitud", pero no dice si puede rechazarla. | Se agregó "Rechazar" junto a "Aceptar" en las solicitudes de ingreso y migración, porque sin él una solicitud de ingreso (que no caduca) se quedaría para siempre. Si el cliente no lo quiere, se quita. |
 
 ---
 
@@ -265,7 +266,12 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-W08 | "Anticipación para cancelar o reagendar" en `/panel/sucursales`, 2 horas por defecto, para todo el negocio | Hecho |
 | RF-W09, RN-14 | Desactivar con confirmación (dice cuántas citas agendadas tiene y que se respetan) y reactivar con los datos intactos | Hecho |
 | RNF-W05 | Solo JPG o PNG de hasta 5 MB, con mensaje por cada archivo rechazado; la optimización la hace la API | Hecho en el panel |
-| RF-W11, RF-W13, RF-W15 a RF-W21, RF-W23, RF-W24, RF-W28 | Plataforma web, lotes W5 a W9 | Pendiente |
+| RF-W10 | Invitar por correo o aceptar la solicitud de ingreso, asignando el horario de trabajo; el Empleado sin negocio pide unirse o acepta la invitación desde Mi perfil | Hecho |
+| RF-W11 | Mi perfil del Empleado: foto (JPG o PNG hasta 5 MB), nombre visible y especialidades | Hecho |
+| RF-W12, RN-11 | Empleado: solicitar migración (enviada, caducada a los 7 días, aceptada). Jefe de destino: aceptar con horario. Jefe de origen: "migración pendiente" y reasignar cada cita futura con la propuesta del sistema (si nadie está libre, la atiende el mismo Empleado); se completa al no quedarle citas y el Jefe recibe el aviso | Hecho |
+| RF-W13, RN-12 | Desvincular: cada cita futura pasa a otro Empleado libre o se cancela con aviso; la cuenta sigue activa y el historial se queda en el negocio | Hecho |
+| RF-W17 | Historial de citas por Empleado (confirmadas, canceladas, reagendadas, con fecha y quién) para el Jefe y para el propio Empleado | Hecho |
+| RF-W15, RF-W16, RF-W18 a RF-W21, RF-W23, RF-W24, RF-W28 | Plataforma web, lotes W6 a W9 | Pendiente |
 | RNF-M01 a RNF-M04, RNF-W01 a RNF-W05 | Sección 7.1 | Pendiente de medir |
 | RNF-G01 a RNF-G08 | Sección 7.2 | Dependencia de back-end e infraestructura |
 
