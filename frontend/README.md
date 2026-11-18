@@ -2,7 +2,7 @@
 
 > **Fuente de verdad: SRS v1.1 (13/11/2026).** El plan está en [`../PLAN-ACTUALIZACION-SRS.md`](../PLAN-ACTUALIZACION-SRS.md). Las fases 1 (identidad SNIPP en escala de grises) y 2 (quitar extras y corregir reglas en M1–M5) ya están aplicadas; ver "Actualización al SRS v1.1" al final. Las secciones de lotes de abajo describen cómo se construyeron; donde contradigan al SRS, gana el SRS y la sección final.
 
-- `mobile/`: app de clientes, Expo SDK 58 + React Native (JavaScript) + Expo Router.
+- `mobile/`: app de clientes, Expo SDK 58 + React Native + Expo Router, en TypeScript estricto (migrado de JavaScript el 17/11/2026 sin cambiar pantallas, textos ni reglas).
 - `web/`: panel para Jefe, Empleado y Administrador: Next.js 16 (App Router) + TypeScript estricto + Tailwind CSS 4. Lotes W1 a W9 hechos; migrado de Vite + JavaScript el 17/11/2026 sin cambiar pantallas, textos ni reglas.
 
 ## Correr la app móvil
@@ -12,6 +12,7 @@ cd frontend/mobile
 npm install
 npx expo start          # Android: tecla "a", o escanea el QR con Expo Go
 npx expo start --web    # vista previa en el navegador, en una columna de 390 px
+npm run typecheck       # TypeScript estricto, sin generar archivos
 ```
 
 En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`). Solo existe en desarrollo; la APK abre directo en "Entrar".
@@ -45,10 +46,11 @@ La estructura de carpetas de la web está en [`web/README.md`](web/README.md).
 
 ```
 mobile/src/
-  app/          pantallas (una ruta por archivo)
+  app/          pantallas (una ruta por archivo, .tsx)
   components/   Txt, Button, TextField, Screen/BackButton, States (OfflineState, ErrorNote, Skeleton, PhotoPlaceholder)
-  theme/        tokens.js (paleta, espacios, tipografía), format.js (dinero MXN, horas, fechas)
-  data/demo.js  datos de ejemplo compartidos por todos los lotes
+  theme/        tokens.ts (paleta, espacios, tipografía), format.ts (dinero MXN, horas, fechas)
+  data/         datos de ejemplo (demo.ts compartido por todos los lotes) y almacenes en memoria
+  types/        domain.ts: tipos del dominio (sucursal, cita, pedido, ...), los mismos que usará la API
   hooks/        useConnectivity (sin modo sin conexión: pantalla de reintento)
 ```
 
@@ -83,7 +85,7 @@ Composición:
 - **Resultados**: el buscador conserva la búsqueda; los servicios son texto horizontal y el activo se marca con peso y una barra terracota de 3 px. El título cuenta los resultados ("2 lugares hacen fade cerca de ti") y cada fila muestra el precio del servicio filtrado.
 - **Sucursal**: la galería a todo lo ancho manda; luego nombre, calificación, horario de hoy resaltado (la semana completa se abre en un bloque de tono hundido), servicios como lista tipográfica sin divisores, profesionales, reseñas y una barra fija con "Reservar".
 
-Datos que se agregaron (no venían en el prompt maestro y se pueden cambiar en `src/data/catalog.js`): colonias de Los Compas Norte y Navaja Fina, teléfonos, distancias, calificaciones (Los Compas 4.7 de 212 reseñas, Norte 4.5 de 86, Estudio Marisol 4.8 de 143, Navaja Fina sin reseñas), horarios, qué servicios y qué profesionales hay en cada sucursal, y los textos de las reseñas.
+Datos que se agregaron (no venían en el prompt maestro y se pueden cambiar en `src/data/catalog.ts`): colonias de Los Compas Norte y Navaja Fina, teléfonos, distancias, calificaciones (Los Compas 4.7 de 212 reseñas, Norte 4.5 de 86, Estudio Marisol 4.8 de 143, Navaja Fina sin reseñas), horarios, qué servicios y qué profesionales hay en cada sucursal, y los textos de las reseñas.
 
 Las fotos de los profesionales se muestran como bloques con el nombre del archivo esperado (`luis-ortega.jpg`, etc.) hasta que haya fotos reales.
 
@@ -104,7 +106,7 @@ Composición:
 - **Confirmación**: resumen en pares etiqueta/valor, bloque hundido con "Pagas en la sucursal" y el precio, y la política con la hora límite real ("hasta el jueves 20 de noviembre a las 3:30 pm") y el teléfono de la sucursal.
 - **Horario ocupado**: aviso en ladrillo, los tres horarios libres más cercanos de ese día y "Elegir otro día".
 
-Reglas de disponibilidad (demo de lo que devolverá la API) en `src/data/availability.js`: horario de la sucursal, descansos y vacaciones por profesional, citas existentes generadas de forma fija por día, mínimo una hora de anticipación para hoy y anticipación de 2 horas para cancelar. Qué servicios hace cada profesional está en `staffServices`.
+Reglas de disponibilidad (demo de lo que devolverá la API) en `src/data/availability.ts`: horario de la sucursal, descansos y vacaciones por profesional, citas existentes generadas de forma fija por día, mínimo una hora de anticipación para hoy y anticipación de 2 horas para cancelar. Qué servicios hace cada profesional está en `staffServices`.
 
 "Agregar a mi calendario" abre Google Calendar con el evento ya lleno; si prefieren guardarlo directo en el calendario del teléfono, el cambio es usar `expo-calendar`.
 
@@ -124,7 +126,7 @@ Composición:
 - **Menos de 2 horas**: no hay botones de cancelar ni reagendar; en su lugar, la explicación con los minutos que faltan y "Llamar a Barbería Los Compas".
 - **Aviso de cambio**: la frase completa del cambio como título, Antes (tachado) y Ahora, lo que no cambia y el mensaje de la barbería. Abajo: Aceptar, Reagendar y Cancelar, sin límite de anticipación.
 
-Estados y reglas en `src/data/appointments.js`. Es un almacén en memoria para la demo: lo que canceles, aceptes o reagendes se ve en todas las pantallas hasta que recargues la página.
+Estados y reglas en `src/data/appointments.ts`. Es un almacén en memoria para la demo: lo que canceles, aceptes o reagendes se ve en todas las pantallas hasta que recargues la página.
 
 Datos agregados: citas C-10486, C-10490, C-10497, C-10431, C-10402, C-10388, C-10370 y C-10355 (el prompt solo daba C-10482), con sus motivos y mensajes.
 
@@ -151,9 +153,9 @@ Composición:
 - **Carrito**: título "2 piezas por $420", líneas con miniatura y contador de 48 dp (en 0 se quita), bloque hundido para canjear puntos (solo si son del mismo negocio: "Tienes 27 puntos en Los Compas: $27 de descuento"), subtotal, descuento, total y puntos que ganas. Fijo abajo: "Se recoge en Av. Obregón y Calle 5, no hay envío" y "Pagar $393 con tarjeta".
 - **Pedido confirmado**: "Pagado con Visa terminada en 4242", folio como título, bloque hundido con dónde, horario de hoy y qué mostrar al recoger, y línea de tiempo tipográfica (Pagado, Listo para recoger, Entregado).
 
-Pago: `src/services/payments.js` deja escrito el flujo real con `@stripe/stripe-react-native` (PaymentSheet) y por ahora simula el resultado. Para conectarlo falta: el backend que cree el PaymentIntent y confirme con el webhook, instalar el SDK y hacer un build de desarrollo (PaymentSheet no corre en Expo Go ni en web). El monto siempre lo calcula el servidor.
+Pago: `src/services/payments.ts` deja escrito el flujo real con `@stripe/stripe-react-native` (PaymentSheet) y por ahora simula el resultado. Para conectarlo falta: el backend que cree el PaymentIntent y confirme con el webhook, instalar el SDK y hacer un build de desarrollo (PaymentSheet no corre en Expo Go ni en web). El monto siempre lo calcula el servidor.
 
-Datos agregados (en `src/data/shop.js`): existencias de Los Compas Norte (pomada 3, cera 5) y Navaja Fina (aceite 4, pomada 8); Estudio Marisol sin productos; descripciones y modo de uso; regla de puntos de ejemplo ($10 = 1 punto, 1 punto = $1, la del lote W8); pedidos anteriores P-2264 (entregado) y P-2250 (cancelado con reembolso), que usa el lote M6. Solo la pomada usa una foto real (`producto-frasco.jpg`); los otros productos muestran el bloque con el nombre de archivo esperado.
+Datos agregados (en `src/data/shop.ts`): existencias de Los Compas Norte (pomada 3, cera 5) y Navaja Fina (aceite 4, pomada 8); Estudio Marisol sin productos; descripciones y modo de uso; regla de puntos de ejemplo ($10 = 1 punto, 1 punto = $1, la del lote W8); pedidos anteriores P-2264 (entregado) y P-2250 (cancelado con reembolso), que usa el lote M6. Solo la pomada usa una foto real (`producto-frasco.jpg`); los otros productos muestran el bloque con el nombre de archivo esperado.
 
 También: el perfil de sucursal ahora tiene la sección "Productos para recoger aquí" con acceso a la tienda.
 
@@ -178,9 +180,9 @@ Qué hace cada una:
 - **Reportar:** cita relacionada, motivo (trato, puntualidad, higiene, calidad del servicio u otro) y descripción, con el texto C12: "Solo lo ven el Jefe de [negocio] y el Administrador de SNIPP. [Empleado] no verá tu reporte ni tus datos." Al enviarse queda en estado "Enviado".
 - **Mis reportes:** cada reporte con su estado (enviado, en revisión, atendido).
 - **Puntos:** saldo por negocio, regla del negocio, movimientos (citas atendidas, compras, canjes) y acceso a la tienda donde se canjean. El saldo sale de los movimientos y el pago en el carrito descuenta y suma puntos.
-- **Notificaciones:** lista agrupada en Hoy, Ayer y Antes; cada una abre la cita o el pedido. Reservar, cancelar y reagendar en la demo agregan la notificación correspondiente. El push real con OneSignal está documentado en `src/services/notifications.js` (fase 5).
+- **Notificaciones:** lista agrupada en Hoy, Ayer y Antes; cada una abre la cita o el pedido. Reservar, cancelar y reagendar en la demo agregan la notificación correspondiente. El push real con OneSignal está documentado en `src/services/notifications.ts` (fase 5).
 
-Datos agregados: cita C-10318 (atendida, calificada y con reporte atendido), descripción y motivo en los reportes, pedido P-2279 listo para recoger, canje de 73 puntos en P-2264 y movimientos de puntos que suman 27 en Barbería Los Compas (`src/data/shop.js`), notificaciones de ejemplo (`src/data/notifications.js`).
+Datos agregados: cita C-10318 (atendida, calificada y con reporte atendido), descripción y motivo en los reportes, pedido P-2279 listo para recoger, canje de 73 puntos en P-2264 y movimientos de puntos que suman 27 en Barbería Los Compas (`src/data/shop.ts`), notificaciones de ejemplo (`src/data/notifications.ts`).
 
 ## Lote W1 (web): acceso y registro (hecho)
 
@@ -320,6 +322,15 @@ Detalles:
 - Decisiones abiertas del plan: D10 ("Se ofrece" en planes y "Mantenerla" en reseñas) y D11 (qué ve el panel de un negocio suspendido).
 - Los datos viven en memoria en `web/src/services/subscriptions.ts`.
 
+## Cambios tras la aprobación (17/11/2026)
+
+- **Semáforo en la Agenda web** (`/panel/agenda?como=jefe`, vista Día y Semana): verde confirmada, naranja esperando respuesta, rojo cancelada, gris terminada, con leyenda.
+- **Confirmación en verde:** los avisos de acción hecha son verdes en la web y en la app; las acciones sin aviso en la página muestran un aviso breve verde abajo.
+- **Carrito siempre visible en la app:** pestaña "Carrito" con contador, ícono con contador en la sucursal, la tienda y el producto, y aviso "Agregaste… al carrito" con "Ver carrito".
+- **Carga:** los botones se bloquean y muestran spinner con su texto mientras guardan.
+
+El detalle y los colores están en la sección 12 de [`../PLAN-ACTUALIZACION-SRS.md`](../PLAN-ACTUALIZACION-SRS.md).
+
 ## Fotos
 
 Las fotos originales se optimizaron a 1400 px en `mobile/assets/photos/`. Ojo: `barberia-fachada.jpg` tiene el letrero con texto deformado ("Hugo prago… El echa derrilo"); si se usa como portada conviene recortarlo o reemplazarlo por una fachada real.
@@ -329,7 +340,7 @@ Las fotos originales se optimizaron a 1400 px en `mobile/assets/photos/`. Ojo: `
 Identidad:
 - Nombre **SNIPP** en `app.json` (`slug: snipp`, `scheme: snipp`, paquete Android `mx.snipp.app`) y en todos los textos. Sin bloque iOS (fuera de alcance).
 - Logo: ícono, ícono adaptable, monocromo, splash y favicon generados de `brand/snipp-logo.png`; componente `Logo` (isotipo + palabra) en Entrar e Inicio.
-- Paleta en escala de grises (`theme/tokens.js`): fondo `#F5F5F5`, superficie `#FFFFFF`, hundido `#E8E8E8`, tinta `#141414`, tinta secundaria `#595959`. Las fotos de los negocios conservan su color (decisión D1).
+- Paleta en escala de grises (`theme/tokens.ts`): fondo `#F5F5F5`, superficie `#FFFFFF`, hundido `#E8E8E8`, tinta `#141414`, tinta secundaria `#595959`. Las fotos de los negocios conservan su color (decisión D1).
 - Estados sin color: `StatusLine` usa ícono + texto (palomita confirmada/atendida, reloj pendiente, X cancelada/no se presentó). Los avisos de error llevan ícono.
 - Títulos en Montserrat (combina con el logo), texto en Onest.
 

@@ -11,6 +11,7 @@ import { networkMessage, type ApiError } from '../../services/auth'
 import { imageProblem, MAX_IMAGE_MB } from '../../services/branches'
 import { adjustStock, productLabel, saveProduct, useShopStore } from '../../services/shop'
 import { longDate, money, timeOfDay } from '../../theme'
+import { toast } from '@/lib/toast'
 
 // Productos e inventario of the branch picked in the menu (RF-W19, RF-W20).
 // `sub` = 'detalle' opens one product (or "nuevo").
@@ -232,7 +233,10 @@ function ProductEditor() {
     const data = { ...(existing ?? {}), name: form.name.trim(), size: form.size.trim(), price, description: form.description.trim(), howTo: form.howTo.trim(), photo: form.photo, stock: isNew || !existing ? Number(form.stock) : existing.stock }
     try {
       await saveProduct(activeBranch.id, data)
-      if (isNew) router.replace('/panel/productos')
+      if (isNew) {
+        toast(`Agregaste ${productLabel({ name: data.name, size: data.size })}. Ya aparece en la tienda de la app.`)
+        router.replace('/panel/productos')
+      }
       else setSaved(true)
     } catch (err) {
       setFailure(err as ApiError)
