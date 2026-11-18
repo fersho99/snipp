@@ -29,7 +29,12 @@
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "typescript": "~6.0.3"
+  }
 }
