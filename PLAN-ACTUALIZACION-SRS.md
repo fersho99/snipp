@@ -150,7 +150,7 @@ Navegación: "Mis pedidos", "Mis reportes" y "Puntos" se abren desde la pestaña
 
 ## 6. Plataforma web (pendiente)
 
-Stack: React con Tailwind (SRS 2.3), responsiva para escritorio y tableta (RNF-W03), con la misma identidad SNIPP en escala de grises. Cada rol ve solo sus opciones (RF-W04, RNF-W04).
+Stack: React con Tailwind (SRS 2.3), sobre Next.js 16 con TypeScript desde el 17/11/2026 (decisión del equipo tras aprobarse las pantallas; Next.js es React, así que sigue cumpliendo SRS 2.3), responsiva para escritorio y tableta (RNF-W03), con la misma identidad SNIPP en escala de grises. Cada rol ve solo sus opciones (RF-W04, RNF-W04).
 
 | Lote | Pantallas | Requerimientos | Del documento de prompts se quita |
 | --- | --- | --- | --- |
