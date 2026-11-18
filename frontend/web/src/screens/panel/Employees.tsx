@@ -14,6 +14,7 @@ import { networkMessage, type ApiError } from '../../services/auth'
 import { acceptRequest, expiresOn, inviteEmployee, rejectRequest, useStaffStore } from '../../services/staff'
 import { isEmail, longDate } from '../../theme'
 import EmployeeDetail from './EmployeeDetail'
+import { toast } from '@/lib/toast'
 
 // Empleados (RF-W10 to RF-W13, RF-W17). `sub` = 'detalle' opens one Empleado.
 export default function Employees({ sub }: { sub?: string }) {
@@ -196,6 +197,7 @@ function RequestRow({ request: r, branchName }: { request: JoinRequest; branchNa
     setFailure(null)
     try {
       await acceptRequest(r.id, schedule)
+      toast(isMigration ? `Aceptaste la migración de ${r.name}. Llega cuando termine su última cita en su negocio actual.` : `Aceptaste a ${r.name}. Ya aparece en Empleados con su horario.`)
     } catch (err) {
       setFailure(err as ApiError)
       setBusy(null)
@@ -206,6 +208,7 @@ function RequestRow({ request: r, branchName }: { request: JoinRequest; branchNa
     setFailure(null)
     try {
       await rejectRequest(r.id)
+      toast(`Rechazaste la solicitud de ${r.name}.`)
     } catch (err) {
       setFailure(err as ApiError)
       setBusy(null)

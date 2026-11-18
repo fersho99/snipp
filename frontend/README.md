@@ -322,6 +322,15 @@ Detalles:
 - Decisiones abiertas del plan: D10 ("Se ofrece" en planes y "Mantenerla" en reseñas) y D11 (qué ve el panel de un negocio suspendido).
 - Los datos viven en memoria en `web/src/services/subscriptions.ts`.
 
+## Cambios tras la aprobación (17/11/2026)
+
+- **Semáforo en la Agenda web** (`/panel/agenda?como=jefe`, vista Día y Semana): verde confirmada, naranja esperando respuesta, rojo cancelada, gris terminada, con leyenda.
+- **Confirmación en verde:** los avisos de acción hecha son verdes en la web y en la app; las acciones sin aviso en la página muestran un aviso breve verde abajo.
+- **Carrito siempre visible en la app:** pestaña "Carrito" con contador, ícono con contador en la sucursal, la tienda y el producto, y aviso "Agregaste… al carrito" con "Ver carrito".
+- **Carga:** los botones se bloquean y muestran spinner con su texto mientras guardan.
+
+El detalle y los colores están en la sección 12 de [`../PLAN-ACTUALIZACION-SRS.md`](../PLAN-ACTUALIZACION-SRS.md).
+
 ## Fotos
 
 Las fotos originales se optimizaron a 1400 px en `mobile/assets/photos/`. Ojo: `barberia-fachada.jpg` tiene el letrero con texto deformado ("Hugo prago… El echa derrilo"); si se usa como portada conviene recortarlo o reemplazarlo por una fachada real.

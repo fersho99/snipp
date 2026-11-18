@@ -13,6 +13,7 @@ import useConnectivity from '../hooks/useConnectivity';
 import { client } from '../data/demo';
 import { pointBalances } from '../data/shop';
 import { color, space, touch } from '../theme/tokens';
+import { DoneNote } from '../components/Done';
 
 const AVATAR = 88;
 
@@ -135,9 +136,7 @@ export default function EditProfile() {
           </ErrorNote>
         ) : null}
         {savedAt && !dirty ? (
-          <Txt variant="small" style={{ color: color.ink }} accessibilityLiveRegion="polite">
-            Guardado a las {savedAt}. Tus próximas citas ya muestran estos datos.
-          </Txt>
+          <DoneNote>Guardado a las {savedAt}. Tus próximas citas ya muestran estos datos.</DoneNote>
         ) : null}
       </View>
     </Screen>

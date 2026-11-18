@@ -1,7 +1,10 @@
 @import "tailwindcss";
 
-/* SNIPP web: same grayscale identity as the app (SRS v1.1, decision D1).
-   Photos keep their color; the interface does not use any. */
+/* SNIPP web: grayscale identity shared with the app (SRS v1.1, decision D1).
+   Photos keep their color. Since the screens were approved (17/11/2026) the
+   client asked for three status colors: green (done / confirmed), orange
+   (pending) and red (cancelled). Each one passes WCAG AA (4.5:1 or more)
+   on white, paper and its soft tint, and always goes with an icon and text. */
 @theme {
   --color-paper: #F5F5F5;
   --color-raised: #FFFFFF;
@@ -12,6 +15,13 @@
   --color-ink-soft: #595959;
   --color-gray-light: #BDBDBD;
   --color-divider: #DCDCDC;
+
+  --color-success: #1E7B34;
+  --color-success-soft: #E7F4EA;
+  --color-warning: #A8530A;
+  --color-warning-soft: #FCEFE0;
+  --color-danger: #C42B2B;
+  --color-danger-soft: #FCEBEB;
 
   --font-title: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-onest), ui-sans-serif, system-ui, sans-serif;

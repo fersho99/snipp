@@ -91,16 +91,19 @@ export function TextField({ label, hint, error, secure, prefix, className = '', 
   )
 }
 
-// Inline message with a 3 px bar: a failed request (error) or a done action (done).
+// Inline message with a 3 px bar: a failed request (error) or a done action
+// (done). A done action is green (client request after the approval): soft
+// green fill, green bar and icon, text in ink so it stays easy to read.
 type NoteProps = { tone?: 'error' | 'done'; title: ReactNode; children?: ReactNode; action?: ReactNode }
 export function Note({ tone = 'error', title, children, action }: NoteProps) {
-  const Icon = tone === 'done' ? CheckCircle : WarningCircle
+  const done = tone === 'done'
+  const Icon = done ? CheckCircle : WarningCircle
   return (
-    <div className="flex gap-3" role={tone === 'error' ? 'alert' : 'status'}>
-      <span className="w-[3px] shrink-0 rounded-full bg-ink" />
+    <div className={`flex gap-3 ${done ? 'rounded-control bg-success-soft py-3 pr-4' : ''}`} role={done ? 'status' : 'alert'}>
+      <span className={`w-[3px] shrink-0 rounded-full ${done ? 'bg-success' : 'bg-ink'}`} />
       <div className="flex flex-col gap-1">
         <p className="flex items-start gap-1.5 font-semibold">
-          <Icon size={18} weight="fill" className="mt-0.5 shrink-0" />
+          <Icon size={18} weight="fill" className={`mt-0.5 shrink-0 ${done ? 'text-success' : ''}`} />
           {title}
         </p>
         {children ? <p className="text-sm">{children}</p> : null}

@@ -53,14 +53,13 @@ export default function Button({ label, onPress, variant = 'primary', loading, d
         style,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator color={isPrimary ? color.white : color.ink} />
-      ) : (
-        <View style={styles.row}>
-          {icon}
-          <Txt style={[styles.label, { color: isPrimary ? color.white : color.ink }]}>{label}</Txt>
-        </View>
-      )}
+      {/* While it works, the button stays locked and shows a spinner next to
+          its label, so the person knows it is processing and does not tap
+          twice (client request after the approval). */}
+      <View style={styles.row}>
+        {loading ? <ActivityIndicator size="small" color={isPrimary ? color.white : color.ink} /> : icon}
+        <Txt style={[styles.label, { color: isPrimary ? color.white : color.ink }]}>{label}</Txt>
+      </View>
     </Pressable>
   );
 }

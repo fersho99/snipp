@@ -1,7 +1,9 @@
 import type { TextStyle } from 'react-native';
 
-// SNIPP design tokens. The whole interface is grayscale (photos keep their
-// own color). No state is told apart by color alone: each one pairs an icon
+// SNIPP design tokens. The interface is grayscale (photos keep their own
+// color) plus three status colors the client asked for after the approval
+// (17/11/2026): green (done), orange (pending), red (cancelled). Each one
+// passes WCAG AA (4.5:1 or more) on white, paper and its soft tint. No state is told apart by color alone: each one pairs an icon
 // with explicit text (see components/Appointment.tsx StatusLine).
 // Contrast (WCAG): ink on paper 16.9, inkSoft on paper 6.4, on sunken 5.7.
 
@@ -18,6 +20,12 @@ export const color = {
   divider: '#DCDCDC', // 1 px between rows of dense web tables only
   white: '#FFFFFF',
   scrim: 'rgba(20,20,20,0.5)',
+  success: '#1E7B34',
+  successSoft: '#E7F4EA',
+  warning: '#A8530A',
+  warningSoft: '#FCEFE0',
+  danger: '#C42B2B',
+  dangerSoft: '#FCEBEB',
 };
 
 export const space = { xs: 4, s: 8, m: 12, l: 16, xl: 24, xxl: 32, xxxl: 48, huge: 64 };

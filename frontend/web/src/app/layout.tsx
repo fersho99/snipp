@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Montserrat, Onest } from 'next/font/google'
 import ClientOnly from '@/components/ClientOnly'
+import Toaster from '@/components/Toaster'
 import './globals.css'
 
 const montserrat = Montserrat({ subsets: ['latin'], weight: ['600', '700'], variable: '--font-montserrat' })
@@ -19,7 +20,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es-MX" className={`${montserrat.variable} ${onest.variable}`}>
       <body>
-        <ClientOnly>{children}</ClientOnly>
+        <ClientOnly>
+          {children}
+          <Toaster />
+        </ClientOnly>
       </body>
     </html>
   )

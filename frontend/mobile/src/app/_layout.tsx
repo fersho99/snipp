@@ -6,6 +6,7 @@ import { useFonts } from 'expo-font';
 import { Montserrat_600SemiBold, Montserrat_700Bold } from '@expo-google-fonts/montserrat';
 import { Onest_400Regular, Onest_500Medium, Onest_600SemiBold } from '@expo-google-fonts/onest';
 import { color } from '../theme/tokens';
+import { Toaster } from '../components/Done';
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -34,10 +35,16 @@ export default function RootLayout() {
       {Platform.OS === 'web' ? (
         // On web, preview the app inside a 390 px phone-width column.
         <View style={styles.webBackdrop}>
-          <View style={styles.webPhone}>{stack}</View>
+          <View style={styles.webPhone}>
+            {stack}
+            <Toaster />
+          </View>
         </View>
       ) : (
-        stack
+        <>
+          {stack}
+          <Toaster />
+        </>
       )}
     </SafeAreaProvider>
   );
