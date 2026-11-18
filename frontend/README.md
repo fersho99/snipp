@@ -3,7 +3,7 @@
 > **Fuente de verdad: SRS v1.1 (13/11/2026).** El plan está en [`../PLAN-ACTUALIZACION-SRS.md`](../PLAN-ACTUALIZACION-SRS.md). Las fases 1 (identidad SNIPP en escala de grises) y 2 (quitar extras y corregir reglas en M1–M5) ya están aplicadas; ver "Actualización al SRS v1.1" al final. Las secciones de lotes de abajo describen cómo se construyeron; donde contradigan al SRS, gana el SRS y la sección final.
 
 - `mobile/`: app de clientes, Expo SDK 58 + React Native (JavaScript) + Expo Router.
-- `web/`: panel para Jefe, Empleado y Administrador (React 19 + Tailwind CSS 4 + React Router, con Vite). Hecho: lote W1.
+- `web/`: panel para Jefe, Empleado y Administrador: Next.js 16 (App Router) + TypeScript estricto + Tailwind CSS 4. Lotes W1 a W9 hechos; migrado de Vite + JavaScript el 17/11/2026 sin cambiar pantallas, textos ni reglas.
 
 ## Correr la app móvil
 
@@ -24,7 +24,9 @@ Cualquier otra combinación muestra el error de credenciales; registrarse con es
 ```bash
 cd frontend/web
 npm install
-npm run dev      # http://localhost:5173
+npm run dev        # http://localhost:3000
+npm run lint       # ESLint
+npm run typecheck  # TypeScript
 ```
 
 En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`); en producción `/` abre "Entrar".
@@ -36,6 +38,8 @@ Cuentas de demostración (contraseña `snipp2026` para todas):
 - Empleado sin negocio: `sofia.ramos@gmail.com` (Sofía Ramos); ya pidió unirse a Los Compas Centro
 
 En el índice de desarrollo, `/panel?como=jefe|empleado|sin-negocio|admin` abre el panel con esa cuenta sin escribir la contraseña (solo en `npm run dev`).
+
+La estructura de carpetas de la web está en [`web/README.md`](web/README.md).
 
 ## Estructura
 
@@ -180,7 +184,7 @@ Datos agregados: cita C-10318 (atendida, calificada y con reporte atendido), des
 
 ## Lote W1 (web): acceso y registro (hecho)
 
-Pantalla dividida: foto real del negocio a la izquierda y formulario a la derecha; debajo de 768 px la foto se oculta. Misma identidad SNIPP en escala de grises que la app (tokens en `web/src/index.css`), títulos en Montserrat y texto en Onest a 15 px.
+Pantalla dividida: foto real del negocio a la izquierda y formulario a la derecha; debajo de 768 px la foto se oculta. Misma identidad SNIPP en escala de grises que la app (tokens en `web/src/app/globals.css`), títulos en Montserrat y texto en Onest a 15 px.
 
 | Pantalla | Ruta | RF | Estados (`?estado=`) |
 | --- | --- | --- | --- |
@@ -195,7 +199,7 @@ Detalles:
 - **Registro de Jefe:** pide nombre, correo, teléfono, contraseña, nombre del negocio y plan, que son los datos de RF-W01. Los planes vienen de los que crea el Administrador (RF-W27); en `data/demo.js` hay tres de ejemplo: Mensual $499, Semestral $2,694 y Anual $4,990. Dice "Tu primer mes es gratis: el cobro empieza el sábado 12 de diciembre", calculado a un mes de hoy. Sin planes publicados no deja registrarse.
 - **Registro de Empleado:** nombre, correo y contraseña. La cuenta queda sin negocio y explica cómo unirse a uno: por invitación del Jefe o mandando una solicitud (RF-W10, lote W5).
 - **Recuperar:** responde igual exista o no el correo, para no revelar qué correos tienen cuenta. La página de contraseña nueva sirve también para los clientes de la app.
-- Las llamadas a la API están simuladas en `web/src/services/auth.js`.
+- Las llamadas a la API están simuladas en `web/src/services/auth.ts`.
 
 ### Lote W2 (web): estructura del panel
 
@@ -212,7 +216,7 @@ Detalles:
 - Menú del Administrador: Negocios, Planes, Reseñas reportadas.
 - Debajo de 1024 px el menú se abre como panel lateral con el botón "Menú" (tableta, RNF-W03).
 - Cada sección todavía muestra en qué lote se construye (W3 a W9) y qué requerimientos cubre.
-- Los datos del negocio, sucursales y suscripción están simulados en `web/src/services/panel.js` y `web/src/data/demo.js`; el menú por rol, en `web/src/data/nav.js`.
+- Los datos del negocio, sucursales y suscripción están simulados en `web/src/services/panel.ts` y `web/src/data/demo.ts`; el menú por rol, en `web/src/data/nav.ts`.
 
 ### Lote W3 (web): inicio del Jefe
 
@@ -225,7 +229,7 @@ Detalles:
 - No hay comparación con el mes anterior ni "pedidos listos sin entregar": el SRS no los pide.
 - Por Empleado se muestran citas y calificación; las ventas van por sucursal porque el SRS no liga los pedidos a un Empleado (decisión D7 del plan, pendiente de confirmar).
 - El número junto a "Reportes" en el menú es el aviso de reportes nuevos; se ve en todas las páginas del Jefe.
-- Los registros de ejemplo se generan siempre iguales en `web/src/services/dashboard.js`, así que cualquier periodo da sumas que cuadran entre las cifras y la tabla.
+- Los registros de ejemplo se generan siempre iguales en `web/src/services/dashboard.ts`, así que cualquier periodo da sumas que cuadran entre las cifras y la tabla.
 
 ### Lote W4 (web): sucursales y servicios
 
@@ -240,7 +244,7 @@ Detalles:
 - Validaciones: nombre, dirección y teléfono de 10 dígitos; en el horario, la hora de cierre después de la de apertura y al menos un día abierto; en servicios, duración en minutos enteros y precio mayor que cero.
 - El selector de sucursal del menú se actualiza al registrar, renombrar o desactivar una sucursal (la desactivada sale con "(desactivada)").
 - No hay "vista previa de cómo se ve en la app": el SRS no la pide.
-- Los datos viven en memoria en `web/src/services/branches.js`; al recargar la página vuelven los de ejemplo.
+- Los datos viven en memoria en `web/src/services/branches.ts`; al recargar la página vuelven los de ejemplo.
 
 ### Lote W5 (web): Empleados
 
@@ -257,7 +261,7 @@ Detalles:
 - Itzel Duarte es recepcionista: no recibe citas, así que no tiene historial de citas.
 - La solicitud de migración caduca a los 7 días sin respuesta; el Empleado puede volver a enviarla.
 - "Rechazar" una solicitud no aparece en el SRS; ver la decisión D9 del plan.
-- Los datos viven en memoria en `web/src/services/staff.js` y `web/src/data/staff.js`.
+- Los datos viven en memoria en `web/src/services/staff.ts` y `web/src/data/staff.ts`.
 
 ### Lote W6 (web): agenda y citas
 
@@ -270,8 +274,7 @@ Detalles:
 - **Bloquear horario** (RF-W15): unas horas o días completos, con motivo (descanso, vacaciones u otro). La app deja de ofrecer ese horario. Si ya hay citas ahí, avisa que no se cancelan solas.
 - Las horas libres para reagendar respetan el horario del Empleado, sus bloqueos y sus otras citas (RN-01).
 - Las acciones de la agenda suman al historial del Empleado (RF-W17) con quién las hizo.
-- Las citas de ejemplo (del 9 al 21 de noviembre) se generan siempre iguales en `web/src/data/staff.js`; la agenda y la reasignación de W5 usan las mismas.
-- `npm run build` avisa que el paquete pasa de 500 kB; se puede dividir por rutas más adelante, no afecta a la plantilla.
+- Las citas de ejemplo (del 9 al 21 de noviembre) se generan siempre iguales en `web/src/data/staff.ts`; la agenda y la reasignación de W5 usan las mismas.
 
 ### Lote W7 (web): reportes y reseñas (solo Jefe)
 
@@ -285,7 +288,7 @@ Detalles:
 - El Empleado no tiene acceso a Reportes ni a Reseñas, ni escribiendo la dirección (RN-10, RN-15).
 - En la ficha de cada Empleado aparece cuántos reportes tiene, con enlace a su historial.
 - Los reportes R-102 (Luis, puntualidad) y R-088 (Ramón, higiene) son los mismos que ve la clienta Andrea en la app móvil.
-- Los datos viven en memoria en `web/src/services/reports.js`.
+- Los datos viven en memoria en `web/src/services/reports.ts`.
 
 ### Lote W8 (web): productos, inventario, pedidos y lealtad
 
@@ -300,7 +303,7 @@ Detalles:
 - Al cancelar un pedido pagado, Stripe devuelve el total y las piezas regresan a las existencias (no salieron de la sucursal). Si Stripe falla, el pedido sigue pagado.
 - El Empleado ve y cambia los pedidos de su sucursal, pero no Productos ni Puntos (RN-10).
 - Los productos, existencias y pedidos P-2279, P-2264 y P-2250 son los mismos de la app móvil; las reglas de puntos de ejemplo (1 punto por cada $10, 1 punto = $1) también.
-- Los datos viven en memoria en `web/src/services/shop.js`.
+- Los datos viven en memoria en `web/src/services/shop.ts`.
 
 ### Lote W9 (web): suscripción y Administrador
 
@@ -315,7 +318,7 @@ Detalles:
 - El pago se simula: en producción ese paso abre el formulario de Stripe y SNIPP solo guarda la referencia (RN-17).
 - Las fechas de otro año llevan el año ("viernes 3 de diciembre de 2027").
 - Decisiones abiertas del plan: D10 ("Se ofrece" en planes y "Mantenerla" en reseñas) y D11 (qué ve el panel de un negocio suspendido).
-- Los datos viven en memoria en `web/src/services/subscriptions.js`.
+- Los datos viven en memoria en `web/src/services/subscriptions.ts`.
 
 ## Fotos
 
