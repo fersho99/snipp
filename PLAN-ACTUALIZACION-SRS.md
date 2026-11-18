@@ -12,7 +12,7 @@ Este plan explica cómo llevar las plantillas de frontend ya construidas, y las 
 
 1. **El SRS v1.1 manda.** El documento de prompts ("Prompts para generar las plantillas del frontend") queda por debajo: si algo de ese documento no está en el SRS, se quita; si lo contradice, gana el SRS.
 2. **Nombre y marca:** la app se llama **SNIPP** y usa el logo entregado (`brand/snipp-logo.png`).
-3. **Colores:** toda la interfaz va en **escala de grises**. Ningún estado se distingue solo por color.
+3. **Colores:** la interfaz va en **escala de grises**. Desde el 17/11/2026, tras aprobarse las pantallas, el cliente pidió tres colores de estado: **verde** (acción hecha o cita confirmada), **naranja** (pendiente) y **rojo** (cancelada). Se usan solo en la agenda del Jefe y en las confirmaciones (ver sección 12). Ningún estado se distingue solo por color: siempre va con ícono y texto.
 4. **Fuera de alcance (SRS 1.2), no se diseña nada de esto:** recomendaciones con IA, facturación CFDI, versión iOS, publicación en Google Play o App Store, pago de citas en línea, envío a domicilio y cualquier pago que no sea con Stripe.
 5. **Entrega móvil:** solo Android 10 o superior, como archivo APK (SRS 2.3, RNF-M04).
 6. **Sin modo sin conexión** (SRS 2.3): se queda la pantalla de "No hay conexión" con "Reintentar".
@@ -298,3 +298,18 @@ Si el equipo sigue usando el documento de prompts con otras herramientas, hay qu
 - quitar de los lotes lo marcado en las secciones 4.1 y 6;
 - poner fechas de 2026;
 - cambiar la lista de rechazo: en lugar de "terracota en todo", rechazar cualquier color fuera de la escala de grises y cualquier estado que dependa solo del color.
+
+## 12. Cambios pedidos tras la aprobación de las pantallas (17/11/2026)
+
+El cliente aprobó las pantallas y pidió estos ajustes. Se hicieron sobre la web en Next.js + TypeScript y la app en TypeScript.
+
+| Pedido | Qué se hizo | Dónde |
+| --- | --- | --- |
+| Semáforo en el calendario donde se ven las citas | En la Agenda del Jefe y del Empleado: verde = confirmada, naranja = esperando respuesta del cliente (borde punteado), rojo = cancelada (tachada). Atendida, No asistió y Empleado no se presentó quedan en gris. Las canceladas se ven en rojo sin ocupar el horario. Leyenda con color, ícono y texto. | Web: `screens/panel/Agenda.tsx`, `agendaIcons.ts` |
+| Confirmación en verde al hacer una acción | Los avisos de acción hecha pasan a verde (fondo verde claro, barra e ícono verdes). Las acciones que no dejaban aviso en la página muestran un aviso breve verde abajo (4 s). | Web: `components/ui.tsx`, `components/Toaster.tsx`. App: `components/Done.tsx` |
+| Carrito visible al agregar productos | Pestaña "Carrito" con el número de piezas en la barra de abajo, ícono del carrito con contador en la sucursal, la tienda y el producto, y aviso verde "Agregaste… al carrito" con "Ver carrito". El carrito sigue siendo de una sola sucursal (RN-06). | App: `components/CartButton.tsx`, `components/Appointment.tsx` |
+| Señales de carga y no dar clics de más | Se revisaron todas las acciones que guardan: cada botón se bloquea mientras trabaja y muestra spinner junto a su texto. En la app el botón ya no oculta su texto mientras carga. Las pantallas con datos ya tenían esqueleto de carga. | Web y app |
+
+Colores (contraste WCAG AA, 4.5:1 o más sobre blanco, fondo y su tono claro): verde `#1E7B34` / `#E7F4EA`, naranja `#A8530A` / `#FCEFE0`, rojo `#C42B2B` / `#FCEBEB`.
+
+Pendiente de confirmar con el cliente: el calendario del "Administrador" se interpretó como la agenda del Jefe, porque en el SRS el Administrador de SNIPP no ve citas.

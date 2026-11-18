@@ -1,6 +1,5 @@
 import { StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { CheckCircleIcon } from 'phosphor-react-native';
 import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
@@ -8,8 +7,9 @@ import { OfflineState, Skeleton } from '../components/States';
 import { StatusLine } from '../components/Appointment';
 import useConnectivity from '../hooks/useConnectivity';
 import { canReport, describe, reasonLabel, reportStatusOf, startDate, useAppointments } from '../data/appointments';
-import { color, font, space } from '../theme/tokens';
+import { font, space } from '../theme/tokens';
 import type { Appointment } from '../types/domain';
+import { DoneNote } from '../components/Done';
 
 // My reports (RF-M14): each report with its status (enviado, en revisión,
 // atendido). The Jefe changes the status on the web and it shows here.
@@ -35,13 +35,9 @@ export default function MyReports() {
       </Txt>
 
       {sent ? (
-        <View style={styles.notice} accessibilityLiveRegion="polite">
-          <View style={styles.bar} />
-          <CheckCircleIcon size={20} color={color.ink} weight="fill" />
-          <Txt variant="body" style={{ flex: 1 }}>
-            Enviaste tu reporte sobre {describe(sent).employee.name}. Ya aparece en el panel del Jefe de {describe(sent).branch.name}.
-          </Txt>
-        </View>
+        <DoneNote style={{ marginTop: space.xl }}>
+          Enviaste tu reporte sobre {describe(sent).employee.name}. Ya aparece en el panel del Jefe de {describe(sent).branch.name}.
+        </DoneNote>
       ) : null}
 
       {estado === 'cargando' ? (
@@ -96,7 +92,5 @@ function ReportItem({ appt }: { appt: Appointment }) {
 }
 
 const styles = StyleSheet.create({
-  notice: { flexDirection: 'row', gap: space.m, marginTop: space.xl },
-  bar: { width: 3, borderRadius: 2, backgroundColor: color.ink },
   list: { marginTop: space.xxl, gap: space.xxl },
 });

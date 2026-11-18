@@ -6,6 +6,7 @@ import Screen from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
 import { color, space } from '../theme/tokens';
+import { DoneNote } from '../components/Done';
 
 const RESEND_SECONDS = 45;
 
@@ -49,9 +50,7 @@ export default function ResetLinkSent() {
           Si no lo ves, busca en Spam o Promociones.
         </Txt>
         {resent ? (
-          <Txt variant="small" style={{ marginTop: space.l, color: color.ink }} accessibilityLiveRegion="polite">
-            Enviamos otro enlace. El anterior ya no funciona.
-          </Txt>
+          <DoneNote style={{ marginTop: space.l }}>Enviamos otro enlace. El anterior ya no funciona.</DoneNote>
         ) : null}
         <Button
           variant="link"

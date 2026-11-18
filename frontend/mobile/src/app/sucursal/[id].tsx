@@ -13,6 +13,7 @@ import { activeServices, bookableStaff, cheapestService, getBranch, isVisible, o
 import { productsFor } from '../../data/shop';
 import { minutes, money } from '../../theme/format';
 import { color, font, radius, space, touch } from '../../theme/tokens';
+import CartButton from '../../components/CartButton';
 
 const STAFF_PHOTO = 132;
 
@@ -86,8 +87,9 @@ export default function BranchProfile() {
         )
       }
     >
-      <View style={styles.padded}>
+      <View style={[styles.padded, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
         <BackButton />
+        <CartButton />
       </View>
 
       {/* Gallery, full width */}

@@ -4,9 +4,11 @@ import type { IconProps } from 'phosphor-react-native';
 import type { StatusText, Tone } from '../types/domain';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CalendarBlankIcon, CheckCircleIcon, ClockIcon, HouseIcon, UserIcon, XCircleIcon } from 'phosphor-react-native';
+import { CalendarBlankIcon, CheckCircleIcon, ClockIcon, HouseIcon, ShoppingBagIcon, UserIcon, XCircleIcon } from 'phosphor-react-native';
 import Txt from './Txt';
 import { color, font, space, touch } from '../theme/tokens';
+import { CountBadge } from './CartButton';
+import { cartSummary, useCart } from '../data/shop';
 
 // Grayscale UI: every status is an icon plus explicit text, never color alone.
 // tone: done (confirmada, atendida, pagado) | pending (falta respuesta, en revisión)
@@ -44,6 +46,7 @@ export function DateBlock({ date, muted }: { date: Date; muted?: boolean }) {
 const TABS: { path: string; label: string; Icon: ComponentType<IconProps>; push?: boolean }[] = [
   { path: '/inicio', label: 'Inicio', Icon: HouseIcon },
   { path: '/citas', label: 'Mis citas', Icon: CalendarBlankIcon },
+  { path: '/carrito', label: 'Carrito', Icon: ShoppingBagIcon, push: true },
   { path: '/cuenta', label: 'Cuenta', Icon: UserIcon },
 ];
 
@@ -51,6 +54,7 @@ const TABS: { path: string; label: string; Icon: ComponentType<IconProps>; push?
 export function TabBar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const cartCount = cartSummary(useCart(), false).count;
   return (
     <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, space.s) }]} accessibilityRole="tablist">
       {TABS.map(({ path, label, Icon, push }) => {
@@ -61,10 +65,14 @@ export function TabBar() {
             onPress={() => (active ? null : push ? router.push(path) : router.replace(path))}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
+            accessibilityLabel={path === '/carrito' && cartCount ? `Carrito, ${cartCount} ${cartCount === 1 ? 'pieza' : 'piezas'}` : label}
             style={styles.tab}
           >
             <View style={[styles.tabMark, active && { backgroundColor: color.ink }]} />
-            <Icon size={24} color={active ? color.ink : color.inkSoft} weight={active ? 'fill' : 'regular'} />
+            <View>
+              <Icon size={24} color={active ? color.ink : color.inkSoft} weight={active ? 'fill' : 'regular'} />
+              {path === '/carrito' && cartCount ? <CountBadge count={cartCount} style={{ top: -6, right: -12 }} /> : null}
+            </View>
             <Txt variant="small" style={{ color: active ? color.ink : color.inkSoft, fontFamily: active ? font.bodySemi : font.body }}>{label}</Txt>
           </Pressable>
         );

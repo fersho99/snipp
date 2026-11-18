@@ -13,6 +13,7 @@ import { networkMessage, type ApiError } from '../../services/auth'
 import { addNote, CLIENT_STATE, REPORT_REASONS, REPORT_STATE, setReportState, useReportsStore } from '../../services/reports'
 import { useStaffStore } from '../../services/staff'
 import { longDate, timeOfDay } from '../../theme'
+import { toast } from '@/lib/toast'
 
 const STATE_ICON: Record<ReportState, Icon> = { enviado: Flag, 'en revision': Clock, atendido: CheckCircle }
 const selectCls = 'min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
@@ -221,6 +222,7 @@ function Notes({ report, author }: { report: ClientReport; author: string }) {
     try {
       await addNote(report.id, author, text.trim())
       setText('')
+      toast('Nota guardada. Solo tú la ves.')
     } catch (err) {
       setFailure(err as ApiError)
     } finally {

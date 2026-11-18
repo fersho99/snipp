@@ -11,6 +11,8 @@ import { getBranch, branches } from '../../data/catalog';
 import { cart, cartSummary, getProduct, pointsEarned, useCart } from '../../data/shop';
 import { money } from '../../theme/format';
 import { color, space } from '../../theme/tokens';
+import CartButton from '../../components/CartButton';
+import { DoneNote } from '../../components/Done';
 
 // Product detail: photo, price, stock, description, quantity and add.
 // Out of stock: no quantity and no add button.
@@ -59,7 +61,10 @@ export default function ProductDetail() {
 
   return (
     <Screen footer={footer}>
-      <BackButton />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <BackButton />
+        <CartButton />
+      </View>
       <ProductPhoto product={product} style={[{ marginTop: space.s }, out && { opacity: 0.6 }]} />
 
       <Txt variant="display" accessibilityRole="header" style={{ marginTop: space.xl }}>{product.name}</Txt>
@@ -91,9 +96,9 @@ export default function ProductDetail() {
       )}
 
       {added ? (
-        <Txt variant="small" style={{ color: color.ink, marginTop: space.m }} accessibilityLiveRegion="polite">
+        <DoneNote style={{ marginTop: space.m }}>
           Agregaste {added} {added === 1 ? 'pieza' : 'piezas'} al carrito.
-        </Txt>
+        </DoneNote>
       ) : null}
 
       <Txt variant="body" style={{ marginTop: space.xl }}>{product.description}</Txt>

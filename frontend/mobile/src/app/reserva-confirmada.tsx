@@ -22,7 +22,7 @@ export default function Booked() {
     <Screen footer={<Button label="Volver al inicio" onPress={() => router.replace('/inicio')} />}>
       <View style={{ marginTop: space.xxxl }}>
         <View style={styles.status}>
-          <CheckCircleIcon size={20} color={color.ink} weight="fill" />
+          <CheckCircleIcon size={20} color={color.success} weight="fill" />
           <Txt variant="label" style={{ fontFamily: font.bodySemi }}>Cita confirmada, folio {appt.folio}</Txt>
         </View>
         <Txt variant="display" accessibilityRole="header" style={{ marginTop: space.l }}>

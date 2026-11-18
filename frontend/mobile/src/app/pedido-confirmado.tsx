@@ -41,7 +41,7 @@ export default function OrderConfirmed() {
       }
     >
       <View style={[styles.status, { marginTop: space.xxxl }]}>
-        <CheckCircleIcon size={20} color={color.ink} weight="fill" />
+        <CheckCircleIcon size={20} color={color.success} weight="fill" />
         <Txt variant="label" style={{ fontFamily: font.bodySemi }}>Pagado con tarjeta por Stripe</Txt>
       </View>
       <Txt variant="small" numeric style={{ marginTop: space.xs }}>Referencia de pago: {order.paymentRef}</Txt>

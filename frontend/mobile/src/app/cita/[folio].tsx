@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CheckCircleIcon, MapPinIcon, PhoneIcon } from 'phosphor-react-native';
+import { MapPinIcon, PhoneIcon } from 'phosphor-react-native';
 import Screen, { BackButton } from '../../components/Screen';
 import Txt from '../../components/Txt';
 import Button from '../../components/Button';
@@ -15,6 +15,7 @@ import { DEMO_TODAY, getEmployee } from '../../data/demo';
 import { money, photoFile } from '../../theme/format';
 import { color, font, radius, sheetShadow, space, touch } from '../../theme/tokens';
 import type { Appointment } from '../../types/domain';
+import { DoneNote } from '../../components/Done';
 
 
 // Appointment detail with the actions the rules allow.
@@ -173,11 +174,7 @@ function Notice({ aviso, appt, d }: { aviso?: string; appt: Appointment; d: Desc
   } as Record<string, string>)[aviso];
   if (!text) return null;
   return (
-    <View style={[styles.changeLine, { minHeight: 0 }]} accessibilityLiveRegion="polite">
-      <View style={[styles.bar, { backgroundColor: color.ink }]} />
-      {aviso !== 'cancelada' ? <CheckCircleIcon size={20} color={color.ink} weight="fill" /> : null}
-      <Txt variant="body" style={{ flex: 1 }}>{text}</Txt>
-    </View>
+    <DoneNote style={{ marginTop: space.xl }}>{text}</DoneNote>
   );
 }
 

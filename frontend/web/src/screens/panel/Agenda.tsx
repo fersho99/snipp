@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useBranchPanel } from '@/components/PanelContext'
 import { CaretLeft, CaretRight, LockSimple } from '@phosphor-icons/react'
-import { STATUS_ICON } from './agendaIcons'
+import { BLOCK_CLASS, ICON_CLASS, LIGHT, STATUS_ICON, SWATCH_CLASS } from './agendaIcons'
 import { Button, Note } from '../../components/ui'
 import { AppointmentDialog, BlockDialog, BulkCancelDialog, BulkReassignDialog } from './AgendaDialogs'
 import { DEMO_TODAY } from '../../data/demo'
@@ -13,6 +13,7 @@ import { useStaffStore } from '../../services/staff'
 import { addDays, dayMonth, longDate, sameDay, timeOfDay } from '../../theme'
 import type { Appointment, AppointmentStatus, Block, Branch } from '../../types/domain'
 import type { StaffMember } from '../../services/staff'
+import { toast } from '@/lib/toast'
 type NameOf = (id: string) => string
 type Notice = { title: string; body: string }
 
@@ -156,8 +157,27 @@ function StatusText({ status, compact }: { status: AppointmentStatus; compact?: 
   const Icon = STATUS_ICON[status]
   return (
     <span className={`inline-flex items-center gap-1 ${compact ? 'text-xs' : 'text-sm'}`}>
-      <Icon size={compact ? 13 : 16} weight={status === 'atendida' ? 'fill' : 'regular'} aria-hidden="true" />
+      <Icon size={compact ? 13 : 16} weight={status === 'atendida' || status === 'confirmada' ? 'fill' : 'regular'} className={ICON_CLASS[LIGHT[status]]} aria-hidden="true" />
       {STATUS[status]}
+    </span>
+  )
+}
+
+// Traffic-light key (client request): color, icon and text for each state.
+function Legend() {
+  const items: [AppointmentStatus, string][] = [['confirmada', 'Confirmada'], ['cambio', 'Esperando respuesta'], ['cancelada', 'Cancelada'], ['atendida', 'Terminada']]
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-4 gap-y-1">
+      {items.map(([st, label]) => {
+        const Icon = STATUS_ICON[st]
+        return (
+          <span key={st} className="inline-flex items-center gap-1.5 text-ink">
+            <span className={`inline-block h-3 w-4 rounded-sm ${SWATCH_CLASS[LIGHT[st]]}`} aria-hidden="true" />
+            <Icon size={13} weight="fill" className={ICON_CLASS[LIGHT[st]]} aria-hidden="true" />
+            {label}
+          </span>
+        )
+      })}
     </span>
   )
 }
@@ -195,7 +215,8 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
             </div>
           </div>
           {people.map((e) => {
-            const mine = todays.filter((a) => a.employeeId === e.id && a.status !== 'cancelada')
+                  // Cancelled ones are drawn first, under the rest: their time is free again.
+                  const mine = todays.filter((a) => a.employeeId === e.id).sort((a, b) => Number(b.status === 'cancelada') - Number(a.status === 'cancelada'))
             const myBlocks = blocks.filter((b) => b.employeeId === e.id && b.from < addDays(day, 1) && b.to > day)
             const work = e.schedule[day.getDay()]
             return (
@@ -227,17 +248,16 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
                   })}
                   {mine.map((a) => {
                     const h = Math.max(28, (a.minutes / 60) * HOUR_PX - 3)
-                    const past = ['atendida', 'no-asistio', 'empleado-no-se-presento'].includes(a.status)
                     return (
                       <button
                         key={a.folio}
                         type="button"
                         onClick={() => onOpen(a.folio)}
-                        className={`absolute inset-x-1 overflow-hidden rounded-md px-2 py-1 text-left transition-colors ${past ? 'bg-sunken text-ink-soft hover:bg-sunken-pressed' : 'border-l-[3px] border-ink bg-paper hover:bg-sunken'} ${a.status === 'cambio' ? 'border-dashed' : ''}`}
+                        className={`absolute inset-x-1 overflow-hidden rounded-md px-2 py-1 text-left transition ${BLOCK_CLASS[LIGHT[a.status]]}`}
                         style={{ top: top(a.start) + 1, height: h }}
                         aria-label={`${timeOfDay(a.start)}, ${a.client}, ${a.service}, ${STATUS[a.status]}`}
                       >
-                        <p className="tabular truncate text-xs font-semibold">{timeOfDay(a.start)} · {a.client}</p>
+                        <p className={`tabular truncate text-xs font-semibold ${a.status === 'cancelada' ? 'line-through' : ''}`}>{timeOfDay(a.start)} · {a.client}</p>
                         {h > 34 ? <p className="truncate text-xs">{a.service}</p> : null}
                         {h > 52 ? <StatusText status={a.status} compact /> : null}
                       </button>
@@ -257,6 +277,7 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
             {showCancelled ? 'Ocultar' : 'Ver'} {cancelled.length === 1 ? '1 cancelada' : `${cancelled.length} canceladas`}
           </button>
         ) : null}
+        <Legend />
         <span className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-4 rounded-sm bg-sunken" /> Fuera de su horario</span>
         <span className="inline-flex items-center gap-1.5"><LockSimple size={13} /> Bloqueado</span>
       </div>
@@ -278,7 +299,7 @@ function WeekList({ days, branch, appts, blocks, nameOf, onOpen }: ViewProps & {
   return (
     <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       {days.map((d) => {
-        const list = appts.filter((a) => sameDay(a.start, d) && a.status !== 'cancelada').sort((a, b) => a.start.getTime() - b.start.getTime())
+        const list = appts.filter((a) => sameDay(a.start, d)).sort((a, b) => a.start.getTime() - b.start.getTime())
         const dayBlocks = blocks.filter((b) => b.from < addDays(d, 1) && b.to > d)
         const isToday = sameDay(d, TODAY)
         return (
@@ -293,10 +314,10 @@ function WeekList({ days, branch, appts, blocks, nameOf, onOpen }: ViewProps & {
             <ul className="mt-2 flex flex-col gap-1.5">
               {list.map((a) => (
                 <li key={a.folio}>
-                  <button type="button" onClick={() => onOpen(a.folio)} className={`w-full rounded-md px-2 py-1.5 text-left hover:bg-sunken ${a.status === 'confirmada' || a.status === 'cambio' ? 'border-l-[3px] border-ink bg-raised' : 'bg-sunken/60 text-ink-soft'}`}>
-                    <p className="tabular text-xs font-semibold">{timeOfDay(a.start)} · {nameOf(a.employeeId).split(' ')[0]}</p>
+                  <button type="button" onClick={() => onOpen(a.folio)} className={`w-full rounded-md px-2 py-1.5 text-left transition ${BLOCK_CLASS[LIGHT[a.status]]}`}>
+                    <p className={`tabular text-xs font-semibold ${a.status === 'cancelada' ? 'line-through' : ''}`}>{timeOfDay(a.start)} · {nameOf(a.employeeId).split(' ')[0]}</p>
                     <p className="truncate text-xs">{a.client} · {a.service}</p>
-                    {a.status === 'cambio' ? <StatusText status="cambio" compact /> : null}
+                    {a.status === 'cambio' || a.status === 'cancelada' ? <StatusText status={a.status} compact /> : null}
                   </button>
                 </li>
               ))}
@@ -319,6 +340,7 @@ function Blocks({ blocks, nameOf, canRemove }: { blocks: Block[]; nameOf: NameOf
     setFailure(null)
     try {
       await removeBlock(id)
+      toast('Quitaste el bloqueo. Ese horario ya se puede reservar en la app.')
     } catch (err) {
       setFailure(err as ApiError)
     } finally {

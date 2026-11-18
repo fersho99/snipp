@@ -8,10 +8,12 @@ import { OfflineState, Skeleton } from '../../components/States';
 import { CartBar, OtherBranchModal, ProductPhoto } from '../../components/Shop';
 import useConnectivity from '../../hooks/useConnectivity';
 import { getBranch, openStatus, branches } from '../../data/catalog';
-import { cart, cartSummary, pointsAt, productsFor, useCart } from '../../data/shop';
+import { cart, cartSummary, pointsAt, productsFor, useCart, productLabel } from '../../data/shop';
 import { money } from '../../theme/format';
 import { color, font, space } from '../../theme/tokens';
 import type { Product } from '../../types/domain';
+import CartButton from '../../components/CartButton';
+import { toast } from '../../data/toast';
 
 const LOW_STOCK = 6;
 
@@ -42,6 +44,7 @@ export default function Store() {
   const add = (product: Product) => {
     const result = cart.add(branch.id, product.id, 1);
     if (result === 'other-branch') setPending(product);
+    else if (result === 'added') toast(`Agregaste ${productLabel(product)} al carrito.`, { label: 'Ver carrito', to: '/carrito' });
   };
 
   const available = items.filter((p) => p.stock > 0).length;
@@ -51,7 +54,10 @@ export default function Store() {
 
   return (
     <Screen footer={c.branchId === branch.id && summary.count ? <CartBar summary={summary} /> : null}>
-      <BackButton />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <BackButton />
+        <CartButton />
+      </View>
       <Txt variant="small" style={{ marginTop: space.s }}>Recoges en {branch.address}, no hay envío</Txt>
 
       {estado === 'cargando' ? (
@@ -119,7 +125,7 @@ export default function Store() {
         currentBranch={c.branchId ? getBranch(c.branchId) : null}
         newBranch={branch}
         onCancel={() => setPending(null)}
-        onConfirm={() => { if (pending) cart.replaceWith(branch.id, pending.id, 1); setPending(null); }}
+        onConfirm={() => { if (pending) { cart.replaceWith(branch.id, pending.id, 1); toast(`Agregaste ${productLabel(pending)} al carrito.`, { label: 'Ver carrito', to: '/carrito' }); } setPending(null); }}
       />
     </Screen>
   );

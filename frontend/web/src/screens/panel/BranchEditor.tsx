@@ -12,6 +12,7 @@ import { Button, Checkbox, Dialog, Note, TextArea, TextField } from '../../compo
 import { networkMessage, type ApiError } from '../../services/auth'
 import { createBranch, imageProblem, MAX_IMAGE_MB, saveBranch, setBranchActive } from '../../services/branches'
 import BranchServices from './BranchServices'
+import { toast } from '@/lib/toast'
 
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
@@ -301,6 +302,7 @@ function Deactivate({ businessId, branch }: { businessId: string; branch: Branch
     try {
       await setBranchActive(businessId, branch.id, false)
       setOpen(false)
+      toast(`Desactivaste ${branch.name}. Ya no aparece en la app; sus datos se conservan.`)
     } catch (err) {
       setFailure(err as ApiError)
     } finally {
@@ -343,6 +345,7 @@ function Inactive({ businessId, branch }: { businessId: string; branch: Branch }
     setFailure(null)
     try {
       await setBranchActive(businessId, branch.id, true)
+      toast(`Reactivaste ${branch.name}. Ya aparece otra vez en la app.`)
     } catch (err) {
       setFailure(err as ApiError)
     } finally {
