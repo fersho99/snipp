@@ -5,8 +5,9 @@ import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { useBranchPanel } from '@/components/PanelContext'
-import { ArrowLeft, ImageSquare, Plus, UploadSimple, WarningCircle } from '@phosphor-icons/react'
+import { ArrowLeft, ImageSquare, Plus, UploadSimple } from '@phosphor-icons/react'
 import { Button, Dialog, Note, TextArea, TextField } from '../../components/ui'
+import { StatusTag } from '../../components/status'
 import { networkMessage, type ApiError } from '../../services/auth'
 import { imageProblem, MAX_IMAGE_MB } from '../../services/branches'
 import { adjustStock, productLabel, saveProduct, useShopStore } from '../../services/shop'
@@ -32,7 +33,8 @@ function Thumb({ p, size = 56 }: { p: Pick<Product, 'photo' | 'name'>; size?: nu
 }
 
 function StockText({ stock }: { stock: number }) {
-  if (stock === 0) return <span className="inline-flex items-center gap-1 font-semibold"><WarningCircle size={16} weight="fill" aria-hidden="true" />Agotado</span>
+  // SRS v1.2, 4.1: a product without stock is red.
+  if (stock === 0) return <StatusTag status={{ color: 'rojo', icon: 'atencion', label: 'Agotado' }} />
   return <span className={stock <= LOW ? 'font-semibold' : ''}>{stock} {stock === 1 ? 'pieza' : 'piezas'}{stock <= LOW ? ' · quedan pocas' : ''}</span>
 }
 

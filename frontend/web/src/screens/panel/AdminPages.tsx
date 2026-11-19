@@ -5,8 +5,9 @@ import type { PlatformBusiness } from '../../services/subscriptions'
 import type { Review, ReviewDecision, ReviewReport } from '../../services/reports'
 type ReportedReview = Review & { reported: ReviewReport }
 import { useState } from 'react'
-import { Flag, PauseCircle, Plus, Star, WarningCircle } from '@phosphor-icons/react'
+import { Flag, PauseCircle, Plus, Star } from '@phosphor-icons/react'
 import { Button, Checkbox, Dialog, Note, TextField } from '../../components/ui'
+import { StatusTag, type Status } from '../../components/status'
 import { networkMessage, type ApiError } from '../../services/auth'
 import { subscriptionStatus } from '../../services/panel'
 import { decideReview, useReportsStore } from '../../services/reports'
@@ -124,12 +125,16 @@ export function Businesses() {
   for (const b of businesses) if (payState(b) in counts) counts[payState(b)]++
   const list = businesses.filter((b) => (filter === 'todos' ? true : filter === 'suspendidos' ? b.suspended : payState(b) === filter))
 
-  const payText = (b: PlatformBusiness) => {
+  // SRS v1.2, 4.2.2 "Administrador": green up to date, amber expiring, red expired.
+  const payText = (b: PlatformBusiness): Status => {
     const st = payState(b)
+    const expiring = subscriptionStatus(b.subscription).status === 'por-vencer'
     const plan = plans.find((p) => p.id === b.subscription.planId)
-    if (st === 'vencida') return { strong: true, text: `Pago pendiente desde el ${longDate(b.subscription.endsOn)}` }
-    if (st === 'prueba') return { strong: false, text: `Prueba gratuita hasta el ${longDate(b.subscription.endsOn)}` }
-    return { strong: st === 'por-vencer', text: `${plan?.name ?? 'Plan'}: pagado hasta el ${longDate(b.subscription.endsOn)}${st === 'por-vencer' ? ' (vence en 7 días o menos)' : ''}` }
+    if (st === 'vencida') return { color: 'rojo', icon: 'atencion', label: `Pago pendiente desde el ${longDate(b.subscription.endsOn)}` }
+    const color = expiring ? 'ambar' : 'verde'
+    const icon = expiring ? 'reloj' : 'check'
+    if (st === 'prueba') return { color, icon, label: `Prueba gratuita hasta el ${longDate(b.subscription.endsOn)}` }
+    return { color, icon, label: `${plan?.name ?? 'Plan'}: pagado hasta el ${longDate(b.subscription.endsOn)}${expiring ? ' (vence en 7 días o menos)' : ''}` }
   }
 
   return (
@@ -168,9 +173,8 @@ export function Businesses() {
                       <span className="block font-semibold">{b.name}</span>
                       <span className="block text-sm text-ink-soft">{b.owner ? `${b.owner} · ` : ''}{b.branches} {b.branches === 1 ? 'sucursal' : 'sucursales'} · desde el {longDate(b.joinedOn)}</span>
                     </th>
-                    <td className={`px-3 py-3 ${pay.strong ? 'font-semibold' : ''}`}>
-                      {pay.strong ? <WarningCircle size={16} weight="fill" className="mr-1 inline align-[-3px]" aria-hidden="true" /> : null}
-                      {pay.text}
+                    <td className="px-3 py-3">
+                      <StatusTag status={pay} />
                     </td>
                     <td className="tabular px-3 py-3 text-sm">{last ? <>{money(last.amount)}, {longDate(last.on)}<br /><span className="text-ink-soft">{last.ref}</span></> : <span className="text-ink-soft">Sin pagos</span>}</td>
                     <td className="px-3 py-3">

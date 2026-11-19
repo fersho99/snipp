@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { WarningCircle } from '@phosphor-icons/react'
 import { getPlans } from '../services/subscriptions'
+import { NOTICE, NOTICE_ICON, type StatusColor } from './status'
 import { longDate } from '../theme'
 import type { Business, Role, SubscriptionStatus } from '../types/domain'
 
@@ -25,6 +26,7 @@ export default function SubscriptionNotice({ role, business, status }: { role: R
       : `Tu suscripción${plan ? ` ${plan.name}` : ''} vence el ${longDate(sub.endsOn)}`
     return (
       <Banner
+        tone="ambar"
         title={title}
         body={`${left(status.daysLeft)} ${sub.kind === 'prueba' ? 'Paga tu suscripción' : 'Renuévala'} antes de esa fecha para que ${business.name} siga apareciendo en la app y recibiendo reservas.`}
         action={{ to: '/panel/suscripcion', label: sub.kind === 'prueba' ? 'Pagar suscripción' : 'Renovar suscripción' }}
@@ -34,6 +36,7 @@ export default function SubscriptionNotice({ role, business, status }: { role: R
 
   return (
     <Banner
+      tone="rojo"
       title="El pago de la suscripción está pendiente"
       body={`${business.name} y sus sucursales no se muestran en la app ni reciben reservas nuevas. Las citas ya agendadas se respetan.${isJefe ? '' : ' Tu Jefe es quien paga la suscripción.'}`}
       action={isJefe ? { to: '/panel/suscripcion', label: 'Pagar suscripción' } : null}
@@ -41,11 +44,13 @@ export default function SubscriptionNotice({ role, business, status }: { role: R
   )
 }
 
-function Banner({ title, body, action }: { title: string; body: string; action: { to: string; label: string } | null }) {
+// SRS v1.2, 4.2.2 "Avisos del negocio": amber band when it is about to
+// expire, red once it expired.
+function Banner({ tone, title, body, action }: { tone: StatusColor; title: string; body: string; action: { to: string; label: string } | null }) {
   return (
-    <div className="mb-8 flex flex-col gap-3 rounded-control bg-sunken px-5 py-4 sm:flex-row sm:items-center sm:justify-between" role="status">
+    <div className={`mb-8 flex flex-col gap-3 rounded-control px-5 py-4 sm:flex-row sm:items-center sm:justify-between ${NOTICE[tone]}`} role="status">
       <div className="flex gap-3">
-        <WarningCircle size={22} weight="fill" className="mt-0.5 shrink-0" aria-hidden="true" />
+        <WarningCircle size={22} weight="fill" className={`mt-0.5 shrink-0 ${NOTICE_ICON[tone]}`} aria-hidden="true" />
         <div>
           <p className="font-semibold">{title}</p>
           <p className="mt-0.5 text-sm">{body}</p>

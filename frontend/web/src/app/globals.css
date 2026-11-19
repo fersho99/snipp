@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 /* SNIPP web: grayscale identity shared with the app (SRS v1.1, decision D1).
-   Photos keep their color. Since the screens were approved (17/11/2026) the
-   client asked for three status colors: green (done / confirmed), orange
-   (pending) and red (cancelled). Each one passes WCAG AA (4.5:1 or more)
-   on white, paper and its soft tint, and always goes with an icon and text. */
+   Photos keep their color. Status colors follow SRS v1.2, section 4.1, and
+   replace the three colors of 17/11/2026. Each status uses a 5 px stripe
+   (stripe tone) and a label (soft fill + dark text, 6.3:1 to 9.4:1), and
+   always goes with an icon and text (RN-19). */
 @theme {
   --color-paper: #F5F5F5;
   --color-raised: #FFFFFF;
@@ -16,12 +16,21 @@
   --color-gray-light: #BDBDBD;
   --color-divider: #DCDCDC;
 
-  --color-success: #1E7B34;
-  --color-success-soft: #E7F4EA;
-  --color-warning: #A8530A;
-  --color-warning-soft: #FCEFE0;
-  --color-danger: #C42B2B;
-  --color-danger-soft: #FCEBEB;
+  --color-verde: #1E8E3E;
+  --color-verde-soft: #E6F4EA;
+  --color-verde-text: #0D652D;
+  --color-ambar: #F9AB00;
+  --color-ambar-soft: #FEF4D6;
+  --color-ambar-text: #7A4F01;
+  --color-rojo: #D93025;
+  --color-rojo-soft: #FCE8E6;
+  --color-rojo-text: #A50E0E;
+  --color-azul: #1A73E8;
+  --color-azul-soft: #E8F0FE;
+  --color-azul-text: #174EA6;
+  --color-gris: #9AA0A6;
+  --color-gris-soft: #F1F3F4;
+  --color-gris-text: #3C4043;
 
   --font-title: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-onest), ui-sans-serif, system-ui, sans-serif;

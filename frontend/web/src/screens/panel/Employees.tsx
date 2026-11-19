@@ -8,6 +8,8 @@ import { useFlash } from '@/lib/navigation'
 import { useBusinessPanel } from '@/components/PanelContext'
 import { ArrowsLeftRight, EnvelopeSimple, UserPlus } from '@phosphor-icons/react'
 import { Button, Note, TextField } from '../../components/ui'
+import { StatusTag } from '../../components/status'
+import { DEMO_TODAY } from '../../data/demo'
 import { Avatar, ScheduleEditor } from '../../components/staff'
 import { scheduleProblem, scheduleSummary } from '../../schedule'
 import { networkMessage, type ApiError } from '../../services/auth'
@@ -98,10 +100,10 @@ function EmployeeList() {
                         <div className="min-w-0">
                           <p className="font-semibold">{profile.displayName}</p>
                           {e.status === 'migracion-pendiente' ? (
-                            <p className="flex items-center gap-1.5 text-sm font-semibold">
-                              <ArrowsLeftRight size={16} weight="bold" aria-hidden="true" />
-                              Migración pendiente a {e.migration?.to}{e.resolved ? '' : ': confirma quién toma sus citas'}
-                            </p>
+                            <StatusTag
+                              status={{ color: 'ambar', icon: 'atencion', label: `Migración pendiente a ${e.migration?.to ?? ''}${e.resolved ? '' : ': confirma quién toma sus citas'}` }}
+                              className="my-0.5"
+                            />
                           ) : null}
                           <p className="text-sm text-ink-soft">{profile.specialties.join(' · ') || 'Sin especialidades'}{e.bookable ? '' : ' · No recibe citas'}</p>
                           <p className="text-sm">{scheduleSummary(e.schedule)}</p>
@@ -182,6 +184,13 @@ function Invite({ business, branches }: { business: Business; branches: Branch[]
   )
 }
 
+// SRS v1.2, 4.2.2 "Empleados: solicitudes": migration requests show in amber
+// how many days are left before they expire (RF-W12).
+function daysLeftLabel(sentOn: Date) {
+  const days = Math.max(0, Math.ceil((expiresOn(sentOn).getTime() - DEMO_TODAY.getTime()) / 86_400_000))
+  return days === 0 ? 'Caduca hoy' : days === 1 ? 'Falta 1 día para que caduque' : `Faltan ${days} días para que caduque`
+}
+
 function RequestRow({ request: r, branchName }: { request: JoinRequest; branchName: string }) {
   const [accepting, setAccepting] = useState(false)
   const [schedule, setSchedule] = useState<WeekHours>(DEFAULT_SCHEDULE)
@@ -225,6 +234,7 @@ function RequestRow({ request: r, branchName }: { request: JoinRequest; branchNa
             <p className="text-sm text-ink-soft">
               Enviada el {longDate(r.sentOn)}{isMigration ? ` · caduca el ${longDate(expiresOn(r.sentOn))} si no respondes` : ''}
             </p>
+            {isMigration ? <StatusTag status={{ color: 'ambar', icon: 'reloj', label: daysLeftLabel(r.sentOn) }} className="mt-1" /> : null}
           </div>
         </div>
         {!accepting ? (

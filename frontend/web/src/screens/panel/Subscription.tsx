@@ -4,8 +4,9 @@ import type { Business, Plan } from '../../types/domain'
 import type { PaymentResult } from '../../services/subscriptions'
 import { useState } from 'react'
 import { useBusinessPanel } from '@/components/PanelContext'
-import { CheckCircle, Circle, LockSimple, RadioButton, WarningCircle } from '@phosphor-icons/react'
+import { Circle, LockSimple, RadioButton } from '@phosphor-icons/react'
 import { Button, Dialog, Note } from '../../components/ui'
+import { STRIPE, StatusTag, type Status } from '../../components/status'
 import { networkMessage, type ApiError } from '../../services/auth'
 import { subscriptionStatus } from '../../services/panel'
 import { paySubscription, useSubscriptionsStore } from '../../services/subscriptions'
@@ -31,6 +32,12 @@ export default function Subscription() {
   const plan = s.plans.find((p) => p.id === planId)
   const from = sub.endsOn < DEMO_TODAY ? DEMO_TODAY : sub.endsOn
   const overdue = status.status === 'vencida'
+  // SRS v1.2, 4.1: active green, expiring (7 days or less) amber, expired red.
+  const subStatus: Status = overdue
+    ? { label: 'Vencida', color: 'rojo', icon: 'atencion' }
+    : status.status === 'por-vencer'
+      ? { label: 'Por vencer', color: 'ambar', icon: 'reloj' }
+      : { label: 'Activa', color: 'verde', icon: 'check' }
 
   return (
     <div className="max-w-3xl">
@@ -46,8 +53,8 @@ export default function Subscription() {
       ) : null}
 
       {/* Where it stands */}
-      <section className="mt-8 flex gap-4 rounded-control bg-raised p-5" aria-labelledby="estado-sub">
-        {overdue ? <WarningCircle size={28} weight="fill" className="shrink-0" aria-hidden="true" /> : <CheckCircle size={28} weight={status.status === 'al-dia' ? 'fill' : 'regular'} className="shrink-0" aria-hidden="true" />}
+      <section className={`mt-8 flex flex-col gap-2 rounded-control bg-raised p-5 ${STRIPE[subStatus.color]}`} aria-labelledby="estado-sub">
+        <StatusTag status={subStatus} className="self-start" />
         <div>
           <h2 id="estado-sub" className="text-lg font-semibold">
             {overdue
