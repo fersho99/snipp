@@ -7,7 +7,7 @@ import Button from '../components/Button';
 import { CANCEL_HOURS, describe, useAppointments } from '../data/appointments';
 import { minutesLabel } from '../data/availability';
 import { money } from '../theme/format';
-import { color, font, radius, space } from '../theme/tokens';
+import { color, font, radius, space, status } from '../theme/tokens';
 
 // Appointment booked (RF-M06): folio, the appointment in one sentence and
 // "Pagas en la sucursal" (RN-05). Defaults to C-10482 when opened directly.
@@ -22,7 +22,7 @@ export default function Booked() {
     <Screen footer={<Button label="Volver al inicio" onPress={() => router.replace('/inicio')} />}>
       <View style={{ marginTop: space.xxxl }}>
         <View style={styles.status}>
-          <CheckCircleIcon size={20} color={color.success} weight="fill" />
+          <CheckCircleIcon size={20} color={status.verde.text} weight="fill" />
           <Txt variant="label" style={{ fontFamily: font.bodySemi }}>Cita confirmada, folio {appt.folio}</Txt>
         </View>
         <Txt variant="display" accessibilityRole="header" style={{ marginTop: space.l }}>

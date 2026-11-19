@@ -8,9 +8,10 @@ import { ErrorNote, OfflineState } from '../../components/States';
 import { CartBar, OtherBranchModal, ProductPhoto, QtyStepper } from '../../components/Shop';
 import useConnectivity from '../../hooks/useConnectivity';
 import { getBranch, branches } from '../../data/catalog';
-import { cart, cartSummary, getProduct, pointsEarned, useCart } from '../../data/shop';
+import { cart, cartSummary, getProduct, pointsEarned, stockStatus, useCart } from '../../data/shop';
 import { money } from '../../theme/format';
-import { color, space } from '../../theme/tokens';
+import { color, space, status } from '../../theme/tokens';
+import { StatusLine } from '../../components/Appointment';
 import CartButton from '../../components/CartButton';
 import { DoneNote } from '../../components/Done';
 
@@ -76,8 +77,9 @@ export default function ProductDetail() {
 
       {out ? (
         <View style={styles.outBlock}>
-          <View style={[styles.bar, { backgroundColor: color.ink }]} />
-          <View style={{ flex: 1 }}>
+          <View style={[styles.bar, { backgroundColor: status.rojo.stripe }]} />
+          <View style={{ flex: 1, gap: space.xs }}>
+            <StatusLine status={stockStatus(product.stock)} />
             <Txt variant="label" style={{ color: color.ink }}>Agotado en {branch.name}</Txt>
             <Txt variant="small" style={{ color: color.ink }}>No se puede agregar al carrito hasta que la sucursal tenga piezas otra vez.</Txt>
           </View>
@@ -86,10 +88,8 @@ export default function ProductDetail() {
         <View style={styles.qtyRow}>
           <View style={{ flex: 1 }}>
             <Txt variant="label">Cantidad</Txt>
-            <Txt variant="small" numeric>
-              {product.stock <= 6 ? `Solo quedan ${product.stock}` : `${product.stock} piezas disponibles`}
-              {inCart ? `, ${inCart} ya en tu carrito` : ''}
-            </Txt>
+            <StatusLine status={stockStatus(product.stock)} style={{ marginTop: space.xs }} />
+            {inCart ? <Txt variant="small" numeric>{inCart} ya en tu carrito</Txt> : null}
           </View>
           <QtyStepper value={Math.min(qty, Math.max(1, maxMore))} onChange={setQty} max={Math.max(1, maxMore)} label="Cantidad" />
         </View>

@@ -6,7 +6,7 @@ import { CheckCircleIcon } from 'phosphor-react-native';
 import type { ReactNode } from 'react';
 import Txt from './Txt';
 import { useToast, dismissToast } from '../data/toast';
-import { color, font, radius, space } from '../theme/tokens';
+import { color, font, radius, space, status } from '../theme/tokens';
 
 // Green confirmation that stays on the screen after an action (client
 // request after the approval, 17/11/2026): soft green fill, green bar and
@@ -15,7 +15,7 @@ export function DoneNote({ children, style }: { children: ReactNode; style?: obj
   return (
     <View style={[styles.note, style]} accessibilityLiveRegion="polite" accessibilityRole="text">
       <View style={styles.bar} />
-      <CheckCircleIcon size={20} color={color.success} weight="fill" />
+      <CheckCircleIcon size={20} color={status.verde.text} weight="fill" />
       <Txt variant="body" style={{ flex: 1 }}>{children}</Txt>
     </View>
   );
@@ -51,8 +51,8 @@ export function Toaster() {
 }
 
 const styles = StyleSheet.create({
-  note: { flexDirection: 'row', gap: space.m, paddingVertical: space.m, paddingRight: space.l, backgroundColor: color.successSoft, borderRadius: radius.control },
-  bar: { width: 3, borderRadius: 2, backgroundColor: color.success },
+  note: { flexDirection: 'row', gap: space.m, paddingVertical: space.m, paddingRight: space.l, backgroundColor: status.verde.soft, borderRadius: radius.control },
+  bar: { width: 3, borderRadius: 2, backgroundColor: status.verde.stripe },
   toastWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center', paddingHorizontal: space.xl },
   toast: {
     flexDirection: 'row',
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     gap: space.m,
     width: '100%',
     maxWidth: 420,
-    backgroundColor: color.success,
+    backgroundColor: status.verde.text, // white text passes 4.5:1 only on the dark green
     borderRadius: radius.control,
     paddingVertical: space.m,
     paddingHorizontal: space.l,

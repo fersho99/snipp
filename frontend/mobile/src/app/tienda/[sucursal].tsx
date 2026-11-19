@@ -6,16 +6,16 @@ import Txt from '../../components/Txt';
 import Button from '../../components/Button';
 import { OfflineState, Skeleton } from '../../components/States';
 import { CartBar, OtherBranchModal, ProductPhoto } from '../../components/Shop';
+import { StatusLine } from '../../components/Appointment';
 import useConnectivity from '../../hooks/useConnectivity';
 import { getBranch, openStatus, branches } from '../../data/catalog';
-import { cart, cartSummary, pointsAt, productsFor, useCart, productLabel } from '../../data/shop';
+import { cart, cartSummary, pointsAt, productsFor, stockStatus, useCart, productLabel } from '../../data/shop';
 import { money } from '../../theme/format';
 import { color, font, space } from '../../theme/tokens';
 import type { Product } from '../../types/domain';
 import CartButton from '../../components/CartButton';
 import { toast } from '../../data/toast';
 
-const LOW_STOCK = 6;
 
 // Branch store: products for pickup only. Out of stock cannot be added.
 // States: ?estado=cargando | sin-conexion | otra-sucursal (cart already has
@@ -99,17 +99,12 @@ export default function Store() {
                     {p.size ? <Txt variant="small">{p.size}</Txt> : null}
                     <Txt variant="body" numeric style={{ fontFamily: font.bodyMedium, marginTop: space.xs }}>{money(p.price)}</Txt>
                   </Pressable>
-                  {out ? (
-                    <Txt variant="small" style={styles.out}>Agotado</Txt>
-                  ) : (
+                  <StatusLine status={stockStatus(p.stock)} style={{ marginTop: space.s }} />
+                  {out ? null : (
                     <>
                       <Button variant="secondary" label="Agregar" onPress={() => add(p)} style={styles.addBtn} />
-                      {qty || p.stock <= LOW_STOCK ? (
-                        <Txt variant="small" numeric style={{ marginTop: space.xs }}>
-                          {qty ? <Txt variant="small" numeric style={{ color: color.ink }}>{qty} en tu carrito</Txt> : null}
-                          {qty && p.stock <= LOW_STOCK ? ', ' : ''}
-                          {p.stock <= LOW_STOCK ? `quedan ${p.stock}` : ''}
-                        </Txt>
+                      {qty ? (
+                        <Txt variant="small" numeric style={{ marginTop: space.xs, color: color.ink }}>{qty} en tu carrito</Txt>
                       ) : null}
                     </>
                   )}
@@ -153,6 +148,5 @@ function StoreSkeleton() {
 const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: space.l, rowGap: space.xxl, marginTop: space.xl },
   card: { width: '46%', flexGrow: 1 },
-  out: { color: color.ink, fontFamily: font.bodySemi, marginTop: space.s },
   addBtn: { marginTop: space.s, paddingHorizontal: space.m },
 });

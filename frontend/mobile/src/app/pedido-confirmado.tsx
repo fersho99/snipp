@@ -7,7 +7,7 @@ import Button from '../components/Button';
 import { openStatus, weekSchedule, branchOf } from '../data/catalog';
 import { getProduct, pointsEarned, productLabel, useOrders } from '../data/shop';
 import { money } from '../theme/format';
-import { color, font, radius, space } from '../theme/tokens';
+import { color, font, radius, space, status as statusColor } from '../theme/tokens';
 
 // Shown when the folio is opened directly (screen index), without paying first.
 const SAMPLE = {
@@ -41,7 +41,7 @@ export default function OrderConfirmed() {
       }
     >
       <View style={[styles.status, { marginTop: space.xxxl }]}>
-        <CheckCircleIcon size={20} color={color.success} weight="fill" />
+        <CheckCircleIcon size={20} color={statusColor.verde.text} weight="fill" />
         <Txt variant="label" style={{ fontFamily: font.bodySemi }}>Pagado con tarjeta por Stripe</Txt>
       </View>
       <Txt variant="small" numeric style={{ marginTop: space.xs }}>Referencia de pago: {order.paymentRef}</Txt>

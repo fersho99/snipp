@@ -5,10 +5,10 @@ import Screen from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
 import { OfflineState, Skeleton } from '../components/States';
-import { DateBlock, StatusLine, TabBar } from '../components/Appointment';
+import { DateBlock, StatusCard, StatusLine, TabBar } from '../components/Appointment';
 import useConnectivity from '../hooks/useConnectivity';
 import { canReport, canReview, describe, isUpcoming, startDate, statusOf, useAppointments } from '../data/appointments';
-import { color, font, space, touch } from '../theme/tokens';
+import { color, font, space, stripeWidth, touch } from '../theme/tokens';
 import type { Appointment } from '../types/domain';
 
 // My appointments: upcoming and history.
@@ -99,15 +99,17 @@ function AppointmentRow({ appt, past }: { appt: Appointment; past?: boolean }) {
         onPress={() => router.push(`/cita/${appt.folio}`)}
         accessibilityRole="button"
         accessibilityLabel={`${d.service.name} con ${d.employee.name}, ${d.dateLabel} a las ${d.timeLabel}, ${status.label}`}
-        style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+        style={({ pressed }) => pressed && { opacity: 0.7 }}
       >
-        <DateBlock date={d.date} muted={inactive} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Txt variant="body" style={{ fontFamily: font.bodySemi }}>{d.service.name} con {d.employee.name}</Txt>
-          <Txt variant="small" numeric style={{ color: color.ink }}>{d.timeLabel} a {d.endLabel}</Txt>
-          <Txt variant="small">{d.branch.name}</Txt>
-          <StatusLine status={status} style={{ marginTop: space.xs }} />
-        </View>
+        <StatusCard tone={status.color} style={styles.row}>
+          <DateBlock date={d.date} muted={inactive} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Txt variant="body" style={{ fontFamily: font.bodySemi }}>{d.service.name} con {d.employee.name}</Txt>
+            <Txt variant="small" numeric style={{ color: color.ink }}>{d.timeLabel} a {d.endLabel}</Txt>
+            <Txt variant="small">{d.branch.name}</Txt>
+            <StatusLine status={status} style={{ marginTop: space.xs }} />
+          </View>
+        </StatusCard>
       </Pressable>
 
       {past ? <PastActions appt={appt} /> : null}
@@ -180,6 +182,9 @@ function ListSkeleton() {
   );
 }
 
+// Past-appointment links line up with the text of the card above.
+const stripeOffset = stripeWidth + space.l + 56 + space.l;
+
 const styles = StyleSheet.create({
   changeLine: { flexDirection: 'row', gap: space.m, marginTop: space.l, minHeight: touch, alignItems: 'stretch' },
   changeBar: { width: 3, borderRadius: 2, backgroundColor: color.ink },
@@ -189,8 +194,8 @@ const styles = StyleSheet.create({
   tabText: { fontFamily: font.bodyMedium, fontSize: 16, lineHeight: 22, color: color.inkSoft, paddingBottom: space.s },
   tabTextActive: { fontFamily: font.bodySemi, color: color.ink },
   tabBar: { height: 3, borderRadius: 2, backgroundColor: 'transparent' },
-  list: { marginTop: space.xl, gap: space.xxl },
+  list: { marginTop: space.xl, gap: space.l },
   row: { flexDirection: 'row', gap: space.l, alignItems: 'flex-start' },
-  pastActions: { paddingLeft: 56 + space.l, marginTop: space.xs },
+  pastActions: { paddingLeft: stripeOffset, marginTop: space.xs },
   pastLinks: { flexDirection: 'row', flexWrap: 'wrap', columnGap: space.xl },
 });

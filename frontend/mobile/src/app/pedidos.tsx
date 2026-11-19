@@ -5,12 +5,12 @@ import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
 import { ErrorNote, OfflineState, Skeleton } from '../components/States';
-import { StatusLine } from '../components/Appointment';
+import { StatusCard, StatusLine } from '../components/Appointment';
 import useConnectivity from '../hooks/useConnectivity';
 import { branchOf } from '../data/catalog';
-import { getProduct, orderStatusOf, productLabel, useOrders } from '../data/shop';
+import { orderStatusOf, useOrders } from '../data/shop';
 import { money } from '../theme/format';
-import { font, space } from '../theme/tokens';
+import { color, font, space, touch } from '../theme/tokens';
 import type { Order } from '../types/domain';
 
 // My orders (RF-M11): history and status of each order. The branch changes
@@ -22,6 +22,7 @@ export default function MyOrders() {
   const all = useOrders();
   const [failed, setFailed] = useState(estado === 'error');
   const [reloading, setReloading] = useState(false);
+  const [tab, setTab] = useState<'recoger' | 'anteriores'>('recoger');
 
   if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
 
@@ -67,18 +68,28 @@ export default function MyOrders() {
             </View>
           ) : (
             <>
-              {pending.length ? (
-                <View style={styles.group}>
-                  <Txt variant="heading">Por recoger</Txt>
-                  {pending.map((o) => <OrderRow key={o.folio} order={o} />)}
-                </View>
-              ) : null}
-              {past.length ? (
-                <View style={styles.group}>
-                  <Txt variant="heading">Anteriores</Txt>
-                  {past.map((o) => <OrderRow key={o.folio} order={o} />)}
-                </View>
-              ) : null}
+              <View style={styles.tabs} accessibilityRole="tablist">
+                {([
+                  ['recoger', 'Por recoger', pending.length],
+                  ['anteriores', 'Anteriores', past.length],
+                ] as const).map(([id, label, count]) => {
+                  const active = tab === id;
+                  return (
+                    <Pressable key={id} onPress={() => setTab(id)} accessibilityRole="tab" accessibilityState={{ selected: active }} style={styles.tab}>
+                      <Txt style={[styles.tabText, active && styles.tabTextActive]}>
+                        {label} <Txt numeric style={[styles.tabText, active && { color: color.ink }]}>{count}</Txt>
+                      </Txt>
+                      <View style={[styles.tabBar, active && { backgroundColor: color.ink }]} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={styles.group}>
+                {(tab === 'recoger' ? pending : past).map((o) => <OrderRow key={o.folio} order={o} />)}
+                {!(tab === 'recoger' ? pending : past).length ? (
+                  <Txt variant="bodySoft">{tab === 'recoger' ? 'No tienes pedidos por recoger.' : 'Aún no tienes pedidos anteriores.'}</Txt>
+                ) : null}
+              </View>
             </>
           )}
         </>
@@ -87,26 +98,28 @@ export default function MyOrders() {
   );
 }
 
+// SRS v1.2, 4.2.1: folio, total, branch, number of products and the label,
+// on a white card with the stripe of its status color.
 function OrderRow({ order }: { order: Order }) {
   const branch = branchOf(order.branchId);
   const status = orderStatusOf(order);
-  const items = order.items.map((i) => {
-    const p = getProduct(order.branchId, i.productId);
-    return `${i.qty} × ${p ? productLabel(p) : i.productId}`;
-  }).join(', ');
+  const pieces = order.items.reduce((sum, i) => sum + i.qty, 0);
+  const products = `${pieces} ${pieces === 1 ? 'producto' : 'productos'}`;
   return (
     <Pressable
       onPress={() => router.push(`/pedido/${order.folio}`)}
       accessibilityRole="button"
-      accessibilityLabel={`Pedido ${order.folio} en ${branch.name}, ${money(order.total)}, ${status.label}`}
-      style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+      accessibilityLabel={`Pedido ${order.folio} en ${branch.name}, ${products}, ${money(order.total)}, ${status.label}`}
+      style={({ pressed }) => pressed && { opacity: 0.7 }}
     >
-      <View style={styles.rowTop}>
-        <Txt variant="body" style={{ fontFamily: font.bodySemi, flex: 1 }}>{items}</Txt>
-        <Txt variant="body" numeric style={{ fontFamily: font.bodySemi }}>{money(order.total)}</Txt>
-      </View>
-      <Txt variant="small" numeric>{order.folio}, {branch.name}, {order.placedOn}</Txt>
-      <StatusLine status={status} style={{ marginTop: space.xs }} />
+      <StatusCard tone={status.color} style={styles.row}>
+        <View style={styles.rowTop}>
+          <Txt variant="body" numeric style={{ fontFamily: font.bodySemi, flex: 1 }}>{order.folio}</Txt>
+          <Txt variant="body" numeric style={{ fontFamily: font.bodySemi }}>{money(order.total)}</Txt>
+        </View>
+        <Txt variant="small" numeric>{branch.name} · {products} · {order.placedOn}</Txt>
+        <StatusLine status={status} style={{ marginTop: space.xs }} />
+      </StatusCard>
     </Pressable>
   );
 }
@@ -127,7 +140,12 @@ function OrdersSkeleton() {
 }
 
 const styles = StyleSheet.create({
-  group: { marginTop: space.xxl, gap: space.xl },
+  group: { marginTop: space.xl, gap: space.l },
+  tabs: { flexDirection: 'row', gap: space.xl, marginTop: space.xl },
+  tab: { minHeight: touch, justifyContent: 'flex-end' },
+  tabText: { fontFamily: font.bodyMedium, fontSize: 16, lineHeight: 22, color: color.inkSoft, paddingBottom: space.s },
+  tabTextActive: { fontFamily: font.bodySemi, color: color.ink },
+  tabBar: { height: 3, borderRadius: 2, backgroundColor: 'transparent' },
   row: { gap: 2 },
   rowTop: { flexDirection: 'row', alignItems: 'baseline', gap: space.m },
 });

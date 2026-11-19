@@ -96,13 +96,22 @@ export function useOrders() {
   return useSyncExternalStore(orderStore.subscribe, orderStore.get, orderStore.get);
 }
 
+// SRS v1.2, 4.2.1 "Tienda": stock in a green label («8 disponibles») or a
+// red «Agotado».
+export function stockStatus(stock: number): StatusText {
+  return stock > 0
+    ? { label: `${stock} ${stock === 1 ? 'disponible' : 'disponibles'}`, color: 'verde', icon: 'check' }
+    : { label: 'Agotado', color: 'rojo', icon: 'atencion' };
+}
+
+// SRS v1.2, 4.2.1 "Mis pedidos": label, color and icon of each order.
 export function orderStatusOf(order: Order): StatusText {
   switch (order.status) {
-    case 'pagado': return { label: 'Pagado, todavía no está listo', tone: 'pending' };
-    case 'listo': return { label: 'Listo para recoger', tone: 'done' };
-    case 'entregado': return { label: 'Entregado', tone: 'done' };
-    case 'cancelado': return { label: 'Cancelado y reembolsado por Stripe', tone: 'stopped' };
-    default: return { label: order.status, tone: 'soft' };
+    case 'pagado': return { label: 'Pagado · en preparación', color: 'verde', icon: 'check' };
+    case 'listo': return { label: 'Listo para recoger', color: 'azul', icon: 'bolsa' };
+    case 'entregado': return { label: 'Entregado', color: 'gris', icon: 'check' };
+    case 'cancelado': return { label: 'Cancelado · reembolsado', color: 'rojo', icon: 'cancelada' };
+    default: return { label: order.status, color: 'gris', icon: 'info' };
   }
 }
 

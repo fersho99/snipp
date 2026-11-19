@@ -75,7 +75,7 @@ export default function Reschedule() {
     if (!slot || !date) return;
     setSaving(true);
     await new Promise((r) => setTimeout(r, 900));
-    appointmentStore.update(appt.folio, { date: iso(date), start: slot.start, employeeId, status: 'confirmada', change: null });
+    appointmentStore.update(appt.folio, { date: iso(date), start: slot.start, employeeId, status: 'confirmada', change: null, rescheduledFrom: appt.start });
     notificationStore.push({
       kind: 'reagendada',
       title: `Tu cita cambió al ${longDate(date).split(' de ')[0]} a las ${slot.label}`,
