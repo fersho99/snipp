@@ -4,12 +4,13 @@ import type { Branch } from '../../types/domain'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useBusinessPanel } from '@/components/PanelContext'
-import { ImageSquare, PauseCircle, Plus } from '@phosphor-icons/react'
+import { ImageSquare, Plus } from '@phosphor-icons/react'
 import { Button, Note } from '../../components/ui'
 import { networkMessage, type ApiError } from '../../services/auth'
 import { saveMinNotice } from '../../services/branches'
 import { count } from '../../theme'
 import BranchEditor from './BranchEditor'
+import { StatusTag } from '../../components/status'
 
 // Sucursales y servicios (RF-W05 to RF-W09). `sub` picks the screen:
 // the list, a new branch, or editing one.
@@ -55,10 +56,7 @@ function BranchList() {
                 <div className="min-w-0 flex-1">
                   <p className="text-lg font-semibold">{b.name}</p>
                   {!b.active ? (
-                    <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold">
-                      <PauseCircle size={18} weight="fill" aria-hidden="true" />
-                      Desactivada: no aparece en la app
-                    </p>
+                    <StatusTag status={{ color: 'gris', icon: 'pausa', label: 'Desactivada: no aparece en la app' }} className="mt-1" />
                   ) : null}
                   <p className="mt-0.5 text-ink-soft">{b.address} · {b.phone}</p>
                   <p className="mt-0.5 text-sm">

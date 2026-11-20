@@ -6,7 +6,8 @@ import { useSyncExternalStore } from 'react';
 import type { AppNotification } from '../types/domain';
 
 // kind: confirmacion | recordatorio-24h | recordatorio-1h | cambio |
-//       cancelacion | reagendada | pedido-listo
+//       cancelacion | reagendada | pedido-listo | carrito-por-vaciar |
+//       carrito-vaciado (RN-18: one day before a cart expires and when it does)
 // day: hoy | ayer | antes (how the list groups them)
 let state: AppNotification[] = [
   {
@@ -23,6 +24,11 @@ let state: AppNotification[] = [
     id: 'n6', kind: 'pedido-listo', day: 'ayer', when: '11:30 am', read: true, route: '/pedido/P-2279',
     title: 'Tu pedido P-2279 está listo para recoger',
     body: 'Recógelo en Barbería Los Compas, Av. Obregón y Calle 5. Muestra el folio al llegar.',
+  },
+  {
+    id: 'n9', kind: 'carrito-vaciado', day: 'antes', when: 'martes 10 de noviembre, 9:40 pm', read: true, route: '/tienda/navaja-fina',
+    title: 'Se vació tu carrito de Navaja Fina',
+    body: 'Pasaron 7 días sin cambios. Los productos siguen en la tienda si aún los quieres.',
   },
   {
     id: 'n5', kind: 'confirmacion', day: 'antes', when: 'lunes 9 de noviembre, 8:05 pm', read: true, route: '/cita/C-10497',
@@ -53,7 +59,7 @@ let state: AppNotification[] = [
 
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
-let nextId = 9;
+let nextId = 10;
 
 export const notificationStore = {
   subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); },

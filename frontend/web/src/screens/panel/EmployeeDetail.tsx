@@ -15,6 +15,7 @@ import { networkMessage, type ApiError } from '../../services/auth'
 import { lastAppointmentOf, saveSchedule, useStaffStore } from '../../services/staff'
 import { useReportsStore } from '../../services/reports'
 import { longDate, timeOfDay } from '../../theme'
+import { NOTICE, NOTICE_ICON } from '../../components/status'
 
 // One Empleado as the Jefe sees it: profile (the Empleado edits it, RF-W11),
 // work schedule (RF-W10), appointment history (RF-W17), and the two ways an
@@ -69,8 +70,9 @@ export default function EmployeeDetail() {
 
       {migration ? (
         <section className="mt-10" aria-labelledby="migracion">
-          <div className="flex gap-3 rounded-control bg-sunken px-5 py-4">
-            <ArrowsLeftRight size={22} weight="bold" className="mt-0.5 shrink-0" aria-hidden="true" />
+          {/* SRS v1.2, 4.1: an Empleado in pending migration is amber. */}
+          <div className={`flex gap-3 rounded-control px-5 py-4 ${NOTICE.ambar}`}>
+            <ArrowsLeftRight size={22} weight="bold" className={`mt-0.5 shrink-0 ${NOTICE_ICON.ambar}`} aria-hidden="true" />
             <div>
               <h2 id="migracion" className="font-semibold">Migración pendiente a {migration.to}</h2>
               <p className="text-sm">

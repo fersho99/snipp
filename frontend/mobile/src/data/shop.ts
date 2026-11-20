@@ -1,9 +1,12 @@
-// Products sold for pickup at each branch, the cart (one branch at a time),
-// orders and loyalty points. In-memory stores for the demo.
-import { useSyncExternalStore } from 'react';
+// Products sold for pickup at each branch, the carts (one per branch, up to
+// 3), orders and loyalty points. In-memory stores for the demo; in production
+// the carts are kept in the client's account (RN-18).
+import { useEffect, useSyncExternalStore } from 'react';
 import { businesses, products as baseProducts } from './demo';
 import { getBranch } from './catalog';
-import type { Branch, Cart, CartItem, Order, Photo, PointsMovement, Product, StatusText } from '../types/domain';
+import { notificationStore } from './notifications';
+import { time } from '../theme/format';
+import type { Branch, Cart, CartItem, Order, Photo, PointsMovement, Product, StatusColor, StatusText } from '../types/domain';
 import type { PaymentResult } from '../services/payments';
 
 type ProductDetails = { photo?: Photo; photoFile?: string; description: string; howTo: string };
@@ -40,6 +43,7 @@ const details: Record<string, ProductDetails> = {
 const stockByBranch: Record<string, Record<string, number>> = {
   'los-compas-centro': { pomada: 14, aceite: 6, shampoo: 0, cera: 22 },
   'los-compas-norte': { pomada: 3, cera: 5 },
+  'los-compas-sur': { pomada: 6, cera: 4 },
   'navaja-fina': { aceite: 4, pomada: 8 },
   'estudio-marisol': {},
 };
@@ -68,7 +72,14 @@ function createStore<T>(initial: T) {
   };
 }
 
-const cartStore = createStore<Cart>({ branchId: null, items: [] }); // items: [{ productId, qty }]
+// RF-M09, RN-06: one cart per branch, at most 3 open at a time.
+export const MAX_CARTS = 3;
+// RN-18: a cart without changes for 7 days is emptied.
+export const CART_DAYS = 7;
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+
+const cartStore = createStore<Cart[]>([]);
 // status: pagado | listo | entregado | cancelado (RF-M11, RF-W20). The branch
 // changes it on the web and the app shows it in "Mis pedidos".
 const orderStore = createStore<Order[]>([
@@ -89,20 +100,35 @@ const orderStore = createStore<Order[]>([
   },
 ]);
 
-export function useCart() {
-  return useSyncExternalStore(cartStore.subscribe, cartStore.get, cartStore.get);
+// Open carts, oldest first. Every screen that shows them also empties the
+// ones that expired (the API does it in production).
+export function useCarts() {
+  const carts = useSyncExternalStore(cartStore.subscribe, cartStore.get, cartStore.get);
+  useEffect(() => { cart.expire(); }, []);
+  return carts;
 }
+export const getCart = (branchId: string | undefined) => cartStore.get().find((c) => c.branchId === branchId);
+export const openCarts = () => cartStore.get();
 export function useOrders() {
   return useSyncExternalStore(orderStore.subscribe, orderStore.get, orderStore.get);
 }
 
+// SRS v1.2, 4.2.1 "Tienda": stock in a green label («8 disponibles») or a
+// red «Agotado».
+export function stockStatus(stock: number): StatusText {
+  return stock > 0
+    ? { label: `${stock} ${stock === 1 ? 'disponible' : 'disponibles'}`, color: 'verde', icon: 'check' }
+    : { label: 'Agotado', color: 'rojo', icon: 'atencion' };
+}
+
+// SRS v1.2, 4.2.1 "Mis pedidos": label, color and icon of each order.
 export function orderStatusOf(order: Order): StatusText {
   switch (order.status) {
-    case 'pagado': return { label: 'Pagado, todavía no está listo', tone: 'pending' };
-    case 'listo': return { label: 'Listo para recoger', tone: 'done' };
-    case 'entregado': return { label: 'Entregado', tone: 'done' };
-    case 'cancelado': return { label: 'Cancelado y reembolsado por Stripe', tone: 'stopped' };
-    default: return { label: order.status, tone: 'soft' };
+    case 'pagado': return { label: 'Pagado · en preparación', color: 'verde', icon: 'check' };
+    case 'listo': return { label: 'Listo para recoger', color: 'azul', icon: 'bolsa' };
+    case 'entregado': return { label: 'Entregado', color: 'gris', icon: 'check' };
+    case 'cancelado': return { label: 'Cancelado · reembolsado', color: 'rojo', icon: 'cancelada' };
+    default: return { label: order.status, color: 'gris', icon: 'info' };
   }
 }
 
@@ -135,43 +161,115 @@ export function pointBalances(ledger = ledgerStore.get()) {
     .sort((a, b) => b.points - a.points);
 }
 
+const branchName = (branchId: string) => getBranch(branchId)?.name ?? 'la sucursal';
+
+// Adds or changes one cart; a cart left without products disappears.
+function updateCart(branchId: string, update: (c: Cart | undefined) => Cart) {
+  cartStore.set((list) => {
+    const current = list.find((c) => c.branchId === branchId);
+    const next = update(current);
+    if (!next.items.length) return list.filter((c) => c.branchId !== branchId);
+    return current ? list.map((c) => (c.branchId === branchId ? next : c)) : [...list, next];
+  });
+}
+
 export const cart = {
-  // Returns 'other-branch' instead of adding when the cart belongs to another branch.
-  add(branchId: string, productId: string, qty = 1): 'added' | 'other-branch' | 'out-of-stock' {
-    const c = cartStore.get();
-    if (c.branchId && c.branchId !== branchId && c.items.length) return 'other-branch';
+  // 'limit': there are already 3 carts and none is from this branch; the
+  // product is not added until one is paid or emptied.
+  add(branchId: string, productId: string, qty = 1): 'added' | 'limit' | 'out-of-stock' {
+    const list = cartStore.get();
+    const current = list.find((c) => c.branchId === branchId);
+    if (!current && list.length >= MAX_CARTS) return 'limit';
     const product = getProduct(branchId, productId);
     if (!product || product.stock <= 0) return 'out-of-stock';
-    const existing = c.items.find((i) => i.productId === productId);
+    const existing = current?.items.find((i) => i.productId === productId);
     const nextQty = Math.min(product.stock, (existing?.qty ?? 0) + qty);
-    cartStore.set({
+    updateCart(branchId, (c) => ({
       branchId,
-      items: existing ? c.items.map((i) => (i.productId === productId ? { ...i, qty: nextQty } : i)) : [...c.items, { productId, qty: nextQty }],
-    });
+      updatedAt: Date.now(),
+      items: existing
+        ? (c?.items ?? []).map((i) => (i.productId === productId ? { ...i, qty: nextQty } : i))
+        : [...(c?.items ?? []), { productId, qty: nextQty, price: product.price }],
+    }));
     return 'added';
   },
-  setQty(productId: string, qty: number) {
-    const c = cartStore.get();
-    const items = qty <= 0 ? c.items.filter((i) => i.productId !== productId) : c.items.map((i) => (i.productId === productId ? { ...i, qty } : i));
-    cartStore.set({ branchId: items.length ? c.branchId : null, items });
+  setQty(branchId: string, productId: string, qty: number) {
+    updateCart(branchId, (c) => {
+      const items = c?.items ?? [];
+      return {
+        branchId,
+        updatedAt: Date.now(),
+        items: qty <= 0 ? items.filter((i) => i.productId !== productId) : items.map((i) => (i.productId === productId ? { ...i, qty } : i)),
+      };
+    });
   },
-  clear() { cartStore.set({ branchId: null, items: [] }); },
-  replaceWith(branchId: string, productId: string, qty = 1) { cart.clear(); return cart.add(branchId, productId, qty); },
-  seed(branchId: string, items: CartItem[]) { cartStore.set({ branchId, items }); },
+  remove(branchId: string, productId: string) { cart.setQty(branchId, productId, 0); },
+  empty(branchId: string) { cartStore.set((list) => list.filter((c) => c.branchId !== branchId)); },
+  clearAll() { cartStore.set([]); },
+  seed(carts: Cart[]) { cartStore.set(carts); },
+  // RN-18, RF-M16: notice one day before, then empty the cart at 7 days.
+  expire(now = Date.now()) {
+    const list = cartStore.get();
+    const gone = list.filter((c) => cartExpiry(c, now).msLeft <= 0);
+    const warn = list.filter((c) => !c.warned && !gone.includes(c) && cartExpiry(c, now).soon);
+    if (!gone.length && !warn.length) return;
+    gone.forEach((c) => notificationStore.push({
+      kind: 'carrito-vaciado',
+      title: `Se vació tu carrito de ${branchName(c.branchId)}`,
+      body: `Pasaron ${CART_DAYS} días sin cambios. Los productos siguen en la tienda si aún los quieres.`,
+      route: `/tienda/${c.branchId}`,
+    }));
+    warn.forEach((c) => notificationStore.push({
+      kind: 'carrito-por-vaciar',
+      title: `Tu carrito de ${branchName(c.branchId)} se vacía ${cartExpiry(c, now).when}`,
+      body: 'Si no lo pagas o cambias antes, se vacía solo. Ábrelo para pagarlo.',
+      route: `/carrito?sucursal=${c.branchId}`,
+    }));
+    cartStore.set(list.filter((c) => !gone.includes(c)).map((c) => (warn.includes(c) ? { ...c, warned: true } : c)));
+  },
 };
 
-export interface CartLine extends CartItem { product: Product }
-export interface CartSummary { branch: Branch | null; lines: CartLine[]; subtotal: number; available: number; usable: number; discount: number; total: number; count: number }
-export function cartSummary(c: Cart, usePoints: boolean): CartSummary {
-  const branch = getBranch(c.branchId ?? undefined);
-  if (!c.branchId || !branch) return { lines: [], subtotal: 0, discount: 0, usable: 0, total: 0, count: 0, branch: null, available: 0 };
-  const branchId = c.branchId;
-  const lines = c.items.map((i) => ({ ...i, product: getProduct(branchId, i.productId) })).filter((l): l is CartLine => !!l.product);
-  const subtotal = lines.reduce((s, l) => s + l.product.price * l.qty, 0);
+// When the cart empties: "6 días" in gray, or "Caduca mañana" in amber when
+// 1 day or less is left (SRS v1.2, 4.1 and 4.2).
+export interface CartExpiry { msLeft: number; soon: boolean; label: string; when: string }
+export function cartExpiry(c: Cart, now = Date.now()): CartExpiry {
+  const at = new Date(c.updatedAt + CART_DAYS * DAY);
+  const msLeft = at.getTime() - now;
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const atDay = new Date(at);
+  atDay.setHours(0, 0, 0, 0);
+  const days = Math.round((atDay.getTime() - today.getTime()) / DAY);
+  const day = days <= 0 ? 'hoy' : days === 1 ? 'mañana' : `en ${days} días`;
+  const soon = msLeft <= DAY;
+  const left = Math.max(1, Math.ceil(msLeft / DAY));
+  return { msLeft, soon, when: `${day} a las ${time(at)}`, label: soon ? `Caduca ${day}` : `${left} ${left === 1 ? 'día' : 'días'}` };
+}
+
+// RN-18: a line is billed at today's price and never above the stock. A sold
+// out product stays in the cart, marked, and is not charged.
+export interface CartLine extends CartItem { product: Product; soldOut: boolean; adjusted: boolean; priceChanged: boolean; billedQty: number }
+export interface CartSummary {
+  cart: Cart; branch: Branch; lines: CartLine[]; subtotal: number; available: number; usable: number; discount: number; total: number;
+  count: number; soldOut: number; expiry: CartExpiry; tone: StatusColor;
+}
+export function cartSummary(c: Cart, usePoints = false, now = Date.now()): CartSummary | null {
+  const branch = getBranch(c.branchId);
+  if (!branch) return null;
+  const lines = c.items.flatMap((i): CartLine[] => {
+    const product = getProduct(c.branchId, i.productId);
+    if (!product) return [];
+    const soldOut = product.stock <= 0;
+    return [{ ...i, product, soldOut, adjusted: !soldOut && i.qty > product.stock, priceChanged: i.price !== product.price, billedQty: soldOut ? 0 : Math.min(i.qty, product.stock) }];
+  });
+  const subtotal = lines.reduce((s, l) => s + l.product.price * l.billedQty, 0);
   const available = pointsAt(branch.businessId);
   const usable = Math.min(available, Math.floor(subtotal / PESOS_PER_POINT_SPENT));
   const discount = usePoints ? usable * PESOS_PER_POINT_SPENT : 0;
+  const soldOut = lines.filter((l) => l.soldOut).length;
+  const expiry = cartExpiry(c, now);
   return {
+    cart: c,
     branch,
     lines,
     subtotal,
@@ -179,19 +277,44 @@ export function cartSummary(c: Cart, usePoints: boolean): CartSummary {
     usable,
     discount,
     total: subtotal - discount,
-    count: lines.reduce((s, l) => s + l.qty, 0),
+    count: lines.reduce((s, l) => s + l.billedQty, 0),
+    soldOut,
+    expiry,
+    // Dot of its tab: red with a sold out product, amber when it expires in
+    // 1 day or less, gray otherwise.
+    tone: soldOut ? 'rojo' : expiry.soon ? 'ambar' : 'gris',
   };
 }
 
+// Demo carts. 'uno': Los Compas with Pomada and Aceite ($420). 'tres': one
+// per branch with every warning: price changed and a sold out product (Los
+// Compas), quantity adjusted and about to expire (Norte), current (Navaja Fina).
+export function seedDemoCarts(kind: 'uno' | 'tres') {
+  const now = Date.now();
+  const losCompas: Cart = {
+    branchId: 'los-compas-centro',
+    updatedAt: now - DAY,
+    items: [{ productId: 'pomada', qty: 1, price: 230 }, { productId: 'aceite', qty: 1, price: 190 }],
+  };
+  if (kind === 'uno') { cart.seed([losCompas]); return; }
+  cart.seed([
+    { ...losCompas, updatedAt: now - 2 * HOUR, items: [{ productId: 'pomada', qty: 1, price: 230 }, { productId: 'aceite', qty: 1, price: 170 }, { productId: 'shampoo', qty: 1, price: 310 }] },
+    { branchId: 'los-compas-norte', updatedAt: now - (CART_DAYS - 1) * DAY - 4 * HOUR, items: [{ productId: 'pomada', qty: 5, price: 230 }, { productId: 'cera', qty: 1, price: 210 }] },
+    { branchId: 'navaja-fina', updatedAt: now - 1.2 * DAY, items: [{ productId: 'aceite', qty: 1, price: 190 }] },
+  ]);
+}
+
 let nextFolio = 2291;
-export function createOrder(summary: CartSummary & { branch: Branch }, payment: Extract<PaymentResult, { status: 'paid' }>) {
+// RF-M10: pays one cart. Only that cart goes away; the others stay the same.
+export function createOrder(summary: CartSummary, payment: Extract<PaymentResult, { status: 'paid' }>) {
   const folio = `P-${nextFolio}`;
   nextFolio += 1;
+  const billed = summary.lines.filter((l) => l.billedQty > 0);
   orderStore.set((list) => [
     {
       folio,
       branchId: summary.branch.id,
-      items: summary.lines.map((l) => ({ productId: l.productId, qty: l.qty, price: l.product.price })),
+      items: billed.map((l) => ({ productId: l.productId, qty: l.billedQty, price: l.product.price })),
       total: summary.total,
       pointsUsed: summary.discount / PESOS_PER_POINT_SPENT,
       status: 'pagado',
@@ -209,11 +332,11 @@ export function createOrder(summary: CartSummary & { branch: Branch }, payment: 
   if (used) moves.push({ id: `${folio}-canje`, businessId, points: -used, label: `Canjeaste en el pedido ${folio}`, date: 'jueves 12 de noviembre', route: `/pedido/${folio}` });
   ledgerStore.set((l) => [...moves, ...l]);
   // RF-W20, RN-07: stock goes down once the payment is confirmed.
-  summary.lines.forEach((l) => {
+  billed.forEach((l) => {
     const stock = stockByBranch[summary.branch.id];
-    stock[l.productId] = Math.max(0, stock[l.productId] - l.qty);
+    stock[l.productId] = Math.max(0, stock[l.productId] - l.billedQty);
   });
-  cart.clear();
+  cart.empty(summary.branch.id);
   return folio;
 }
 

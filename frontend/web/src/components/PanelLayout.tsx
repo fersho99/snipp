@@ -12,6 +12,9 @@ import { accounts, ROLE_LABEL } from '../data/demo'
 import { navFor } from '../data/nav'
 import { currentSession, devSignIn, networkMessage, type ApiError } from '../services/auth'
 import { useReportsStore } from '../services/reports'
+import { useShopStore } from '../services/shop'
+import { useStaffStore } from '../services/staff'
+import { COUNTER } from './status'
 import { resetDemoBranches, useBusinessSetup } from '../services/branches'
 import { resetDemoStaff } from '../services/staff'
 import { resetDemoReports } from '../services/reports'
@@ -49,6 +52,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const session = currentSession()
   const setup = useBusinessSetup(session?.businessId ?? null, session?.business)
   const reportStore = useReportsStore()
+  const shopStore = useShopStore()
+  const staffStore = useStaffStore()
   const subs = useSubscriptionsStore()
   const [data, setData] = useState<{ business: Business | null } | null>(null)
   const [failure, setFailure] = useState<ApiError | null>(null)
@@ -103,6 +108,15 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }
 
   const ready = !!data
+  // SRS v1.2, 4.2.2 "Menú lateral": orders to prepare in gray, new reports in
+  // red (Jefe only). An Empleado counts the orders of their own branch.
+  const ordersBranchId = session.role === 'jefe' ? activeBranch?.id : Object.values(staffStore.staff).find((e) => e.email === session.email)?.branchId
+  const toPrepare = shopStore.orders.filter((o) => o.branchId === ordersBranchId && o.status === 'pagado').length
+  const badges: Badges = {}
+  if (session.role !== 'admin' && ordersBranchId) badges.pedidos = { count: toPrepare, tone: 'gris', noun: ['por preparar', 'por preparar'] }
+  if (session.role === 'jefe' && business) {
+    badges.reportes = { count: reportStore.reports.filter((r) => r.businessId === business.id && r.state === 'enviado').length, tone: 'rojo', noun: ['nuevo', 'nuevos'] }
+  }
   const sidebar = (
     <Sidebar
       session={session}
@@ -113,7 +127,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       ready={ready}
       onExit={exit}
       pathname={pathname}
-      badges={session.role === 'jefe' && business ? { reportes: reportStore.reports.filter((r) => r.businessId === business.id && r.state === 'enviado').length } : {}}
+      badges={badges}
     />
   )
 
@@ -192,7 +206,7 @@ type SidebarProps = {
   onPickBranch: (id: string) => void
   ready: boolean
   onExit: () => void
-  badges: Partial<Record<string, number>>
+  badges: Badges
   pathname: string
 }
 function Sidebar({ session, business, branches, activeBranch, onPickBranch, ready, onExit, badges, pathname }: SidebarProps) {
@@ -297,7 +311,10 @@ function BranchPicker({ branches, active, onPick }: { branches: Branch[]; active
   )
 }
 
-function NavItem({ href, active, label, Icon, badge }: { href: string; active: boolean; label: string; Icon: Icon; badge?: number }) {
+type Badge = { count: number; tone: 'rojo' | 'gris'; noun: [string, string] }
+type Badges = Partial<Record<string, Badge>>
+
+function NavItem({ href, active, label, Icon, badge }: { href: string; active: boolean; label: string; Icon: Icon; badge?: Badge }) {
   return (
     <Link
       href={href}
@@ -307,11 +324,11 @@ function NavItem({ href, active, label, Icon, badge }: { href: string; active: b
       {active ? <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-ink" aria-hidden="true" /> : null}
       <Icon size={20} weight={active ? 'fill' : 'regular'} aria-hidden="true" />
       {label}
-      {/* RF-W14: one notice per new client report */}
-      {badge ? (
-        <span className="tabular ml-auto min-w-6 rounded-full bg-ink px-1.5 text-center text-xs font-semibold leading-6 text-white">
-          {badge}
-          <span className="sr-only"> {badge === 1 ? 'nuevo' : 'nuevos'}</span>
+      {/* RF-W14 and RF-W21: new reports (red) and orders to prepare (gray) */}
+      {badge?.count ? (
+        <span className={`tabular ml-auto min-w-6 rounded-full px-1.5 text-center text-xs font-semibold leading-6 ${COUNTER[badge.tone]}`}>
+          {badge.count}
+          <span className="sr-only"> {badge.noun[badge.count === 1 ? 0 : 1]}</span>
         </span>
       ) : null}
     </Link>

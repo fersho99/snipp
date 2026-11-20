@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useBranchPanel } from '@/components/PanelContext'
 import { CaretLeft, CaretRight, LockSimple } from '@phosphor-icons/react'
-import { BLOCK_CLASS, ICON_CLASS, LIGHT, STATUS_ICON, SWATCH_CLASS } from './agendaIcons'
+import { apptStatus, BLOCKED_STYLE, blockClass } from './agendaIcons'
+import { STRIPE, StatusTag } from '../../components/status'
 import { Button, Note } from '../../components/ui'
 import { AppointmentDialog, BlockDialog, BulkCancelDialog, BulkReassignDialog } from './AgendaDialogs'
 import { DEMO_TODAY } from '../../data/demo'
@@ -153,33 +154,33 @@ export default function Agenda() {
   )
 }
 
-function StatusText({ status, compact }: { status: AppointmentStatus; compact?: boolean }) {
-  const Icon = STATUS_ICON[status]
+function StatusText({ status, compact, className }: { status: AppointmentStatus; compact?: boolean; className?: string }) {
+  return <StatusTag status={apptStatus(status)} compact={compact} className={className} />
+}
+
+// Key of the status colors (SRS v1.2, 4.1): stripe, icon and text.
+function Legend() {
+  const items: AppointmentStatus[] = ['confirmada', 'cambio', 'cancelada', 'no-asistio', 'atendida']
   return (
-    <span className={`inline-flex items-center gap-1 ${compact ? 'text-xs' : 'text-sm'}`}>
-      <Icon size={compact ? 13 : 16} weight={status === 'atendida' || status === 'confirmada' ? 'fill' : 'regular'} className={ICON_CLASS[LIGHT[status]]} aria-hidden="true" />
-      {STATUS[status]}
+    <span className="inline-flex flex-wrap items-center gap-x-4 gap-y-1">
+      {items.map((st) => (
+        <span key={st} className="inline-flex items-center gap-1.5">
+          <span className={`inline-block h-3.5 w-4 rounded-sm bg-raised ${STRIPE[apptStatus(st).color]}`} aria-hidden="true" />
+          <StatusTag status={apptStatus(st)} compact />
+        </span>
+      ))}
     </span>
   )
 }
 
-// Traffic-light key (client request): color, icon and text for each state.
-function Legend() {
-  const items: [AppointmentStatus, string][] = [['confirmada', 'Confirmada'], ['cambio', 'Esperando respuesta'], ['cancelada', 'Cancelada'], ['atendida', 'Terminada']]
-  return (
-    <span className="inline-flex flex-wrap items-center gap-x-4 gap-y-1">
-      {items.map(([st, label]) => {
-        const Icon = STATUS_ICON[st]
-        return (
-          <span key={st} className="inline-flex items-center gap-1.5 text-ink">
-            <span className={`inline-block h-3 w-4 rounded-sm ${SWATCH_CLASS[LIGHT[st]]}`} aria-hidden="true" />
-            <Icon size={13} weight="fill" className={ICON_CLASS[LIGHT[st]]} aria-hidden="true" />
-            {label}
-          </span>
-        )
-      })}
-    </span>
-  )
+// «Descanso 2:00 a 3:00» or «Vacaciones · todo el día».
+// Only the part of the block that falls on `day`; until 11:59 pm counts as all day.
+function blockLabel(b: Block, day: Date) {
+  const from = b.from < day ? day : b.from
+  const end = addDays(day, 1)
+  const to = b.to > end ? end : b.to
+  const allDay = from.getTime() === day.getTime() && end.getTime() - to.getTime() <= 60_000
+  return allDay ? `${b.reason} · todo el día` : `${b.reason} ${timeOfDay(from)} a ${timeOfDay(to)}`
 }
 
 // One column per Empleado, one row per hour, within the branch hours of that day.
@@ -240,9 +241,9 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
                     const y = Math.max(0, top(from))
                     const h = Math.min(height, top(to)) - y
                     return h > 0 ? (
-                      <div key={b.id} className="absolute inset-x-1 flex items-start gap-1 overflow-hidden rounded-md border border-gray-light bg-sunken-pressed px-2 py-1 text-xs font-semibold" style={{ top: y, height: h }}>
+                      <div key={b.id} className="absolute inset-x-1 flex items-start gap-1 overflow-hidden rounded-md border border-gris px-2 py-1 text-xs font-semibold text-gris-text" style={{ top: y, height: h, ...BLOCKED_STYLE }}>
                         <LockSimple size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
-                        {b.reason}
+                        {blockLabel(b, day)}
                       </div>
                     ) : null
                   })}
@@ -253,11 +254,16 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
                         key={a.folio}
                         type="button"
                         onClick={() => onOpen(a.folio)}
-                        className={`absolute inset-x-1 overflow-hidden rounded-md px-2 py-1 text-left transition ${BLOCK_CLASS[LIGHT[a.status]]}`}
+                        className={`absolute inset-x-1 overflow-hidden rounded-md px-2 py-1 text-left transition ${blockClass(a.status)}`}
                         style={{ top: top(a.start) + 1, height: h }}
                         aria-label={`${timeOfDay(a.start)}, ${a.client}, ${a.service}, ${STATUS[a.status]}`}
+                        title={`${timeOfDay(a.start)} · ${a.client} · ${a.service} · ${STATUS[a.status]}`}
                       >
-                        <p className={`tabular truncate text-xs font-semibold ${a.status === 'cancelada' ? 'line-through' : ''}`}>{timeOfDay(a.start)} · {a.client}</p>
+                        {/* Every block shows its label (RN-19); a short one keeps it on the first line. */}
+                        <p className="flex items-center gap-1.5 text-xs font-semibold">
+                          <span className={`tabular min-w-0 flex-1 truncate ${a.status === 'cancelada' ? 'line-through' : ''}`}>{timeOfDay(a.start)} · {a.client}</span>
+                          {h > 52 ? null : <StatusText status={a.status} compact className="shrink-0" />}
+                        </p>
                         {h > 34 ? <p className="truncate text-xs">{a.service}</p> : null}
                         {h > 52 ? <StatusText status={a.status} compact /> : null}
                       </button>
@@ -279,7 +285,7 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
         ) : null}
         <Legend />
         <span className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-4 rounded-sm bg-sunken" /> Fuera de su horario</span>
-        <span className="inline-flex items-center gap-1.5"><LockSimple size={13} /> Bloqueado</span>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-4 rounded-sm border border-gris" style={BLOCKED_STYLE} aria-hidden="true" /><LockSimple size={13} /> Bloqueado</span>
       </div>
       {showCancelled ? (
         <ul className="mt-3 max-w-2xl">
@@ -309,15 +315,15 @@ function WeekList({ days, branch, appts, blocks, nameOf, onOpen }: ViewProps & {
             </h3>
             {!branch.hours[d.getDay()] ? <p className="mt-2 text-sm text-ink-soft">Cerrado</p> : null}
             {dayBlocks.map((b) => (
-              <p key={b.id} className="mt-2 flex items-center gap-1 text-xs font-semibold"><LockSimple size={12} aria-hidden="true" />{nameOf(b.employeeId)}: {b.reason}</p>
+              <p key={b.id} className="mt-2 flex items-center gap-1 rounded-md border border-gris px-2 py-1 text-xs font-semibold text-gris-text" style={BLOCKED_STYLE}><LockSimple size={12} aria-hidden="true" />{nameOf(b.employeeId)}: {blockLabel(b, d)}</p>
             ))}
             <ul className="mt-2 flex flex-col gap-1.5">
               {list.map((a) => (
                 <li key={a.folio}>
-                  <button type="button" onClick={() => onOpen(a.folio)} className={`w-full rounded-md px-2 py-1.5 text-left transition ${BLOCK_CLASS[LIGHT[a.status]]}`}>
+                  <button type="button" onClick={() => onOpen(a.folio)} className={`w-full rounded-md px-2 py-1.5 text-left transition ${blockClass(a.status)}`}>
                     <p className={`tabular text-xs font-semibold ${a.status === 'cancelada' ? 'line-through' : ''}`}>{timeOfDay(a.start)} · {nameOf(a.employeeId).split(' ')[0]}</p>
                     <p className="truncate text-xs">{a.client} · {a.service}</p>
-                    {a.status === 'cambio' || a.status === 'cancelada' ? <StatusText status={a.status} compact /> : null}
+                    <StatusText status={a.status} compact />
                   </button>
                 </li>
               ))}

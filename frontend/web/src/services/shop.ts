@@ -9,6 +9,7 @@ const frasco = '/photos/producto-frasco.jpg'
 import { DEMO_TODAY } from '../data/demo'
 import { ApiError } from './auth'
 import { getDemoEstado } from './panel'
+import type { Status } from '../components/status'
 
 // RF-W19, RF-W20: a product of one branch with its stock.
 export interface Product {
@@ -48,9 +49,15 @@ type CatalogItem = Omit<Product, 'id' | 'sku' | 'branchId' | 'stock'>
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const d = (m: number, day: number, h = 12, min = 0) => new Date(2026, m - 1, day, h, min)
 
-export const ORDER_STATE: Record<OrderStatus, string> = { pagado: 'Pagado', listo: 'Listo para recoger', entregado: 'Entregado', cancelado: 'Cancelado' }
-// What the client sees in "Mis pedidos" (same texts as the app).
-export const CLIENT_ORDER_STATE: Record<OrderStatus, string> = { pagado: 'Pagado, todavía no está listo', listo: 'Listo para recoger', entregado: 'Entregado', cancelado: 'Cancelado y reembolsado por Stripe' }
+// SRS v1.2, 4.2.2 "Pedidos de la sucursal": label, color and icon.
+export const ORDER_STATE: Record<OrderStatus, Status> = {
+  pagado: { label: 'Pagado · preparar', color: 'verde', icon: 'check' },
+  listo: { label: 'Listo para recoger', color: 'azul', icon: 'bolsa' },
+  entregado: { label: 'Entregado', color: 'gris', icon: 'check' },
+  cancelado: { label: 'Cancelado · reembolsado', color: 'rojo', icon: 'cancelada' },
+}
+// What the client sees in "Mis pedidos" (same texts as the app, SRS v1.2 4.2.1).
+export const CLIENT_ORDER_STATE: Record<OrderStatus, string> = { pagado: 'Pagado · en preparación', listo: 'Listo para recoger', entregado: 'Entregado', cancelado: 'Cancelado · reembolsado' }
 // The next step of each state; any order not delivered yet can be cancelled.
 export const NEXT: Partial<Record<OrderStatus, OrderStatus>> = { pagado: 'listo', listo: 'entregado' }
 

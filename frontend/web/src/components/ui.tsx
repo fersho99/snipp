@@ -99,11 +99,11 @@ export function Note({ tone = 'error', title, children, action }: NoteProps) {
   const done = tone === 'done'
   const Icon = done ? CheckCircle : WarningCircle
   return (
-    <div className={`flex gap-3 ${done ? 'rounded-control bg-success-soft py-3 pr-4' : ''}`} role={done ? 'status' : 'alert'}>
-      <span className={`w-[3px] shrink-0 rounded-full ${done ? 'bg-success' : 'bg-ink'}`} />
+    <div className={`flex gap-3 ${done ? 'rounded-control bg-verde-soft py-3 pr-4' : ''}`} role={done ? 'status' : 'alert'}>
+      <span className={`w-[3px] shrink-0 rounded-full ${done ? 'bg-verde' : 'bg-ink'}`} />
       <div className="flex flex-col gap-1">
         <p className="flex items-start gap-1.5 font-semibold">
-          <Icon size={18} weight="fill" className={`mt-0.5 shrink-0 ${done ? 'text-success' : ''}`} />
+          <Icon size={18} weight="fill" className={`mt-0.5 shrink-0 ${done ? 'text-verde-text' : ''}`} />
           {title}
         </p>
         {children ? <p className="text-sm">{children}</p> : null}
