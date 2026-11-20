@@ -8,7 +8,7 @@ import { useSyncExternalStore } from 'react'
 const frasco = '/photos/producto-frasco.jpg'
 import { DEMO_TODAY } from '../data/demo'
 import { ApiError } from './auth'
-import { getDemoEstado } from './panel'
+import { takeForcedError } from './panel'
 import type { Status } from '../components/status'
 
 // RF-W19, RF-W20: a product of one branch with its stock.
@@ -140,8 +140,9 @@ export function resetDemoShop(estado: string | null) {
   if (estado === 'sin-pedidos') state = { ...state, orders: [] }
 }
 function failIfForced() {
-  if (getDemoEstado() === 'error-guardar') throw new ApiError('server')
-  if (getDemoEstado() === 'error-stripe') throw new ApiError('stripe')
+  const e = takeForcedError('error-guardar', 'error-stripe')
+  if (e === 'error-guardar') throw new ApiError('server')
+  if (e === 'error-stripe') throw new ApiError('stripe')
 }
 
 // discount: pesos taken off with points, fixed when the order was paid.

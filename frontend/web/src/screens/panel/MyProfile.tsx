@@ -4,10 +4,10 @@ import type { EditableProfile, MyRequest, StaffMember, StaffState } from '../../
 import { useRef, useState } from 'react'
 import { usePanel } from '@/components/PanelContext'
 import { ArrowsLeftRight, EnvelopeSimple, UploadSimple, X } from '@phosphor-icons/react'
-import { Button, Note, TextField } from '../../components/ui'
+import { FieldError, Button, Note, TextField } from '../../components/ui'
 import { Avatar } from '../../components/staff'
 import { directory } from '../../data/staff'
-import { networkMessage, type ApiError } from '../../services/auth'
+import useAction from '@/lib/useAction'
 import { imageProblem, MAX_IMAGE_MB } from '../../services/branches'
 import { acceptInvitation, expiresOn, lastAppointmentOf, saveProfile, sendRequest, useStaffStore } from '../../services/staff'
 import { longDate, timeOfDay } from '../../theme'
@@ -37,8 +37,7 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
   const [form, setForm] = useState({ ...profile, specialties: [...profile.specialties] })
   const [newSpecialty, setNewSpecialty] = useState('')
   const [errors, setErrors] = useState<Record<string, string | null | undefined>>({})
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
+  const saving = useAction({ busy: 'Guardando...', done: 'Perfil guardado', failed: 'No se pudo guardar' })
   const [saved, setSaved] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
@@ -64,17 +63,8 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
     const next: Record<string, string> = {}
     if (!form.displayName.trim()) next.displayName = 'Escribe el nombre que verán los clientes.'
     setErrors(next)
-    setFailure(null)
     if (Object.keys(next).length) return
-    setBusy(true)
-    try {
-      await saveProfile(email, { ...form, displayName: form.displayName.trim() })
-      setSaved(true)
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(false)
-    }
+    saving.run(() => saveProfile(email, { ...form, displayName: form.displayName.trim() }), { onDone: () => setSaved(true) })
   }
 
   return (
@@ -93,7 +83,7 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
           <input ref={fileInput} type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = '' }} />
         </div>
       </div>
-      {errors.photo ? <p className="mt-3 text-sm font-medium" role="alert">{errors.photo}</p> : null}
+      {errors.photo ? <FieldError className="mt-3">{errors.photo}</FieldError> : null}
 
       <TextField className="mt-8 max-w-md" label="Nombre visible" value={form.displayName} onChange={(e) => change({ displayName: e.target.value })} error={errors.displayName} hint="Como te conocen los clientes, por ejemplo «Luis Ortega» o «Güero Ortega»." />
 
@@ -127,9 +117,8 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
       </div>
 
       <div className="mt-10 flex flex-col gap-4">
-        {failure ? <Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note> : null}
         {saved ? <Note tone="done" title="Perfil guardado. Así te ven los clientes en la app." /> : null}
-        <Button type="submit" loading={busy} className="self-start">Guardar perfil</Button>
+        <Button type="submit" {...saving.button} className="self-start">Guardar perfil</Button>
       </div>
     </form>
   )
@@ -143,19 +132,11 @@ function RequestForm({ email, kind, excludeBusinessId, submitLabel }: { email: s
   const [businessId, setBusinessId] = useState(options[0].id)
   const business = options.find((b) => b.id === businessId)
   const [branchId, setBranchId] = useState(business?.branches[0]?.id ?? '')
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
+  const sending = useAction({ busy: 'Enviando...', done: 'Solicitud enviada', failed: 'No se pudo enviar' })
 
-  const submit = async (e: React.FormEvent) => {
+  const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    setBusy(true)
-    setFailure(null)
-    try {
-      await sendRequest(email, kind, businessId, branchId)
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(false)
-    }
+    sending.run(() => sendRequest(email, kind, businessId, branchId))
   }
   const selectCls = 'min-h-12 rounded-control border-2 border-divider bg-sunken px-3 text-base outline-none focus:border-ink-soft'
   return (
@@ -174,8 +155,7 @@ function RequestForm({ email, kind, excludeBusinessId, submitLabel }: { email: s
           </select>
         </div>
       </div>
-      {failure ? <Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note> : null}
-      <Button type="submit" loading={busy} className="self-start">{submitLabel}</Button>
+      <Button type="submit" {...sending.button} className="self-start">{submitLabel}</Button>
     </form>
   )
 }
@@ -226,24 +206,15 @@ function Migration({ me, email, store }: { me: StaffMember; email: string; store
   )
 }
 
+function AcceptInvitation({ id }: { id: string }) {
+  const accepting = useAction({ busy: 'Aceptando...', done: 'Invitación aceptada', failed: 'No se pudo aceptar' })
+  return <Button {...accepting.button} onClick={() => accepting.run(() => acceptInvitation(id))} className="shrink-0">Aceptar invitación</Button>
+}
+
 // RF-W10, for an Empleado without a business.
 function Join({ email, store }: { email: string; store: StaffState }) {
   const req = store.mine[email]
   const invitations = store.invitations.filter((i) => i.email === email)
-  const [busy, setBusy] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-
-  const accept = async (id: string) => {
-    setBusy(id)
-    setFailure(null)
-    try {
-      await acceptInvitation(id)
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(null)
-    }
-  }
 
   return (
     <section className="mt-16 border-t border-divider pt-8" aria-labelledby="unirme">
@@ -259,13 +230,11 @@ function Join({ email, store }: { email: string; store: StaffState }) {
                   <p className="text-sm text-ink-soft">Invitación del {longDate(i.sentOn)}</p>
                 </div>
               </div>
-              <Button onClick={() => accept(i.id)} loading={busy === i.id} className="shrink-0">Aceptar invitación</Button>
+              <AcceptInvitation id={i.id} />
             </li>
           ))}
         </ul>
       ) : null}
-      {failure ? <div className="mt-4"><Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note></div> : null}
-
       {req?.status === 'aceptada' ? (
         <div className="mt-4">
           <Note tone="done" title={`Ya eres parte de ${where(req)}`}>

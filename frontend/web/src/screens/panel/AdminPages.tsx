@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { Flag, PauseCircle, Plus, Star } from '@phosphor-icons/react'
 import { Button, Checkbox, Dialog, Note, TextField } from '../../components/ui'
 import { StatusTag, type Status } from '../../components/status'
-import { networkMessage, type ApiError } from '../../services/auth'
+import useAction from '@/lib/useAction'
 import { subscriptionStatus } from '../../services/panel'
 import { decideReview, useReportsStore } from '../../services/reports'
 import { savePlan, setSuspended, useSubscriptionsStore } from '../../services/subscriptions'
@@ -68,8 +68,9 @@ export function Plans() {
 function PlanForm({ plan, onCancel, onDone }: { plan?: Plan; onCancel: () => void; onDone: (text: string) => void }) {
   const [form, setForm] = useState({ name: plan?.name ?? '', price: plan ? String(plan.price) : '', months: plan ? String(plan.months) : '', offered: plan?.offered ?? true })
   const [errors, setErrors] = useState<Record<string, string | null | undefined>>({})
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
+  const saving = useAction(plan
+    ? { busy: 'Guardando...', done: 'Plan guardado', failed: 'No se pudo guardar' }
+    : { busy: 'Creando...', done: 'Plan creado', failed: 'No se pudo crear' })
   const set = (k: 'name' | 'price' | 'months') => (e: React.ChangeEvent<HTMLInputElement>) => { setForm((f) => ({ ...f, [k]: e.target.value })); setErrors((x) => ({ ...x, [k]: undefined })) }
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -80,16 +81,11 @@ function PlanForm({ plan, onCancel, onDone }: { plan?: Plan; onCancel: () => voi
     if (!Number.isFinite(price) || price <= 0) next.price = 'Escribe el precio en pesos, mayor que cero.'
     if (!Number.isInteger(months) || months <= 0) next.months = 'Escribe la duración en meses, en número entero.'
     setErrors(next)
-    setFailure(null)
     if (Object.keys(next).length) return
-    setBusy(true)
-    try {
-      await savePlan({ ...(plan ?? {}), name: form.name.trim(), price, months, offered: form.offered })
-      onDone(plan ? `Guardaste el plan ${form.name.trim()}.` : `Creaste el plan ${form.name.trim()}. Ya aparece al registrar un negocio.`)
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(false)
-    }
+    const name = form.name.trim()
+    saving.run(() => savePlan({ ...(plan ?? {}), name, price, months, offered: form.offered }), {
+      onDone: () => onDone(plan ? `Guardaste el plan ${name}.` : `Creaste el plan ${name}. Ya aparece al registrar un negocio.`),
+    })
   }
   return (
     <form onSubmit={submit} noValidate className="my-6 flex flex-col gap-5 rounded-control border border-divider bg-raised p-5">
@@ -101,10 +97,9 @@ function PlanForm({ plan, onCancel, onDone }: { plan?: Plan; onCancel: () => voi
       </div>
       <Checkbox label="Se ofrece" hint="Si lo desmarcas, ya no se puede elegir al registrarse ni al pagar; quien ya lo tiene lo conserva hasta que venza." checked={form.offered} onChange={(e) => setForm((f) => ({ ...f, offered: e.target.checked }))} />
       {plan ? <p className="text-sm text-ink-soft">Un cambio de precio aplica a los próximos pagos, no a los que ya se hicieron.</p> : null}
-      {failure ? <Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note> : null}
       <div className="flex gap-3">
-        <Button type="submit" loading={busy}>{plan ? 'Guardar plan' : 'Crear plan'}</Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>Cancelar</Button>
+        <Button type="submit" {...saving.button}>{plan ? 'Guardar plan' : 'Crear plan'}</Button>
+        <Button type="button" variant="secondary" onClick={onCancel} disabled={saving.busy}>Cancelar</Button>
       </div>
     </form>
   )
@@ -207,35 +202,27 @@ export function Businesses() {
 }
 
 function SuspendDialog({ business, onClose, onDone }: { business: PlatformBusiness; onClose: () => void; onDone: (n: { title: string; body: string }) => void }) {
-  const [busy, setBusy] = useState(false)
-  const [failure, setFailure] = useState<ApiError | null>(null)
   const activating = business.suspended
-  const confirm = async () => {
-    setBusy(true)
-    setFailure(null)
-    try {
-      await setSuspended(business.id, !activating)
-      onDone(activating
-        ? { title: `Activaste ${business.name}`, body: 'Vuelve a aparecer en la app si su suscripción está pagada o en prueba.' }
-        : { title: `Suspendiste ${business.name}`, body: 'Ya no aparece en la app ni recibe reservas. Sus datos se conservan.' })
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(false)
-    }
-  }
+  const saving = useAction(activating
+    ? { busy: 'Activando...', done: 'Negocio activado', failed: 'No se pudo activar' }
+    : { busy: 'Suspendiendo...', done: 'Negocio suspendido', failed: 'No se pudo suspender' })
+  const confirm = () => saving.run(() => setSuspended(business.id, !activating), {
+    onDone: () => onDone(activating
+      ? { title: `Activaste ${business.name}`, body: 'Vuelve a aparecer en la app si su suscripción está pagada o en prueba.' }
+      : { title: `Suspendiste ${business.name}`, body: 'Ya no aparece en la app ni recibe reservas. Sus datos se conservan.' }),
+  })
   return (
     <Dialog
       open
       onClose={onClose}
       title={activating ? `¿Activar ${business.name}?` : `¿Suspender ${business.name}?`}
-      actions={<><Button variant="secondary" onClick={onClose}>Cancelar</Button><Button onClick={confirm} loading={busy}>{activating ? 'Sí, activar' : 'Sí, suspender'}</Button></>}
+      actions={<><Button variant="secondary" onClick={onClose} disabled={saving.busy}>Cancelar</Button><Button {...saving.button} onClick={confirm}>{activating ? 'Sí, activar' : 'Sí, suspender'}</Button></>}
     >
       <p>
         {activating
           ? 'El negocio y sus sucursales vuelven a mostrarse en la app y pueden recibir reservas, siempre que su suscripción esté al día.'
           : 'El negocio y sus sucursales dejan de aparecer en la app y no reciben reservas nuevas. No se borra ningún dato y se puede activar otra vez.'}
       </p>
-      {failure ? <Note title={networkMessage(failure).title}>No se guardó el cambio. Intenta de nuevo.</Note> : null}
     </Dialog>
   )
 }
@@ -314,29 +301,21 @@ export function ReportedReviews() {
 }
 
 function DecideDialog({ review, action, businessName, onClose, onDone }: { review: ReportedReview; action: ReviewDecision; businessName: string; onClose: () => void; onDone: (text: string) => void }) {
-  const [busy, setBusy] = useState(false)
-  const [failure, setFailure] = useState<ApiError | null>(null)
   const del = action === 'eliminada'
-  const confirm = async () => {
-    setBusy(true)
-    setFailure(null)
-    try {
-      await decideReview(review.id, action)
-      onDone(del ? `Eliminaste la reseña de ${review.author}. Ya no se muestra en la app.` : `La reseña de ${review.author} se queda. El Jefe de ${businessName} ve que la revisaste.`)
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(false)
-    }
-  }
+  const saving = useAction(del
+    ? { busy: 'Eliminando...', done: 'Reseña eliminada', failed: 'No se pudo eliminar' }
+    : { busy: 'Guardando...', done: 'Reseña conservada', failed: 'No se pudo guardar' })
+  const confirm = () => saving.run(() => decideReview(review.id, action), {
+    onDone: () => onDone(del ? `Eliminaste la reseña de ${review.author}. Ya no se muestra en la app.` : `La reseña de ${review.author} se queda. El Jefe de ${businessName} ve que la revisaste.`),
+  })
   return (
     <Dialog
       open
       onClose={onClose}
       title={del ? '¿Eliminar esta reseña?' : '¿Mantener esta reseña?'}
-      actions={<><Button variant="secondary" onClick={onClose}>Cancelar</Button><Button onClick={confirm} loading={busy}>{del ? 'Sí, eliminar' : 'Sí, mantenerla'}</Button></>}
+      actions={<><Button variant="secondary" onClick={onClose} disabled={saving.busy}>Cancelar</Button><Button {...saving.button} onClick={confirm}>{del ? 'Sí, eliminar' : 'Sí, mantenerla'}</Button></>}
     >
       <p>{del ? 'Deja de mostrarse en la app y ya no cuenta en la calificación del negocio. No se puede deshacer.' : 'Sigue visible en la app y el reporte queda como revisado.'}</p>
-      {failure ? <Note title={networkMessage(failure).title}>No se guardó el cambio. Intenta de nuevo.</Note> : null}
     </Dialog>
   )
 }

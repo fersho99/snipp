@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useBranchPanel } from '@/components/PanelContext'
 import { ArrowsLeftRight, Flag, Star, UserPlus , type Icon } from '@phosphor-icons/react'
-import { Button, Note, Skeleton } from '../../components/ui'
+import { FieldError, Button, Note, Skeleton } from '../../components/ui'
 import { DEMO_TODAY } from '../../data/demo'
 import { employeeName, loadDashboard, pendingFor, RECORDS_START } from '../../services/dashboard'
 import { networkMessage } from '../../services/auth'
@@ -114,7 +114,7 @@ export default function Dashboard() {
           <div className="mt-5 flex flex-wrap items-start gap-4">
             <DateInput label="Desde" value={custom.from} min={toInputDate(RECORDS_START)} max={toInputDate(TODAY)} onChange={(v) => setCustom((c) => ({ ...c, from: v }))} />
             <DateInput label="Hasta" value={custom.to} min={toInputDate(RECORDS_START)} max={toInputDate(TODAY)} onChange={(v) => setCustom((c) => ({ ...c, to: v }))} />
-            {rangeError ? <p className="basis-full text-sm font-medium" role="alert">{rangeError}</p> : null}
+            {rangeError ? <FieldError className="basis-full">{rangeError}</FieldError> : null}
           </div>
         ) : null}
 

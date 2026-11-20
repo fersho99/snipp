@@ -3,9 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import Screen, { BackButton } from '../../components/Screen';
 import Txt from '../../components/Txt';
-import Button from '../../components/Button';
 import { ErrorNote, OfflineState } from '../../components/States';
-import { CartBar, CartLimitSheet, ProductPhoto, QtyStepper, addToBranchCart } from '../../components/Shop';
+import { AddToCartButton, CartBar, CartLimitSheet, ProductPhoto, QtyStepper } from '../../components/Shop';
 import useConnectivity from '../../hooks/useConnectivity';
 import { getBranch, branches } from '../../data/catalog';
 import { cartSummary, getProduct, pointsEarned, stockStatus, useCarts } from '../../data/shop';
@@ -43,20 +42,19 @@ export default function ProductDetail() {
   const maxMore = Math.max(0, product.stock - inCart);
   const summary = mine ? cartSummary(mine) : null;
 
-  const add = () => {
-    const r = addToBranchCart(branch, product, qty);
-    if (r === 'limit') setLimit(true);
-    else setQty(1);
-  };
-
   const footer = out ? null : (
     <View style={{ gap: space.s }}>
       {summary?.count ? <CartBar summary={summary} /> : null}
-      <Button
+      <AddToCartButton
+        branch={branch}
+        product={product}
+        qty={qty}
         variant={summary?.count ? 'secondary' : 'primary'}
         label={maxMore ? 'Agregar al carrito de esta sucursal' : 'Ya tienes todas las piezas disponibles'}
         disabled={!maxMore}
-        onPress={add}
+        fail={estado === 'error'}
+        onLimit={() => setLimit(true)}
+        onAdded={() => setQty(1)}
       />
     </View>
   );

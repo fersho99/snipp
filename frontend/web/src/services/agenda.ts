@@ -6,13 +6,13 @@
 // "Esperando respuesta del cliente" until then.
 import { DEMO_TODAY } from '../data/demo'
 import { ApiError } from './auth'
-import { getDemoEstado } from './panel'
+import { takeForcedError } from './panel'
 import { ACTIVE, getStaffStore, isFree, isUpcoming, set, type StaffState } from './staff'
 import type { Appointment, AppointmentStatus, Block, HistoryEvent, Session } from '../types/domain'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 function failIfForced() {
-  if (getDemoEstado() === 'error-guardar') throw new ApiError('server')
+  if (takeForcedError('error-guardar')) throw new ApiError('server')
 }
 
 export const STATUS: Record<AppointmentStatus, string> = {

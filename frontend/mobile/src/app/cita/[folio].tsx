@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import useAction, { wait } from '../../hooks/useAction';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,7 +20,7 @@ import { DoneNote } from '../../components/Done';
 
 
 // Appointment detail with the actions the rules allow.
-// States: ?estado=menos-de-2h (clock 75 min before C-10482) | cargando | sin-conexion
+// States: ?estado=menos-de-2h (clock 75 min before C-10482) | error (cancelling fails once) | cargando | sin-conexion
 // Notices after an action: ?aviso=reagendada | aceptada | cancelada
 export default function AppointmentDetail() {
   const { folio, estado, aviso } = useLocalSearchParams<{ folio?: string; estado?: string; aviso?: string }>();
@@ -145,6 +146,7 @@ export default function AppointmentDetail() {
         visible={sheet}
         onClose={() => setSheet(false)}
         d={d}
+        fail={estado === 'error'}
         onConfirm={() => {
           appointmentStore.update(appt.folio, { status: 'cancelada-cliente' });
           notificationStore.push({
@@ -205,12 +207,22 @@ function PastActions({ appt }: { appt: Appointment }) {
   );
 }
 
-function CancelSheet({ visible, onClose, onConfirm, d }: { visible: boolean; onClose: () => void; onConfirm: () => void; d: Described }) {
+function CancelSheet({ visible, onClose, onConfirm, d, fail }: { visible: boolean; onClose: () => void; onConfirm: () => void; d: Described; fail: boolean }) {
   const insets = useSafeAreaInsets();
-  const [busy, setBusy] = useState(false);
+  const cancelling = useAction({ busy: 'Cancelando...', done: 'Cita cancelada', failed: 'No se pudo cancelar' });
+  const failNext = useRef(fail);
+  const cancel = () => cancelling.run(async () => {
+    await wait(800);
+    if (failNext.current) {
+      failNext.current = false;
+      return { ok: false, reason: 'No pudimos cancelar tu cita. Revisa tu internet e inténtalo de nuevo; tu cita sigue en pie.' };
+    }
+    return { ok: true, message: `Listo: cancelaste tu cita del ${d.dateLabel.split(' de ')[0]}`, detail: ['No hay ningún cargo.'], next: onConfirm };
+  });
+  const close = () => { if (!cancelling.busy) onClose(); };
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cerrar" />
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+      <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Cerrar" />
       <View style={[styles.sheet, { paddingBottom: insets.bottom + space.l }]}>
         <Txt variant="title" accessibilityRole="header">
           ¿Cancelar tu cita de {d.service.name.toLowerCase()} del {d.dateLabel.split(' de ')[0]} a las {d.timeLabel}?
@@ -222,10 +234,10 @@ function CancelSheet({ visible, onClose, onConfirm, d }: { visible: boolean; onC
           <Button
             variant="danger"
             label="Sí, cancelar cita"
-            loading={busy}
-            onPress={async () => { setBusy(true); await new Promise((res) => setTimeout(res, 800)); setBusy(false); onConfirm(); }}
+            {...cancelling.button}
+            onPress={cancel}
           />
-          <Button variant="secondary" label="No, conservarla" onPress={onClose} />
+          <Button variant="secondary" label="No, conservarla" onPress={close} disabled={cancelling.busy} />
         </View>
       </View>
     </Modal>

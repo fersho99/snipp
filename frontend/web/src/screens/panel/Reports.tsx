@@ -10,11 +10,10 @@ import { useBusinessPanel } from '@/components/PanelContext'
 import { ArrowLeft } from '@phosphor-icons/react'
 import { StatusCard, StatusTag, type Status } from '../../components/status'
 import { Button, Note, TextArea } from '../../components/ui'
-import { networkMessage, type ApiError } from '../../services/auth'
+import useAction from '@/lib/useAction'
 import { addNote, CLIENT_STATE, REPORT_REASONS, REPORT_STATE, setReportState, useReportsStore } from '../../services/reports'
 import { useStaffStore } from '../../services/staff'
 import { longDate, timeOfDay } from '../../theme'
-import { toast } from '@/lib/toast'
 
 // SRS v1.2, 4.2.2 "Reportes": amber «En revisión», green «Atendido». New
 // reports are counted in red in the menu, so their label is red too.
@@ -136,8 +135,8 @@ function ReportDetail() {
   const { reports } = useReportsStore()
   const nameOf = useNames()
   const r = reports.find((x) => x.id === reportId && x.businessId === business.id)
-  const [busy, setBusy] = useState<ReportState | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
+  const reviewing = useAction({ busy: 'Guardando...', done: 'En revisión', failed: 'No se pudo guardar' })
+  const attending = useAction({ busy: 'Guardando...', done: 'Atendido', failed: 'No se pudo guardar' })
   const [done, setDone] = useState<string | null>(null)
 
   if (!r) {
@@ -151,17 +150,11 @@ function ReportDetail() {
   }
 
   const first = r.client.split(' ')[0]
-  const change = async (next: ReportState) => {
-    setBusy(next)
-    setFailure(null)
-    try {
-      await setReportState(r.id, next)
-      setDone(`${first} ya ve el estado «${CLIENT_STATE[next]}» en la app.`)
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(null)
-    }
+  const change = (next: ReportState) => {
+    setDone(null)
+    ;(next === 'atendido' ? attending : reviewing).run(() => setReportState(r.id, next), {
+      onDone: () => setDone(`${first} ya ve el estado «${CLIENT_STATE[next]}» en la app.`),
+    })
   }
   const timeline: ClientReport['changes'] = [{ on: r.sentOn, state: 'enviado' }, ...r.changes]
 
@@ -198,10 +191,9 @@ function ReportDetail() {
           ))}
         </ol>
         {done ? <div className="mt-4"><Note tone="done" title={done} /></div> : null}
-        {failure ? <div className="mt-4"><Note title={networkMessage(failure).title}>No se guardó el cambio. Intenta de nuevo.</Note></div> : null}
         <div className="mt-5 flex flex-wrap gap-3">
-          {r.state === 'enviado' ? <Button onClick={() => change('en revision')} loading={busy === 'en revision'}>Pasar a en revisión</Button> : null}
-          {r.state !== 'atendido' ? <Button variant={r.state === 'enviado' ? 'secondary' : 'primary'} onClick={() => change('atendido')} loading={busy === 'atendido'}>Marcar como atendido</Button> : null}
+          {r.state === 'enviado' || reviewing.busy ? <Button {...reviewing.button} onClick={() => change('en revision')} disabled={attending.busy}>Pasar a en revisión</Button> : null}
+          {r.state !== 'atendido' || attending.busy ? <Button variant={r.state === 'enviado' ? 'secondary' : 'primary'} {...attending.button} onClick={() => change('atendido')} disabled={reviewing.busy}>Marcar como atendido</Button> : null}
         </div>
       </section>
 
@@ -214,23 +206,12 @@ function ReportDetail() {
 function Notes({ report, author }: { report: ClientReport; author: string }) {
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
-  const submit = async (e: React.FormEvent) => {
+  const saving = useAction({ busy: 'Guardando...', done: 'Nota guardada', failed: 'No se pudo guardar' })
+  const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!text.trim()) return setError('Escribe la nota antes de guardarla.')
-    setBusy(true)
     setError(null)
-    setFailure(null)
-    try {
-      await addNote(report.id, author, text.trim())
-      setText('')
-      toast('Nota guardada. Solo tú la ves.')
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(false)
-    }
+    saving.run(() => addNote(report.id, author, text.trim()), { success: 'Nota guardada. Solo tú la ves.', onDone: () => setText('') })
   }
   return (
     <section className="mt-12 border-t border-divider pt-8" aria-labelledby="notas">
@@ -250,8 +231,7 @@ function Notes({ report, author }: { report: ClientReport; author: string }) {
       )}
       <form onSubmit={submit} noValidate className="mt-5 flex flex-col gap-3">
         <TextArea label="Nueva nota" rows={3} value={text} onChange={(e) => { setText(e.target.value); setError(null) }} error={error} hint="Por ejemplo: qué dijo el Empleado y qué se acordó." />
-        {failure ? <Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note> : null}
-        <Button type="submit" variant="secondary" loading={busy} className="self-start">Guardar nota</Button>
+        <Button type="submit" variant="secondary" {...saving.button} className="self-start">Guardar nota</Button>
       </form>
     </section>
   )

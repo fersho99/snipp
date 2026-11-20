@@ -6,7 +6,7 @@
 import { useSyncExternalStore } from 'react'
 import { businesses } from '../data/demo'
 import { ApiError } from './auth'
-import { getDemoEstado } from './panel'
+import { takeForcedError } from './panel'
 import type { Branch, BusinessSetup, Service, StoredBusiness } from '../types/domain'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -44,8 +44,9 @@ export function resetDemoBranches(businessId: string | null, empty: boolean) {
 export const getBusinessSetup = (businessId: string, seed?: StoredBusiness | null) => ensure(businessId, seed)
 
 function failIfForced() {
-  if (getDemoEstado() === 'error-guardar') throw new ApiError('server')
-  if (getDemoEstado() === 'sin-conexion-guardar') throw new ApiError('offline')
+  const e = takeForcedError('error-guardar', 'sin-conexion-guardar')
+  if (e === 'error-guardar') throw new ApiError('server')
+  if (e === 'sin-conexion-guardar') throw new ApiError('offline')
 }
 
 // RNF-W05: JPG or PNG up to 5 MB. Returns an error message or null.

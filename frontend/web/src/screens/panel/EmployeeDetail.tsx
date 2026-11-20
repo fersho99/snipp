@@ -11,7 +11,7 @@ import { Button, Note } from '../../components/ui'
 import { Avatar, History, ScheduleEditor } from '../../components/staff'
 import Reassign from '../../components/Reassign'
 import { scheduleProblem, scheduleSummary } from '../../schedule'
-import { networkMessage, type ApiError } from '../../services/auth'
+import useAction from '@/lib/useAction'
 import { lastAppointmentOf, saveSchedule, useStaffStore } from '../../services/staff'
 import { useReportsStore } from '../../services/reports'
 import { longDate, timeOfDay } from '../../theme'
@@ -149,24 +149,13 @@ function Schedule({ employee: e }: { employee: StaffMember }) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(e.schedule)
   const [error, setError] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
+  const saving = useAction({ busy: 'Guardando...', done: 'Horario guardado', failed: 'No se pudo guardar' })
   const [saved, setSaved] = useState(false)
 
-  const save = async () => {
+  const save = () => {
     const problem = scheduleProblem(value)
     if (problem) return setError(problem)
-    setBusy(true)
-    setFailure(null)
-    try {
-      await saveSchedule(e.id, value)
-      setEditing(false)
-      setSaved(true)
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(false)
-    }
+    saving.run(() => saveSchedule(e.id, value), { onDone: () => { setEditing(false); setSaved(true) } })
   }
 
   return (
@@ -177,10 +166,9 @@ function Schedule({ employee: e }: { employee: StaffMember }) {
       {editing ? (
         <div className="mt-4">
           <ScheduleEditor value={value} onChange={(v) => { setValue(v); setError(null) }} error={error} />
-          {failure ? <div className="mt-4"><Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note></div> : null}
           <div className="mt-5 flex gap-3">
-            <Button onClick={save} loading={busy}>Guardar horario</Button>
-            <Button variant="secondary" onClick={() => { setEditing(false); setValue(e.schedule); setError(null) }}>Cancelar</Button>
+            <Button {...saving.button} onClick={save}>Guardar horario</Button>
+            <Button variant="secondary" disabled={saving.busy} onClick={() => { setEditing(false); setValue(e.schedule); setError(null) }}>Cancelar</Button>
           </div>
         </div>
       ) : (

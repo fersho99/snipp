@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import useAction, { wait } from '../hooks/useAction';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Screen, { BackButton } from '../components/Screen';
@@ -29,7 +30,7 @@ const photoFile = (name: string) => `${name.toLowerCase().normalize('NFD').repla
 // No stepper: the appointment is written as a sentence at the top and each
 // chosen part can be tapped to change it.
 // Deep links: ?sucursal=&servicio=&profesional=&fecha=YYYY-MM-DD&hora=HH:MM
-// States: ?estado=horario-ocupado | cargando | sin-conexion
+// States: ?estado=horario-ocupado | error (booking fails once) | cargando | sin-conexion
 export default function Booking() {
   const p = useLocalSearchParams<{ sucursal?: string; servicio?: string; profesional?: string; fecha?: string; hora?: string; estado?: string }>();
   const found = getBranch(p.sucursal ?? 'los-compas-centro') ?? branches[0];
@@ -49,7 +50,8 @@ export default function Booking() {
     return 'servicio';
   });
   const [loadingSlots, setLoadingSlots] = useState(p.estado === 'cargando');
-  const [submitting, setSubmitting] = useState(false);
+  const booking = useAction({ busy: 'Reservando...', done: 'Cita reservada', failed: 'No se pudo reservar' });
+  const [failError, setFailError] = useState(p.estado === 'error');
   const [taken, setTaken] = useState<Taken | null>(null); // slot that got booked by someone else
   const [failNext, setFailNext] = useState(p.estado === 'horario-ocupado');
 
@@ -116,16 +118,21 @@ export default function Booking() {
     setLoadingSlots(p.estado === 'cargando');
   };
 
-  const confirm = async () => {
-    if (!slot || !date || !service) return;
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setSubmitting(false);
+  const confirm = () => booking.run(async () => {
+    if (!slot || !date || !service) return { ok: false, reason: 'Elige un horario para reservar.', retry: false };
+    await wait(1000);
+    if (failError) {
+      setFailError(false);
+      return { ok: false, reason: 'No pudimos reservar tu cita. Revisa tu internet e inténtalo de nuevo; no se hizo ninguna cita a tu nombre.' };
+    }
     if (failNext) {
       setFailNext(false);
-      setTaken({ start: slot.start, date: iso(date), employeeId: slot.employeeId });
-      setSlot(null);
-      return;
+      return {
+        ok: false,
+        retry: false,
+        reason: `Alguien acaba de reservar las ${minutesLabel(slot.start)}. Elige otro horario.`,
+        after: () => { setTaken({ start: slot.start, date: iso(date), employeeId: slot.employeeId }); setSlot(null); },
+      };
     }
     // The new appointment takes its slot right away (RF-M06).
     const folio = appointmentStore.add({ serviceId: service.id, employeeId: slot.employeeId, branchId: branch.id, date: iso(date), start: slot.start, status: 'confirmada' });
@@ -136,8 +143,12 @@ export default function Booking() {
       body: `Con ${employeeName(slot.employeeId)} en ${branch.name} a las ${minutesLabel(slot.start)}. Folio ${folio}.`,
       route: `/cita/${folio}`,
     });
-    router.replace({ pathname: '/reserva-confirmada', params: { folio } });
-  };
+    return {
+      ok: true,
+      message: `Listo: tu cita quedó reservada para el ${longDate(date).split(' de ')[0]} a las ${minutesLabel(slot.start)}`,
+      next: () => router.replace({ pathname: '/reserva-confirmada', params: { folio } }),
+    };
+  });
 
   // ----- the sentence
   const parts: SentencePart[] = [];
@@ -159,7 +170,7 @@ export default function Booking() {
     step === 'fecha' ? (
       <Button label={slot ? `Continuar con las ${slot.label}` : 'Elige un horario'} disabled={!slot} onPress={() => setStep('confirmar')} />
     ) : step === 'confirmar' && slot ? (
-      <Button label="Confirmar cita" onPress={confirm} loading={submitting} />
+      <Button label="Confirmar cita" {...booking.button} onPress={confirm} />
     ) : null;
 
   return (

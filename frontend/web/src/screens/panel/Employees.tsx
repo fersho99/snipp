@@ -12,11 +12,10 @@ import { StatusTag } from '../../components/status'
 import { DEMO_TODAY } from '../../data/demo'
 import { Avatar, ScheduleEditor } from '../../components/staff'
 import { scheduleProblem, scheduleSummary } from '../../schedule'
-import { networkMessage, type ApiError } from '../../services/auth'
+import useAction from '@/lib/useAction'
 import { acceptRequest, expiresOn, inviteEmployee, rejectRequest, useStaffStore } from '../../services/staff'
 import { isEmail, longDate } from '../../theme'
 import EmployeeDetail from './EmployeeDetail'
-import { toast } from '@/lib/toast'
 
 // Empleados (RF-W10 to RF-W13, RF-W17). `sub` = 'detalle' opens one Empleado.
 export default function Employees({ sub }: { sub?: string }) {
@@ -132,26 +131,17 @@ function Invite({ business, branches }: { business: Business; branches: Branch[]
   const [email, setEmail] = useState('')
   const [branchId, setBranchId] = useState(branches[0]?.id ?? '')
   const [error, setError] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
+  const inviting = useAction({ busy: 'Enviando...', done: 'Invitación enviada', failed: 'No se pudo enviar' })
   const [sent, setSent] = useState<string | null>(null)
 
-  const submit = async (e: React.FormEvent) => {
+  const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!isEmail(email)) return setError('Escribe el correo completo del Empleado, por ejemplo nombre@gmail.com.')
     setError(null)
-    setFailure(null)
-    setBusy(true)
-    try {
-      await inviteEmployee({ email, branchId, branchName: branches.find((b) => b.id === branchId)?.name ?? '', businessId: business.id, businessName: business.name })
-      setSent(email.trim())
-      setEmail('')
-      setOpen(false)
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(false)
-    }
+    const to = email.trim()
+    inviting.run(() => inviteEmployee({ email, branchId, branchName: branches.find((b) => b.id === branchId)?.name ?? '', businessId: business.id, businessName: business.name }), {
+      onDone: () => { setSent(to); setEmail(''); setOpen(false) },
+    })
   }
 
   if (!branches.length) return null
@@ -168,10 +158,9 @@ function Invite({ business, branches }: { business: Business; branches: Branch[]
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
-          {failure ? <Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note> : null}
           <div className="flex gap-3">
-            <Button type="submit" loading={busy}>Enviar invitación</Button>
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button type="submit" {...inviting.button}>Enviar invitación</Button>
+            <Button type="button" variant="secondary" disabled={inviting.busy} onClick={() => setOpen(false)}>Cancelar</Button>
           </div>
         </form>
       ) : (
@@ -195,34 +184,18 @@ function RequestRow({ request: r, branchName }: { request: JoinRequest; branchNa
   const [accepting, setAccepting] = useState(false)
   const [schedule, setSchedule] = useState<WeekHours>(DEFAULT_SCHEDULE)
   const [error, setError] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState<'aceptar' | 'rechazar' | null>(null)
+  const acceptAction = useAction({ busy: 'Aceptando...', done: 'Aceptado', failed: 'No se pudo aceptar' })
+  const rejecting = useAction({ busy: 'Rechazando...', done: 'Rechazada', failed: 'No se pudo rechazar' })
   const isMigration = r.kind === 'migracion'
 
-  const accept = async () => {
+  const accept = () => {
     const problem = scheduleProblem(schedule)
     if (problem) return setError(problem)
-    setBusy('aceptar')
-    setFailure(null)
-    try {
-      await acceptRequest(r.id, schedule)
-      toast(isMigration ? `Aceptaste la migración de ${r.name}. Llega cuando termine su última cita en su negocio actual.` : `Aceptaste a ${r.name}. Ya aparece en Empleados con su horario.`)
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(null)
-    }
+    acceptAction.run(() => acceptRequest(r.id, schedule), {
+      success: isMigration ? `Aceptaste la migración de ${r.name}. Llega cuando termine su última cita en su negocio actual.` : `Aceptaste a ${r.name}. Ya aparece en Empleados con su horario.`,
+    })
   }
-  const reject = async () => {
-    setBusy('rechazar')
-    setFailure(null)
-    try {
-      await rejectRequest(r.id)
-      toast(`Rechazaste la solicitud de ${r.name}.`)
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(null)
-    }
-  }
+  const reject = () => rejecting.run(() => rejectRequest(r.id), { success: `Rechazaste la solicitud de ${r.name}.` })
 
   return (
     <li className="border-b border-divider py-4 last:border-0">
@@ -239,8 +212,8 @@ function RequestRow({ request: r, branchName }: { request: JoinRequest; branchNa
         </div>
         {!accepting ? (
           <div className="ml-[34px] flex shrink-0 gap-3 sm:ml-0">
-            <Button onClick={() => setAccepting(true)}>Aceptar</Button>
-            <Button variant="secondary" onClick={reject} loading={busy === 'rechazar'}>Rechazar</Button>
+            <Button onClick={() => setAccepting(true)} disabled={rejecting.busy}>Aceptar</Button>
+            <Button variant="secondary" {...rejecting.button} onClick={reject}>Rechazar</Button>
           </div>
         ) : null}
       </div>
@@ -255,14 +228,12 @@ function RequestRow({ request: r, branchName }: { request: JoinRequest; branchNa
           <div className="mt-4">
             <ScheduleEditor value={schedule} onChange={(v) => { setSchedule(v); setError(null) }} error={error} />
           </div>
-          {failure ? <div className="mt-4"><Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note></div> : null}
           <div className="mt-5 flex gap-3">
-            <Button onClick={accept} loading={busy === 'aceptar'}>Aceptar y vincular</Button>
-            <Button variant="secondary" onClick={() => setAccepting(false)}>Cancelar</Button>
+            <Button {...acceptAction.button} onClick={accept}>Aceptar y vincular</Button>
+            <Button variant="secondary" disabled={acceptAction.busy} onClick={() => setAccepting(false)}>Cancelar</Button>
           </div>
         </div>
       ) : null}
-      {failure && !accepting ? <p className="mt-2 text-sm font-medium" role="alert">{networkMessage(failure).title}. Intenta de nuevo.</p> : null}
     </li>
   )
 }

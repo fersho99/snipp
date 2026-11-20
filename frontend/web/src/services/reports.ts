@@ -7,7 +7,7 @@
 import { useSyncExternalStore } from 'react'
 import { DEMO_TODAY } from '../data/demo'
 import { ApiError } from './auth'
-import { getDemoEstado } from './panel'
+import { takeForcedError } from './panel'
 
 export type ReportReason = 'trato' | 'puntualidad' | 'higiene' | 'calidad' | 'otro'
 export type ReportState = 'enviado' | 'en revision' | 'atendido'
@@ -140,7 +140,7 @@ export function resetDemoReports(estado: string | null) {
 }
 
 function failIfForced() {
-  if (getDemoEstado() === 'error-guardar') throw new ApiError('server')
+  if (takeForcedError('error-guardar')) throw new ApiError('server')
 }
 
 export async function setReportState(id: string, next: ReportState) {
