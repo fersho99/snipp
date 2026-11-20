@@ -1,5 +1,6 @@
 'use client'
 
+import PanelError from '@/components/PanelError'
 import type { StaffMember } from '../../services/staff'
 import { useState } from 'react'
 import Link from 'next/link'
@@ -30,13 +31,7 @@ export default function EmployeeDetail() {
   const { reports } = useReportsStore()
 
   if (!e || e.businessId !== business.id) {
-    return (
-      <div className="max-w-xl">
-        <BackLink />
-        <h1 className="mt-6 text-[28px] font-bold leading-tight">No encontramos a este Empleado</h1>
-        <p className="mt-2">Puede que ya no esté vinculado a {business.name} o que la dirección esté mal escrita.</p>
-      </div>
-    )
+    return <PanelError kind="no-existe" detail={`El Empleado no existe o ya no está vinculado a ${business.name}.`} />
   }
 
   const profile = s.profiles[e.email] ?? { displayName: e.name, specialties: [], photo: null }

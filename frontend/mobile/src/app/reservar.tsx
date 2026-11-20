@@ -37,7 +37,7 @@ export default function Booking() {
   // Only active services and professionals who can take new appointments (RF-W07, RF-W12).
   const branch = { ...found, services: activeServices(found), staff: bookableStaff(found) };
   const bookable = isVisible(found) && branch.staff.length > 0;
-  const { online, retry, retrying } = useConnectivity(p.estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(p.estado);
 
   const [serviceId, setServiceId] = useState<string | null>(p.servicio ?? null);
   const [pro, setPro] = useState<string | null>(p.profesional ?? null);
@@ -73,7 +73,7 @@ export default function Booking() {
     }
   }, [slots]);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} detail="Sin internet no podemos ver los horarios libres ni apartar tu lugar. Lo que ya elegiste se queda aquí." />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} detail="Sin internet no podemos ver los horarios libres ni apartar tu lugar. Lo que ya elegiste se queda aquí." />;
 
   // RF-M06: a booking needs a professional; a hidden branch takes no bookings (RN-13, RN-14).
   if (!bookable) {

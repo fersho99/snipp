@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import Screen, { BackButton } from '../../components/Screen';
 import Txt from '../../components/Txt';
-import { ErrorNote, OfflineState } from '../../components/States';
+import { ErrorScreen, OfflineState } from '../../components/States';
 import { AddToCartButton, CartBar, CartLimitSheet, ProductPhoto, QtyStepper } from '../../components/Shop';
 import useConnectivity from '../../hooks/useConnectivity';
 import { getBranch, branches } from '../../data/catalog';
@@ -21,19 +21,14 @@ export default function ProductDetail() {
   const { id, sucursal, estado } = useLocalSearchParams<{ id?: string; sucursal?: string; estado?: string }>();
   const branch = getBranch(sucursal ?? 'los-compas-centro') ?? branches[0];
   const product = getProduct(branch.id, id ?? '');
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const carts = useCarts();
   const [qty, setQty] = useState(1);
   const [limit, setLimit] = useState(false);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
   if (!product) {
-    return (
-      <Screen>
-        <BackButton />
-        <ErrorNote title="Este producto ya no está en la tienda">La sucursal lo quitó del catálogo. Revisa los demás productos.</ErrorNote>
-      </Screen>
-    );
+    return <ErrorScreen kind="no-existe" detail={'La sucursal quitó este producto de su tienda. Revisa los demás productos.'} onRetry={retry} retrying={retrying} />;
   }
 
   const out = product.stock <= 0;

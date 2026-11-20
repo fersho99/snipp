@@ -32,7 +32,7 @@ const GAP = 10;
 
 export default function Carts() {
   const { demo, estado, sucursal } = useLocalSearchParams<{ demo?: string; estado?: string; sucursal?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const carts = useCarts();
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [index, setIndex] = useState(0);
@@ -66,7 +66,7 @@ export default function Carts() {
     if (index > carts.length - 1 && carts.length) goTo(carts.length - 1, false);
   }, [carts.length]);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} detail="Sin internet no podemos cobrar ni apartar tus productos. Tus carritos se quedan como están." />;
+  if (!online) return <OfflineState kind={failure} tabs onRetry={retry} retrying={retrying} detail="Sin internet no podemos cobrar ni apartar tus productos. Tus carritos se quedan como están." />;
 
   const summaries = carts.map((c) => cartSummary(c)).filter((s): s is CartSummary => !!s);
 

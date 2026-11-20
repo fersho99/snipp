@@ -9,6 +9,19 @@ import { space } from '../theme/tokens';
 // SRS. Not part of the shipped app: production builds (the APK) open "Entrar".
 const SCREENS = [
   {
+    // RF-M18: the four cases of the error screen. Each one has "Reintentar"
+    // (it loads the screen again, with what was typed) and "Volver al inicio".
+    group: 'Pantallas de error',
+    items: [
+      { title: 'No hay conexión (Inicio, con barra inferior)', path: '/inicio?estado=sin-conexion', states: [] },
+      { title: 'Algo salió mal (Mis citas)', path: '/citas?estado=error-servidor', states: [] },
+      { title: 'Esto tardó demasiado (tienda, tras 15 segundos)', path: '/tienda/los-compas-centro?estado=tardo', states: [] },
+      { title: 'Ya no está disponible: cita C-99999', path: '/cita/C-99999', states: [] },
+      { title: 'Ya no está disponible: producto', path: '/producto/gel?sucursal=los-compas-centro', states: [] },
+      { title: 'Ya no está disponible: negocio', path: '/sucursal/barberia-cerrada', states: [] },
+    ],
+  },
+  {
     group: 'Cuenta',
     items: [
       { title: 'Inicio de sesión', path: '/entrar', states: [['Credenciales inválidas', 'credenciales'], ['Entrando', 'cargando'], ['Sin conexión', 'sin-conexion']] },

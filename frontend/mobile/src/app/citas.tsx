@@ -15,11 +15,11 @@ import type { Appointment } from '../types/domain';
 // States: ?estado=sin-citas | cargando | sin-conexion ; ?vista=historial
 export default function MyAppointments() {
   const { estado, vista } = useLocalSearchParams<{ estado?: string; vista?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const all = useAppointments();
   const [tab, setTab] = useState<'proximas' | 'historial'>(vista === 'historial' ? 'historial' : 'proximas');
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} tabs onRetry={retry} retrying={retrying} />;
 
   const upcoming = estado === 'sin-citas' ? [] : all.filter((a) => isUpcoming(a)).sort((a, b) => startDate(a).getTime() - startDate(b).getTime());
   const history = all.filter((a) => !isUpcoming(a)).sort((a, b) => startDate(b).getTime() - startDate(a).getTime());

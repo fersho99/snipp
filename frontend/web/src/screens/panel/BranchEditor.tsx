@@ -1,5 +1,6 @@
 'use client'
 
+import PanelError from '@/components/PanelError'
 import type { Branch, BranchImage, DayHours } from '../../types/domain'
 import type { BranchForm } from '../../services/branches'
 import { useRef, useState } from 'react'
@@ -30,13 +31,7 @@ export default function BranchEditor({ mode }: { mode: string }) {
 
   if (mode === 'editar' && !branch) {
     // RNF-W04: a branch of another business, or one that does not exist.
-    return (
-      <div className="max-w-xl">
-        <BackLink />
-        <h1 className="mt-6 text-[28px] font-bold leading-tight">No encontramos esta sucursal</h1>
-        <p className="mt-2">Puede que la dirección esté mal escrita o que la sucursal no sea de {business.name}.</p>
-      </div>
-    )
+    return <PanelError kind="no-existe" detail={`La sucursal no existe o no es de ${business.name}.`} />
   }
 
   const view = params.get('vista') === 'servicios' ? 'servicios' : 'datos'

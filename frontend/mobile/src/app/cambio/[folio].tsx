@@ -19,13 +19,13 @@ import { color, font, space } from '../../theme/tokens';
 export default function ChangeNotice() {
   const { folio, estado } = useLocalSearchParams<{ folio?: string; estado?: string }>();
   const appt = useAppointment(folio ?? 'C-10490');
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const accepting = useAction({ busy: 'Aceptando...', done: 'Cambio aceptado', failed: 'No se pudo aceptar' });
   const cancelling = useAction({ busy: 'Cancelando...', done: 'Cita cancelada', failed: 'No se pudo cancelar' });
   const failNext = useRef(estado === 'error');
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} detail="Sin internet no podemos enviar tu respuesta a la barbería. Tu cita sigue igual mientras tanto." />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} detail="Sin internet no podemos enviar tu respuesta a la barbería. Tu cita sigue igual mientras tanto." />;
   if (!appt) return null;
 
   const d = describe(appt);

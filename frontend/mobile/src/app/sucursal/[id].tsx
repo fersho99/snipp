@@ -6,7 +6,7 @@ import { CaretDownIcon, CaretUpIcon, MapPinIcon, PhoneIcon } from 'phosphor-reac
 import Screen, { BackButton } from '../../components/Screen';
 import Txt from '../../components/Txt';
 import Button from '../../components/Button';
-import { ErrorNote, OfflineState, PhotoPlaceholder, Skeleton } from '../../components/States';
+import { ErrorScreen, OfflineState, PhotoPlaceholder, Skeleton } from '../../components/States';
 import { RatingLine, Stars } from '../../components/Branch';
 import useConnectivity from '../../hooks/useConnectivity';
 import { activeServices, bookableStaff, cheapestService, getBranch, isVisible, openStatus, weekSchedule } from '../../data/catalog';
@@ -23,40 +23,20 @@ const STAFF_PHOTO = 132;
 // navaja-fina has no reviews, no photos and no staff profiles yet.
 export default function BranchProfile() {
   const { id, estado } = useLocalSearchParams<{ id?: string; estado?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado === 'error' ? 'error-servidor' : estado);
   const { width } = useWindowDimensions();
   const [page, setPage] = useState(0);
   const [showWeek, setShowWeek] = useState(false);
-  const [reloading, setReloading] = useState(false);
-  const [failed, setFailed] = useState(estado === 'error');
 
   const found = getBranch(id);
   // Hidden branches (deactivated, suspended or unpaid business) are not shown (RN-13, RN-14).
   const branch = found && isVisible(found) ? { ...found, services: activeServices(found), staff: bookableStaff(found) } : null;
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
   if (estado === 'cargando') return <BranchSkeleton />;
-  if (failed || !branch) {
-    return (
-      <Screen>
-        <BackButton />
-        <View style={{ marginTop: space.xxl, gap: space.l }}>
-          <ErrorNote title={branch ? `No pudimos abrir ${branch.name}` : 'Este negocio ya no está en SNIPP'}>
-            {branch
-              ? 'El servidor no respondió. Revisa tu conexión o intenta en un momento.'
-              : 'Puede que haya cerrado o que su suscripción esté pendiente. Las citas que ya tenías siguen en pie.'}
-          </ErrorNote>
-          {branch ? (
-            <Button
-              variant="secondary"
-              label="Volver a intentar"
-              loading={reloading}
-              onPress={async () => { setReloading(true); await new Promise((r) => setTimeout(r, 900)); setReloading(false); setFailed(false); }}
-            />
-          ) : null}
-        </View>
-      </Screen>
-    );
+  // Hidden or removed branch (RF-M18): "Ya no está disponible".
+  if (!branch) {
+    return <ErrorScreen kind="no-existe" detail="Este negocio ya no aparece en SNIPP. Puede que haya cerrado o que su suscripción esté pendiente; las citas que ya tenías siguen en pie." onRetry={retry} retrying={retrying} />;
   }
 
   const frameWidth = Math.min(width, 390);

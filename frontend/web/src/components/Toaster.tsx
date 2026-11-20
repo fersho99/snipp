@@ -3,14 +3,15 @@
 import { CheckCircle, X, XCircle } from '@phosphor-icons/react'
 import { dismissToast, useToast } from '@/lib/toast'
 
-// Where the notices of lib/toast.ts appear: bottom center, above everything.
+// Where the notices of lib/toast.ts appear: top right corner, above
+// everything (SRS v1.2, 4.2.2).
 // White with a green stripe and check when an action went well, or a red
 // stripe and cross with the cause when it failed (SRS v1.2, 4.2). Screen
 // readers announce them.
 export default function Toaster() {
   const t = useToast()
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4" role="status" aria-live="polite">
+    <div className="pointer-events-none fixed inset-x-4 top-4 z-50 flex justify-end sm:inset-x-auto sm:right-6 sm:top-6" role="status" aria-live="polite">
       {t ? (
         <div
           key={t.id}

@@ -21,13 +21,13 @@ import type { Branch } from '../types/domain';
 // States: ?estado=sin-cita | cargando | error | sin-conexion
 export default function Home() {
   const { estado } = useLocalSearchParams<{ estado?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const [query, setQuery] = useState('');
   const [failed, setFailed] = useState(estado === 'error');
   const [reloading, setReloading] = useState(false);
   const appointments = useAppointments();
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} tabs onRetry={retry} retrying={retrying} />;
 
   const search = (q: string) => {
     if (!q?.trim()) return;

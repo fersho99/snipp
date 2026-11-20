@@ -6,11 +6,12 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { Navigate } from '@/lib/navigation'
 import { PanelContext } from './PanelContext'
 import { List, SignOut, X, type Icon } from '@phosphor-icons/react'
-import { Button, Logo, Note, Skeleton } from './ui'
+import { Logo, Skeleton } from './ui'
 import SubscriptionNotice from './SubscriptionNotice'
+import PanelError from './PanelError'
 import { accounts, ROLE_LABEL } from '../data/demo'
 import { navFor } from '../data/nav'
-import { currentSession, devSignIn, networkMessage, type ApiError } from '../services/auth'
+import { currentSession, devSignIn, type ApiError } from '../services/auth'
 import { useReportsStore } from '../services/reports'
 import { useShopStore } from '../services/shop'
 import { useStaffStore } from '../services/staff'
@@ -59,6 +60,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [failure, setFailure] = useState<ApiError | null>(null)
   const [branchId, setBranchId] = useState(getPickedBranch())
   const [attempt, setAttempt] = useState(0)
+  const [timedOut, setTimedOut] = useState(false)
   // The drawer belongs to the page where it was opened: moving to another
   // section closes it.
   const [menuAt, setMenuAt] = useState<string | null>(null)
@@ -78,8 +80,16 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       .catch(setFailure)
   }, [session, attempt])
 
+  // RF-W29: "Esto tardó demasiado" after 15 seconds without an answer.
+  useEffect(() => {
+    if (!session || data || failure || timedOut) return
+    const t = setTimeout(() => setTimedOut(true), 15000)
+    return () => clearTimeout(t)
+  }, [session, data, failure, timedOut, attempt])
+
   const retry = () => {
     setFailure(null)
+    setTimedOut(false)
     setData(null)
     setAttempt((n) => n + 1)
   }
@@ -173,14 +183,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       ) : null}
 
       <main className="min-w-0 px-4 py-6 sm:px-8 lg:px-12 lg:py-10">
-        {failure ? (
-          <div className="max-w-xl">
-            <Note title={networkMessage(failure).title} action={<Button variant="secondary" className="mt-3 self-start" onClick={retry}>Reintentar</Button>}>
-              {failure.code === 'offline'
-                ? 'SNIPP necesita internet para mostrar tu panel. Revisa tu conexión y vuelve a intentar.'
-                : 'No pudimos cargar tu panel. Intenta de nuevo en un momento.'}
-            </Note>
-          </div>
+        {failure || timedOut ? (
+          <PanelError kind={timedOut ? 'tiempo' : failure?.code === 'offline' ? 'sin-conexion' : 'servidor'} onRetry={retry} />
         ) : !ready ? (
           <div className="flex max-w-3xl flex-col gap-4" aria-busy="true" aria-label="Cargando tu panel">
             <Skeleton className="h-8 w-64" />

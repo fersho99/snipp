@@ -19,7 +19,7 @@ const THUMB = 104;
 // States: ?q=keratina (sin resultados) | ?estado=cargando | sin-conexion
 export default function Results() {
   const params = useLocalSearchParams<{ q?: string; servicio?: string; estado?: string }>();
-  const { online, retry, retrying } = useConnectivity(params.estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(params.estado);
   const initialService = serviceFromQuery(params.q);
 
   const [input, setInput] = useState(params.q ?? '');
@@ -32,7 +32,7 @@ export default function Results() {
     [query, serviceId],
   );
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
 
   const submit = (text: string) => {
     const svc = serviceFromQuery(text);

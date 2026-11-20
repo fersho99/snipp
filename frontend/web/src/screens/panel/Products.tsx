@@ -1,5 +1,6 @@
 'use client'
 
+import PanelError from '@/components/PanelError'
 import type { Product } from '../../services/shop'
 import { useRef, useState } from 'react'
 import Link from 'next/link'
@@ -196,13 +197,7 @@ function ProductEditor() {
   const fileInput = useRef<HTMLInputElement>(null)
 
   if (!isNew && (!existing || existing.branchId !== activeBranch.id)) {
-    return (
-      <div className="max-w-xl">
-        <BackLink />
-        <h1 className="mt-6 text-[28px] font-bold leading-tight">No encontramos este producto</h1>
-        <p className="mt-2">Puede que sea de otra sucursal; cámbiala en el selector del menú.</p>
-      </div>
-    )
+    return <PanelError kind="no-existe" detail="El producto no existe o es de otra sucursal; cámbiala en el selector del menú." />
   }
 
   const set = (k: keyof ProductDraft) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { setForm((f) => ({ ...f, [k]: e.target.value })); setErrors((x) => ({ ...x, [k]: undefined })); setSaved(false) }

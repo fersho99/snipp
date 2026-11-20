@@ -7,7 +7,7 @@ import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
 import TextField, { FieldError } from '../components/TextField';
-import { ErrorNote, OfflineState } from '../components/States';
+import { ErrorScreen, OfflineState } from '../components/States';
 import useConnectivity from '../hooks/useConnectivity';
 import { canReview, describe, submitReview, useAppointment } from '../data/appointments';
 import { color, space, touch } from '../theme/tokens';
@@ -21,21 +21,16 @@ const WORDS = ['', 'Muy mal', 'Mal', 'Regular', 'Bien', 'Excelente'];
 export default function Rate() {
   const { cita = 'C-10431', estado } = useLocalSearchParams<{ cita?: string; estado?: string }>();
   const appt = useAppointment(cita);
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const [stars, setStars] = useState(0);
   const [text, setText] = useState('');
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const publishing = useAction({ busy: 'Publicando...', done: 'Reseña publicada', failed: 'No se pudo publicar' });
   const failNext = useRef(estado === 'error-enviar');
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
   if (!appt) {
-    return (
-      <Screen>
-        <BackButton />
-        <ErrorNote title={`No encontramos la cita ${cita}`}>Revisa el folio o búscala en Mis citas.</ErrorNote>
-      </Screen>
-    );
+    return <ErrorScreen kind="no-existe" detail={`La cita ${cita} ya no existe o el folio está mal escrito. Revisa tus citas en Mis citas.`} onRetry={retry} retrying={retrying} />;
   }
 
   const d = describe(appt);

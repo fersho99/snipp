@@ -16,10 +16,10 @@ import { color, font, space } from '../theme/tokens';
 // States: ?estado=sin-puntos | cargando | sin-conexion
 export default function Points() {
   const { estado } = useLocalSearchParams<{ estado?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const ledger = usePointsLedger();
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
 
   if (estado === 'cargando') {
     return (

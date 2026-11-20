@@ -24,7 +24,7 @@ import type { LabeledSlot } from '../components/Booking';
 export default function Reschedule() {
   const { cita, desdeCambio, estado } = useLocalSearchParams<{ cita?: string; desdeCambio?: string; estado?: string }>();
   const appt = useAppointment(cita ?? 'C-10482');
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const fromChange = desdeCambio === '1';
   const [date, setDate] = useState<Date | null>(null);
   const [slot, setSlot] = useState<LabeledSlot | null>(null);
@@ -44,7 +44,7 @@ export default function Reschedule() {
       .map((s) => ({ ...s, label: minutesLabel(s.start) }));
   }, [appt, date, employeeId]);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
   if (!appt || !d || !employee || !employeeId) return null;
 
   const now = estado === 'menos-de-2h' ? NOW_NEAR_C10482 : DEMO_TODAY;

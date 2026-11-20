@@ -7,7 +7,7 @@ import { MapPinIcon, PhoneIcon } from 'phosphor-react-native';
 import Screen, { BackButton } from '../../components/Screen';
 import Txt from '../../components/Txt';
 import Button from '../../components/Button';
-import { ErrorNote, OfflineState, PhotoPlaceholder, Skeleton } from '../../components/States';
+import { ErrorNote, ErrorScreen, OfflineState, PhotoPlaceholder, Skeleton } from '../../components/States';
 import { StatusLine, StatusNotice } from '../../components/Appointment';
 import useConnectivity from '../../hooks/useConnectivity';
 import { CANCEL_HOURS, NOW_NEAR_C10482, appointmentStore, canReport, canReview, changeWindow, describe, reportStatusOf, statusOf, useAppointment } from '../../data/appointments';
@@ -25,18 +25,13 @@ import { DoneNote } from '../../components/Done';
 export default function AppointmentDetail() {
   const { folio, estado, aviso } = useLocalSearchParams<{ folio?: string; estado?: string; aviso?: string }>();
   const appt = useAppointment(folio);
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const [sheet, setSheet] = useState(false);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
   if (estado === 'cargando') return <DetailSkeleton />;
   if (!appt) {
-    return (
-      <Screen>
-        <BackButton />
-        <ErrorNote title={`No encontramos la cita ${folio}`}>Revisa el folio o búscala en Mis citas.</ErrorNote>
-      </Screen>
-    );
+    return <ErrorScreen kind="no-existe" detail={`La cita ${folio} ya no existe o el folio está mal escrito. Revisa tus citas en Mis citas.`} onRetry={retry} retrying={retrying} />;
   }
 
   const now = estado === 'menos-de-2h' ? NOW_NEAR_C10482 : DEMO_TODAY;

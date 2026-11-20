@@ -17,7 +17,7 @@ type Field = 'name' | 'email' | 'phone' | 'password';
 // States: ?estado=correo-registrado | sin-conexion | cargando
 export default function SignUp() {
   const { estado } = useLocalSearchParams<{ estado?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const prefilled = estado === 'correo-registrado' || estado === 'cargando';
 
   const [form, setForm] = useState({
@@ -30,7 +30,7 @@ export default function SignUp() {
   const [loading, setLoading] = useState(estado === 'cargando');
   const refs = { email: useRef<InputRef>(null), phone: useRef<InputRef>(null), password: useRef<InputRef>(null) };
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} detail="Sin internet no podemos crear tu cuenta. Lo que escribiste se queda aquí; vuelve a intentar cuando tengas señal." />;
+  if (!online) return <OfflineState kind={failure} home="/entrar" onRetry={retry} retrying={retrying} detail="Sin internet no podemos crear tu cuenta. Lo que escribiste se queda aquí; vuelve a intentar cuando tengas señal." />;
 
   const set = (key: Field) => (value: string) => {
     setForm((f) => ({ ...f, [key]: value }));

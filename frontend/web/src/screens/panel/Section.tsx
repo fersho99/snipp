@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { Navigate } from '@/lib/navigation'
 import { usePanel } from '@/components/PanelContext'
 import { LockSimple } from '@phosphor-icons/react'
+import PanelError from '@/components/PanelError'
 import { homeFor, navFor, SECTIONS, type SectionId, type SectionInfo } from '../../data/nav'
 import type { ComponentType } from 'react'
 import type { Role } from '../../types/domain'
@@ -42,7 +43,8 @@ export default function Section({ id, sub }: { id?: SectionId; sub?: string }) {
   const allowed = navFor(session.role, hasBusiness).flatMap((g) => g.items).map((i) => i.id)
   const home = `/panel/${homeFor(session.role, hasBusiness)}`
 
-  if (!SECTIONS[section]) return <Navigate to={home} replace />
+  // RF-W29: an address that does not exist shows "Esta página no existe".
+  if (!SECTIONS[section]) return <PanelError kind="no-existe" />
   if (!allowed.includes(section)) return <NoAccess id={section} section={SECTIONS[section]} home={home} />
 
   const s = SECTIONS[section]
