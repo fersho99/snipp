@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   primaryPressed: { backgroundColor: color.inkPressed },
   danger: { backgroundColor: color.ink },
   dangerPressed: { backgroundColor: color.inkPressed },
-  secondary: { backgroundColor: color.sunken },
+  secondary: { backgroundColor: color.sunken, borderWidth: 1, borderColor: color.divider },
   secondaryPressed: { backgroundColor: color.sunkenPressed },
   disabled: { opacity: 0.45 },
   label: { fontFamily: font.bodySemi, fontSize: 16, lineHeight: 20, textAlign: 'center', flexShrink: 1 },

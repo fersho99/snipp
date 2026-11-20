@@ -135,7 +135,7 @@ function MinNotice({ businessId, hours }: { businessId: string; hours: number })
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 aria-invalid={!!error || undefined}
-                className={`tabular min-h-12 w-28 rounded-control border-2 bg-sunken px-4 text-base outline-none focus:bg-raised ${error ? 'border-ink' : 'border-transparent focus:border-ink-soft'}`}
+                className={`tabular min-h-12 w-28 rounded-control border-2 bg-sunken px-4 text-base outline-none focus:bg-raised ${error ? 'border-ink' : 'border-divider focus:border-ink-soft'}`}
               />
               <span>horas antes de la cita</span>
             </div>

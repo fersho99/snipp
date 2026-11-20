@@ -157,7 +157,7 @@ function RequestForm({ email, kind, excludeBusinessId, submitLabel }: { email: s
       setBusy(false)
     }
   }
-  const selectCls = 'min-h-12 rounded-control border-2 border-transparent bg-sunken px-3 text-base outline-none focus:border-ink-soft'
+  const selectCls = 'min-h-12 rounded-control border-2 border-divider bg-sunken px-3 text-base outline-none focus:border-ink-soft'
   return (
     <form onSubmit={submit} className="mt-5 flex max-w-xl flex-col gap-5">
       <div className="grid gap-5 sm:grid-cols-2">

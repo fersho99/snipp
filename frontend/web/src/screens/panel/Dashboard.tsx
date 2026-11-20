@@ -149,7 +149,7 @@ function DateInput({ label, onChange, ...props }: { label: string; value: string
         type="date"
         {...props}
         onChange={(e) => onChange(e.target.value)}
-        className="tabular min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft focus:bg-raised"
+        className="tabular min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft focus:bg-raised"
       />
     </label>
   )

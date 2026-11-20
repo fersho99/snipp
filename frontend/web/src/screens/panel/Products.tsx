@@ -177,7 +177,7 @@ function AdjustDialog({ product, onClose, onDone }: { product: Product; onClose:
       <TextField label="Piezas que hay ahora" inputMode="numeric" value={value} onChange={(e) => { setValue(e.target.value); setError(null) }} error={error} hint={valid && n !== product.stock ? `Cambio: ${n > product.stock ? '+' : '−'}${Math.abs(n - product.stock)}` : undefined} />
       <div className="flex flex-col gap-1.5">
         <label htmlFor="adj-reason" className="text-sm font-medium">Motivo</label>
-        <select id="adj-reason" value={reason} onChange={(e) => setReason(e.target.value)} className="min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft">
+        <select id="adj-reason" value={reason} onChange={(e) => setReason(e.target.value)} className="min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft">
           {REASONS.map((r) => <option key={r}>{r}</option>)}
         </select>
       </div>

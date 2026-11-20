@@ -57,7 +57,7 @@ export default function Agenda() {
   const step = view === 'dia' ? 1 : 7
   const days = view === 'dia' ? [date] : Array.from({ length: 7 }, (_, i) => addDays(mondayOf(date), i)).filter((d) => d.getDay() !== 0 || branch.hours[0])
   const rangeLabel = view === 'dia' ? longDate(date) : `Semana del ${dayMonth(days[0])} al ${dayMonth(days[days.length - 1])}`
-  const selectCls = 'min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
+  const selectCls = 'min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
 
   return (
     <div className="max-w-6xl">
@@ -202,7 +202,7 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-control bg-raised">
+      <div className="overflow-x-auto rounded-control border border-divider bg-raised">
         <div className="flex min-w-max pb-3">
           {/* time column */}
           <div className="sticky left-0 z-10 w-16 shrink-0 bg-raised">

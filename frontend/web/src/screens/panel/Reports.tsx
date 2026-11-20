@@ -23,7 +23,7 @@ const STATE_STATUS: Record<ReportState, Status> = {
   'en revision': { label: REPORT_STATE['en revision'], color: 'ambar', icon: 'atencion' },
   atendido: { label: REPORT_STATE.atendido, color: 'verde', icon: 'check' },
 }
-const selectCls = 'min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
+const selectCls = 'min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
 
 // Reportes (RF-W14), Jefe only. `sub` = 'detalle' opens one report.
 export default function Reports({ sub }: { sub?: string }) {
@@ -119,7 +119,7 @@ function EmployeeSummary({ reports, name, business }: { reports: ClientReport[];
   const byReason: Record<string, number> = {}
   for (const r of reports) byReason[r.reason] = (byReason[r.reason] ?? 0) + 1
   return (
-    <section className="mt-6 rounded-control bg-raised p-5" aria-label={`Historial de reportes de ${name}`}>
+    <section className="mt-6 rounded-control border border-divider bg-raised p-5" aria-label={`Historial de reportes de ${name}`}>
       <p className="font-semibold">Historial de reportes de {name}</p>
       <p className="mt-1 text-[15px]">
         {reports.length === 1 ? '1 reporte' : `${reports.length} reportes`} en {business.name}
@@ -239,7 +239,7 @@ function Notes({ report, author }: { report: ClientReport; author: string }) {
       {report.notes.length ? (
         <ul className="mt-4 flex flex-col gap-4">
           {report.notes.map((n) => (
-            <li key={n.id} className="rounded-control bg-raised p-4">
+            <li key={n.id} className="rounded-control border border-divider bg-raised p-4">
               <p className="text-sm text-ink-soft">{n.author} · {longDate(n.on)}, {timeOfDay(n.on)}</p>
               <p className="mt-1 text-[15px]">{n.text}</p>
             </li>

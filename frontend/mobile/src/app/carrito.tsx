@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginVertical: space.m },
   pageDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.grayLight },
   pageDotActive: { width: 20, backgroundColor: color.ink },
-  page: { flex: 1, backgroundColor: color.raised, borderRadius: radius.photo, overflow: 'hidden' },
+  page: { flex: 1, backgroundColor: color.raised, borderRadius: radius.photo, borderWidth: 1, borderColor: color.divider, overflow: 'hidden' },
   pageBody: { padding: space.l, paddingBottom: space.xl },
   pageFoot: { paddingHorizontal: space.l, paddingTop: space.m, paddingBottom: space.s, gap: space.xs, borderTopWidth: 1, borderTopColor: color.divider },
   pickup: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.xs },

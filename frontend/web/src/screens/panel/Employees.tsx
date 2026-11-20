@@ -159,12 +159,12 @@ function Invite({ business, branches }: { business: Business; branches: Branch[]
     <div className="mt-6">
       {sent && !open ? <div className="mb-4"><Note tone="done" title={`Enviamos la invitación a ${sent}`}>Cuando la acepte desde su cuenta aparece en la lista con su horario.</Note></div> : null}
       {open ? (
-        <form onSubmit={submit} noValidate className="flex max-w-2xl flex-col gap-5 rounded-control bg-raised p-5">
+        <form onSubmit={submit} noValidate className="flex max-w-2xl flex-col gap-5 rounded-control border border-divider bg-raised p-5">
           <p className="font-semibold">Invitar Empleado por correo</p>
           <TextField label="Correo del Empleado" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null) }} error={error} hint="Si todavía no tiene cuenta en SNIPP, el correo le explica cómo crearla." autoFocus />
           <div className="flex flex-col gap-2">
             <label htmlFor="invite-branch" className="text-[15px] font-medium">Sucursal</label>
-            <select id="invite-branch" value={branchId} onChange={(e) => setBranchId(e.target.value)} className="min-h-12 rounded-control border-2 border-transparent bg-sunken px-3 text-base outline-none focus:border-ink-soft">
+            <select id="invite-branch" value={branchId} onChange={(e) => setBranchId(e.target.value)} className="min-h-12 rounded-control border-2 border-divider bg-sunken px-3 text-base outline-none focus:border-ink-soft">
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
@@ -245,7 +245,7 @@ function RequestRow({ request: r, branchName }: { request: JoinRequest; branchNa
         ) : null}
       </div>
       {accepting ? (
-        <div className="mt-5 rounded-control bg-raised p-5">
+        <div className="mt-5 rounded-control border border-divider bg-raised p-5">
           <p className="font-semibold">Horario de trabajo de {r.name} en {branchName}</p>
           <p className="mt-1 text-sm text-ink-soft">
             {isMigration

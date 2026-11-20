@@ -65,7 +65,7 @@ export default function Reassign({ employee, name, mode, onDone, onCancel }: Rea
                       id={id}
                       value={value}
                       onChange={(e) => setChoice((c) => ({ ...c, [appt.folio]: e.target.value }))}
-                      className="min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft"
+                      className="min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft"
                     >
                       {free.map((fid) => <option key={fid} value={fid}>Pasarla a {nameOf(fid)} (libre)</option>)}
                       {mode === 'migracion' && !free.length ? <option value="mismo">La atiende {first}</option> : null}

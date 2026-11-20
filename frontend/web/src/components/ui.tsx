@@ -20,7 +20,7 @@ export function Logo({ size = 36 }: { size?: number }) {
 const base = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-control px-5 text-[15px] font-semibold transition-colors disabled:cursor-not-allowed'
 const variants: Record<'primary' | 'secondary', string> = {
   primary: 'bg-ink text-white hover:bg-ink-pressed disabled:bg-gray-light disabled:text-white',
-  secondary: 'bg-sunken text-ink hover:bg-sunken-pressed disabled:text-ink-soft',
+  secondary: 'bg-sunken text-ink ring-1 ring-inset ring-divider hover:bg-sunken-pressed disabled:text-ink-soft',
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary'; loading?: boolean }
@@ -56,7 +56,7 @@ export function TextField({ label, hint, error, secure, prefix, className = '', 
       <label htmlFor={id} className="text-[15px] font-medium">{label}</label>
       <div
         className={`flex min-h-12 items-center rounded-control border-2 bg-sunken pl-4 transition-colors focus-within:bg-raised ${
-          error ? 'border-ink' : 'border-transparent focus-within:border-ink-soft'
+          error ? 'border-ink' : 'border-divider focus-within:border-ink-soft'
         }`}
       >
         {prefix ? <span className="tabular mr-2 text-ink-soft">{prefix}</span> : null}
@@ -131,7 +131,7 @@ export function TextArea({ label, hint, error, className = '', rows = 4, ...prop
         aria-invalid={!!error || undefined}
         aria-describedby={describedBy}
         className={`rounded-control border-2 bg-sunken px-4 py-3 text-base text-ink outline-none transition-colors placeholder:text-ink-soft focus:bg-raised ${
-          error ? 'border-ink' : 'border-transparent focus:border-ink-soft'
+          error ? 'border-ink' : 'border-divider focus:border-ink-soft'
         }`}
         {...props}
       />
