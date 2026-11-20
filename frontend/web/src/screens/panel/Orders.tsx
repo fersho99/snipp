@@ -1,5 +1,6 @@
 'use client'
 
+import PanelError from '@/components/PanelError'
 import type { Branch } from '../../types/domain'
 import type { Order, OrderStatus } from '../../services/shop'
 import { useState } from 'react'
@@ -8,9 +9,10 @@ import { useParams } from 'next/navigation'
 import { useQueryState } from '@/lib/navigation'
 import { useBranchPanel } from '@/components/PanelContext'
 import { ArrowLeft } from '@phosphor-icons/react'
-import { StatusCard, StatusTag } from '../../components/status'
+import { FLASH, StatusCard, StatusTag } from '../../components/status'
 import { Button, Dialog, Note, TextArea } from '../../components/ui'
 import useAction from '@/lib/useAction'
+import { markChanged, useChanged } from '@/lib/flash'
 import { advanceOrder, cancelOrder, CLIENT_ORDER_STATE, NEXT, ORDER_STATE, orderTotal, useShopStore } from '../../services/shop'
 import { useStaffStore } from '../../services/staff'
 import { longDate, money, timeOfDay } from '../../theme'
@@ -34,6 +36,7 @@ function StateLabel({ status }: { status: OrderStatus }) {
 
 function OrderList({ branch }: { branch: Branch }) {
   const s = useShopStore()
+  const changed = useChanged()
   const [params, setParams] = useQueryState()
   const filter = params.get('estado-pedido') ?? 'pendientes'
   const mine = s.orders.filter((o) => o.branchId === branch.id).sort((a, b) => b.timeline[0][1].getTime() - a.timeline[0][1].getTime())
@@ -66,7 +69,7 @@ function OrderList({ branch }: { branch: Branch }) {
             return (
               <li key={o.folio}>
                 <Link href={`/panel/pedidos/${o.folio}`} className="block rounded-control hover:brightness-[0.97]">
-                  <StatusCard color={ORDER_STATE[o.status].color} className="flex flex-col gap-1 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                  <StatusCard color={ORDER_STATE[o.status].color} className={`flex flex-col gap-1 px-4 py-4 transition sm:flex-row sm:items-center sm:justify-between sm:gap-6 ${changed[o.folio] ? FLASH[ORDER_STATE[o.status].color] : ''}`}>
                     <div className="min-w-0">
                       <p className="font-semibold"><span className="tabular">{o.folio}</span> · {o.client}</p>
                       <p className="text-sm text-ink-soft">{pieces} {pieces === 1 ? 'producto' : 'productos'} · pagado el {longDate(o.timeline[0][1])}</p>
@@ -95,18 +98,13 @@ function OrderDetail({ branch }: { branch: Branch }) {
   const { folio } = useParams<{ folio: string }>()
   const s = useShopStore()
   const o = s.orders.find((x) => x.folio === folio && x.branchId === branch.id)
+  const changed = useChanged()
   const [done, setDone] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const advancing = useAction({ busy: 'Guardando...', done: 'Estado guardado', failed: 'No se pudo guardar' })
 
   if (!o) {
-    return (
-      <div className="max-w-xl">
-        <BackLink />
-        <h1 className="mt-6 text-[28px] font-bold leading-tight">No encontramos este pedido</h1>
-        <p className="mt-2">Puede que sea de otra sucursal o que el folio esté mal escrito.</p>
-      </div>
-    )
+    return <PanelError kind="no-existe" detail="El pedido no existe, es de otra sucursal o el folio está mal escrito." />
   }
 
   const first = o.client.split(' ')[0]
@@ -115,7 +113,7 @@ function OrderDetail({ branch }: { branch: Branch }) {
     if (!nextStatus) return
     setDone(null)
     advancing.run(() => advanceOrder(o.folio), {
-      onDone: () => setDone(`${first} ya ve «${CLIENT_ORDER_STATE[nextStatus]}» en la app y recibió una notificación.`),
+      onDone: () => { markChanged(o.folio); setDone(`${first} ya ve «${CLIENT_ORDER_STATE[nextStatus]}» en la app y recibió una notificación.`) },
     })
   }
 
@@ -164,7 +162,7 @@ function OrderDetail({ branch }: { branch: Branch }) {
         <h2 id="estado-pedido" className="text-lg font-semibold">Estado</h2>
         <ol className="mt-3 flex flex-col gap-2">
           {o.timeline.map(([st, on], i) => (
-            <li key={i} className="flex items-center gap-3"><StateLabel status={st} /><span className="text-ink-soft">{longDate(on)}, {timeOfDay(on)}</span></li>
+            <li key={i} className={`flex items-center gap-3 self-start rounded-md transition ${changed[o.folio] && i === o.timeline.length - 1 ? FLASH[ORDER_STATE[st].color] : ''}`}><StateLabel status={st} /><span className="text-ink-soft">{longDate(on)}, {timeOfDay(on)}</span></li>
           ))}
         </ol>
         {done ? <div className="mt-4"><Note tone="done" title={done} /></div> : null}
@@ -176,7 +174,7 @@ function OrderDetail({ branch }: { branch: Branch }) {
         ) : null}
       </section>
 
-      {cancelling ? <CancelDialog order={o} onClose={() => setCancelling(false)} onDone={() => { setCancelling(false); setDone(`Cancelaste el pedido. Stripe le devuelve ${money(orderTotal(o))} a ${first} y le avisamos por notificación.`) }} /> : null}
+      {cancelling ? <CancelDialog order={o} onClose={() => setCancelling(false)} onDone={() => { markChanged(o.folio); setCancelling(false); setDone(`Cancelaste el pedido. Stripe le devuelve ${money(orderTotal(o))} a ${first} y le avisamos por notificación.`) }} /> : null}
     </div>
   )
 }

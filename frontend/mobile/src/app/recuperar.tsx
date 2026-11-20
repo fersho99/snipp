@@ -14,12 +14,12 @@ import { space } from '../theme/tokens';
 // States: ?estado=sin-conexion | cargando
 export default function ForgotPassword() {
   const { estado, correo } = useLocalSearchParams<{ estado?: string; correo?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const [email, setEmail] = useState(correo ?? (estado === 'cargando' ? 'andrea.valenzuela@gmail.com' : ''));
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(estado === 'cargando');
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} home="/entrar" onRetry={retry} retrying={retrying} />;
 
   const submit = async () => {
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {

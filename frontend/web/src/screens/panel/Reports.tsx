@@ -1,5 +1,6 @@
 'use client'
 
+import PanelError from '@/components/PanelError'
 import type { Business } from '../../types/domain'
 import type { ClientReport, ReportReason, ReportState } from '../../services/reports'
 import { useState } from 'react'
@@ -140,13 +141,7 @@ function ReportDetail() {
   const [done, setDone] = useState<string | null>(null)
 
   if (!r) {
-    return (
-      <div className="max-w-xl">
-        <BackLink />
-        <h1 className="mt-6 text-[28px] font-bold leading-tight">No encontramos este reporte</h1>
-        <p className="mt-2">Puede que la dirección esté mal escrita o que el reporte no sea de {business.name}.</p>
-      </div>
-    )
+    return <PanelError kind="no-existe" detail={`El reporte no existe o no es de ${business.name}.`} />
   }
 
   const first = r.client.split(' ')[0]

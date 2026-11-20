@@ -15,7 +15,8 @@ const DAY = 24 * 60 * 60 * 1000
 //   aviso-suscripcion  the paid plan ends in 7 days
 //   vencida            the subscription ended without payment
 //   sin-sucursales     the Jefe has not registered any branch yet
-//   cargando | sin-conexion | error-servidor
+//   cargando | tardo (no answer: after 15 s, "Esto tardó demasiado") |
+//   sin-conexion | error-servidor (each fails once, so "Reintentar" works)
 let demoEstado: string | null = null
 export const setDemoEstado = (estado: string | null) => { demoEstado = estado }
 export const getDemoEstado = () => demoEstado
@@ -51,9 +52,11 @@ function subscriptionFor(base: Omit<Subscription, 'endsOn'> & { endsOn: Date | s
 
 export async function loadPanel(session: Session): Promise<{ business: Business | null }> {
   if (demoEstado === 'cargando') return new Promise(() => {})
+  if (takeForcedError('tardo')) return new Promise(() => {})
   await wait(500)
-  if (demoEstado === 'sin-conexion') throw new ApiError('offline')
-  if (demoEstado === 'error-servidor') throw new ApiError('server')
+  const forced = takeForcedError('sin-conexion', 'error-servidor')
+  if (forced === 'sin-conexion') throw new ApiError('offline')
+  if (forced === 'error-servidor') throw new ApiError('server')
   if (!session.businessId) return { business: null }
 
   const stored = businesses[session.businessId] ?? session.business

@@ -23,7 +23,7 @@ import type { CartSummary } from '../../data/shop';
 export default function Store() {
   const { sucursal, estado } = useLocalSearchParams<{ sucursal?: string; estado?: string }>();
   const branch = getBranch(sucursal) ?? branches[0];
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const carts = useCarts();
   const mine = carts.find((c) => c.branchId === branch.id);
   const summary = mine ? cartSummary(mine) : null;
@@ -38,7 +38,7 @@ export default function Store() {
     }
   }, [estado]);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
 
   const available = items.filter((p) => p.stock > 0).length;
   const points = pointsAt(branch.businessId);

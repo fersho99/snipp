@@ -17,10 +17,10 @@ import { DoneNote } from '../components/Done';
 // States: ?estado=sin-reportes | cargando | sin-conexion
 export default function MyReports() {
   const { estado, enviado } = useLocalSearchParams<{ estado?: string; enviado?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const all = useAppointments();
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
 
   const reports = estado === 'sin-reportes' ? [] : all.filter((a) => a.report).sort((a, b) => startDate(b).getTime() - startDate(a).getTime());
   const canSendMore = estado !== 'sin-reportes' && all.some(canReport);

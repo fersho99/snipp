@@ -24,7 +24,7 @@ const MAX = 800;
 export default function Report() {
   const { cita, estado } = useLocalSearchParams<{ cita?: string; estado?: string }>();
   const all = useAppointments();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const reportable = all.filter(canReport).sort((a, b) => startDate(b).getTime() - startDate(a).getTime());
   const [folio, setFolio] = useState(cita ?? null);
   const [picking, setPicking] = useState(!cita);
@@ -34,7 +34,7 @@ export default function Report() {
   const sending = useAction({ busy: 'Enviando...', done: 'Reporte enviado', failed: 'No se pudo enviar' });
   const failNext = useRef(estado === 'error-enviar');
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
 
   const appt = all.find((a) => a.folio === folio);
 

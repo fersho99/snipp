@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { FieldError, Button, Dialog, Note, TextField } from '../../components/ui'
 import useAction, { type ActionButton } from '@/lib/useAction'
+import { markChanged } from '@/lib/flash'
 import { apptStatus } from './agendaIcons'
 import { StatusTag } from '../../components/status'
 import { DEMO_TODAY } from '../../data/demo'
@@ -34,15 +35,21 @@ export function AppointmentDialog({ session, appt, nameOf, onClose }: { session:
   // RNF-W07: loading, then green or red, for each way of changing the appointment.
   const action = useAction(ACTION_LABELS[mode ?? 'estado'])
 
+  // On closing, the block that changed is highlighted with its new color.
+  const close = () => {
+    if (done) markChanged(appt.folio)
+    onClose()
+  }
+
   const run = (fn: () => Promise<unknown>, message: string) =>
     action.run(fn, { onDone: () => { setDone(message); setMode(null) } })
 
   return (
     <Dialog
       open
-      onClose={onClose}
+      onClose={close}
       title={`${appt.service} con ${nameOf(appt.employeeId)}`}
-      actions={<Button variant="secondary" onClick={onClose}>Cerrar</Button>}
+      actions={<Button variant="secondary" onClick={close}>Cerrar</Button>}
     >
       <dl className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-1.5 text-[15px]">
         <dt className="text-ink-soft">Cuándo</dt>

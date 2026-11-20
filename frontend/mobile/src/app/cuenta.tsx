@@ -19,13 +19,13 @@ import { space } from '../theme/tokens';
 // States: ?estado=cargando | sin-conexion
 export default function Account() {
   const { estado } = useLocalSearchParams<{ estado?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const orders = useOrders();
   const ledger = usePointsLedger();
   const appts = useAppointments();
   const notes = useNotifications();
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} tabs onRetry={retry} retrying={retrying} />;
   const loading = estado === 'cargando';
 
   const ready = orders.find((o) => o.status === 'listo');

@@ -22,7 +22,7 @@ const AVATAR = 88;
 // States: ?estado=cargando | error-guardar (saving fails once) | sin-conexion
 export default function EditProfile() {
   const { estado } = useLocalSearchParams<{ estado?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const [loadingProfile, setLoadingProfile] = useState(estado === 'cargando');
   const [saved, setSaved] = useState({ name: client.name, phone: client.phone, photo: client.photo });
   const [name, setName] = useState(client.name);
@@ -39,7 +39,7 @@ export default function EditProfile() {
     if (estado !== 'cargando') setLoadingProfile(false);
   }, [estado]);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
   if (loadingProfile) return <ProfileSkeleton />;
 
   const dirty = name !== saved.name || phone !== saved.phone || photo !== saved.photo;

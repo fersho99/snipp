@@ -19,7 +19,7 @@ const DEMO_PASSWORD = 'compas2025';
 export default function SignIn() {
   const { estado } = useLocalSearchParams<{ estado?: string }>();
   const { height } = useWindowDimensions();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
 
   const [email, setEmail] = useState(estado === 'credenciales' || estado === 'cargando' ? client.email : '');
   const [password, setPassword] = useState(estado === 'credenciales' || estado === 'cargando' ? 'compas2024' : '');
@@ -28,7 +28,7 @@ export default function SignIn() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
   const passwordRef = useRef<React.ComponentRef<typeof TextInput>>(null);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} home="/entrar" onRetry={retry} retrying={retrying} />;
 
   const submit = async () => {
     const errors: Record<string, string> = {};
