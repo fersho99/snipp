@@ -7,14 +7,14 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useQueryState } from '@/lib/navigation'
 import { useBranchPanel } from '@/components/PanelContext'
-import { ArrowLeft, CheckCircle, Clock, Package, Prohibit , type Icon } from '@phosphor-icons/react'
+import { ArrowLeft } from '@phosphor-icons/react'
+import { StatusCard, StatusTag } from '../../components/status'
 import { Button, Dialog, Note, TextArea } from '../../components/ui'
 import { networkMessage, type ApiError } from '../../services/auth'
 import { advanceOrder, cancelOrder, CLIENT_ORDER_STATE, NEXT, ORDER_STATE, orderTotal, useShopStore } from '../../services/shop'
 import { useStaffStore } from '../../services/staff'
 import { longDate, money, timeOfDay } from '../../theme'
 
-const ICON: Record<OrderStatus, Icon> = { pagado: Clock, listo: Package, entregado: CheckCircle, cancelado: Prohibit }
 const ACTION: Partial<Record<OrderStatus, string>> = { listo: 'Marcar listo para recoger', entregado: 'Marcar entregado' }
 
 // Pedidos (RF-W21): the Jefe sees the branch picked in the menu; an Empleado,
@@ -29,13 +29,7 @@ export default function Orders({ sub }: { sub?: string }) {
 }
 
 function StateLabel({ status }: { status: OrderStatus }) {
-  const Icon = ICON[status]
-  return (
-    <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
-      <Icon size={16} weight={status === 'entregado' ? 'fill' : 'regular'} aria-hidden="true" />
-      {ORDER_STATE[status]}
-    </span>
-  )
+  return <StatusTag status={ORDER_STATE[status]} />
 }
 
 function OrderList({ branch }: { branch: Branch }) {
@@ -66,21 +60,26 @@ function OrderList({ branch }: { branch: Branch }) {
       </div>
 
       {list.length ? (
-        <ul className="mt-6">
-          {list.map((o) => (
-            <li key={o.folio} className="border-b border-divider last:border-0">
-              <Link href={`/panel/pedidos/${o.folio}`} className="-mx-3 flex flex-col gap-1 rounded-control px-3 py-4 hover:bg-sunken sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-                <div className="min-w-0">
-                  <p className="font-semibold"><span className="tabular">{o.folio}</span> · {o.client}</p>
-                  <p className="text-sm text-ink-soft">{o.items.map((it) => `${it.qty} × ${it.name}`).join(', ')} · pagado el {longDate(o.timeline[0][1])}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-5">
-                  <span className="tabular font-semibold">{money(orderTotal(o))}</span>
-                  <StateLabel status={o.status} />
-                </div>
-              </Link>
-            </li>
-          ))}
+        <ul className="mt-6 flex flex-col gap-3">
+          {list.map((o) => {
+            const pieces = o.items.reduce((sum, it) => sum + it.qty, 0)
+            return (
+              <li key={o.folio}>
+                <Link href={`/panel/pedidos/${o.folio}`} className="block rounded-control hover:brightness-[0.97]">
+                  <StatusCard color={ORDER_STATE[o.status].color} className="flex flex-col gap-1 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                    <div className="min-w-0">
+                      <p className="font-semibold"><span className="tabular">{o.folio}</span> · {o.client}</p>
+                      <p className="text-sm text-ink-soft">{pieces} {pieces === 1 ? 'producto' : 'productos'} · pagado el {longDate(o.timeline[0][1])}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-5">
+                      <span className="tabular font-semibold">{money(orderTotal(o))}</span>
+                      <StateLabel status={o.status} />
+                    </div>
+                  </StatusCard>
+                </Link>
+              </li>
+            )
+          })}
         </ul>
       ) : (
         <div className="mt-8">

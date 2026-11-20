@@ -122,19 +122,22 @@ export function changeWindow(a: Pick<Appointment, 'date' | 'start'>, now = DEMO_
 // Thursday 19 November at 4:15 pm, 75 minutes before C-10482.
 export const NOW_NEAR_C10482 = new Date(2026, 10, 19, 16, 15);
 
-// Status text and tone (the tone picks the icon in StatusLine).
+// Status text, color and icon (SRS v1.2, 4.1 and 4.2.1 "Mis citas").
 export function statusOf(a: Appointment): StatusText {
   const d = describe(a);
   const who = d.employee?.name.split(' ')[0];
   switch (a.status) {
-    case 'confirmada': return { label: 'Confirmada', tone: 'done' };
-    case 'cambio': return { label: `${d.branch.name} cambió tu cita, falta tu respuesta`, tone: 'pending' };
-    case 'cancelada-negocio': return { label: `Cancelada por ${d.branch.name}`, tone: 'stopped' };
-    case 'cancelada-cliente': return { label: 'La cancelaste', tone: 'soft' };
-    case 'atendida': return { label: 'Atendida', tone: 'done' };
-    case 'no-asistio': return { label: 'No asististe', tone: 'soft' };
-    case 'empleado-no-se-presento': return { label: `${who} no se presentó`, tone: 'stopped' };
-    default: return { label: a.status, tone: 'soft' };
+    case 'confirmada':
+      return a.rescheduledFrom != null
+        ? { label: `Reagendada · antes ${minutesLabel(a.rescheduledFrom)}`, color: 'ambar', icon: 'reagendada' }
+        : { label: 'Confirmada', color: 'verde', icon: 'check' };
+    case 'cambio': return { label: 'Cambió tu cita, falta tu respuesta', color: 'ambar', icon: 'atencion' };
+    case 'cancelada-negocio': return { label: `Cancelada por ${d.branch.name}`, color: 'rojo', icon: 'cancelada' };
+    case 'cancelada-cliente': return { label: 'Cancelada', color: 'rojo', icon: 'cancelada' };
+    case 'atendida': return { label: 'Atendida', color: 'gris', icon: 'check' };
+    case 'no-asistio': return { label: 'No asististe', color: 'rojo', icon: 'atencion' };
+    case 'empleado-no-se-presento': return { label: `${who} no se presentó`, color: 'rojo', icon: 'atencion' };
+    default: return { label: a.status, color: 'gris', icon: 'info' };
   }
 }
 
@@ -176,12 +179,12 @@ export function submitReport(folio: string, { reason, text }: { reason: string; 
   appointmentStore.update(folio, { report: { sentOn: TODAY_LABEL, state: 'enviado', reason, text } });
 }
 
-// RF-M14: enviado | en revisión | atendido (the Jefe changes it on the web).
+// RF-M14: enviado (blue) | en revisión (amber) | atendido (green), SRS v1.2 4.1.
 export function reportStatusOf(report: Report): StatusText {
   switch (report.state) {
-    case 'enviado': return { label: 'Enviado', tone: 'pending' };
-    case 'en revisión': return { label: 'En revisión', tone: 'pending' };
-    case 'atendido': return { label: 'Atendido', tone: 'done' };
-    default: return { label: report.state, tone: 'soft' };
+    case 'enviado': return { label: 'Enviado', color: 'azul', icon: 'info' };
+    case 'en revisión': return { label: 'En revisión', color: 'ambar', icon: 'atencion' };
+    case 'atendido': return { label: 'Atendido', color: 'verde', icon: 'check' };
+    default: return { label: report.state, color: 'gris', icon: 'info' };
   }
 }

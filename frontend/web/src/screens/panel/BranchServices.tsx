@@ -4,11 +4,12 @@ import type { Branch, Service } from '../../types/domain'
 // A service being created: minutes and price are still text in the form.
 type ServiceDraft = Omit<Service, 'id' | 'minutes' | 'price'> & { minutes: string; price: string }
 import { useState } from 'react'
-import { PauseCircle, Plus } from '@phosphor-icons/react'
+import { Plus } from '@phosphor-icons/react'
 import { Button, Checkbox, Note, TextArea, TextField } from '../../components/ui'
 import { networkMessage, type ApiError } from '../../services/auth'
 import { saveService } from '../../services/branches'
 import { money } from '../../theme'
+import { StatusTag } from '../../components/status'
 
 const NEW: ServiceDraft = { name: '', description: '', minutes: '', price: '', active: true }
 
@@ -85,10 +86,7 @@ function ServiceRow({ businessId, branchId, service: s, onEdit, onToggled }: { b
       <div className="min-w-0">
         <p className="text-[17px] font-semibold">{s.name}</p>
         {!s.active ? (
-          <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold">
-            <PauseCircle size={18} weight="fill" aria-hidden="true" />
-            Inactivo: no se ofrece en la app
-          </p>
+          <StatusTag status={{ color: 'gris', icon: 'pausa', label: 'Inactivo: no se ofrece en la app' }} className="mt-1" />
         ) : null}
         {s.description ? <p className="mt-1 max-w-prose text-ink-soft">{s.description}</p> : null}
         <p className="tabular mt-1 text-sm">{s.minutes} min · {money(s.price)}</p>

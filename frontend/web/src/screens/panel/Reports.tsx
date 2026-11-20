@@ -7,7 +7,8 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useQueryState } from '@/lib/navigation'
 import { useBusinessPanel } from '@/components/PanelContext'
-import { ArrowLeft, CheckCircle, Clock, Flag , type Icon } from '@phosphor-icons/react'
+import { ArrowLeft } from '@phosphor-icons/react'
+import { StatusCard, StatusTag, type Status } from '../../components/status'
 import { Button, Note, TextArea } from '../../components/ui'
 import { networkMessage, type ApiError } from '../../services/auth'
 import { addNote, CLIENT_STATE, REPORT_REASONS, REPORT_STATE, setReportState, useReportsStore } from '../../services/reports'
@@ -15,7 +16,13 @@ import { useStaffStore } from '../../services/staff'
 import { longDate, timeOfDay } from '../../theme'
 import { toast } from '@/lib/toast'
 
-const STATE_ICON: Record<ReportState, Icon> = { enviado: Flag, 'en revision': Clock, atendido: CheckCircle }
+// SRS v1.2, 4.2.2 "Reportes": amber «En revisión», green «Atendido». New
+// reports are counted in red in the menu, so their label is red too.
+const STATE_STATUS: Record<ReportState, Status> = {
+  enviado: { label: REPORT_STATE.enviado, color: 'rojo', icon: 'atencion' },
+  'en revision': { label: REPORT_STATE['en revision'], color: 'ambar', icon: 'atencion' },
+  atendido: { label: REPORT_STATE.atendido, color: 'verde', icon: 'check' },
+}
 const selectCls = 'min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
 
 // Reportes (RF-W14), Jefe only. `sub` = 'detalle' opens one report.
@@ -31,13 +38,7 @@ function useNames() {
 }
 
 function StateLabel({ state }: { state: ReportState }) {
-  const Icon = STATE_ICON[state]
-  return (
-    <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
-      <Icon size={16} weight={state === 'atendido' ? 'fill' : 'regular'} aria-hidden="true" />
-      {REPORT_STATE[state]}
-    </span>
-  )
+  return <StatusTag status={STATE_STATUS[state]} />
 }
 
 function Inbox() {
@@ -85,16 +86,18 @@ function Inbox() {
       {employee !== 'todos' ? <EmployeeSummary reports={mine.filter((r) => r.employeeId === employee)} name={nameOf(employee)} business={business} /> : null}
 
       {list.length ? (
-        <ul className="mt-6">
+        <ul className="mt-6 flex flex-col gap-3">
           {list.map((r) => (
-            <li key={r.id} className="border-b border-divider last:border-0">
-              <Link href={`/panel/reportes/${r.id}`} className="-mx-3 flex flex-col gap-1 rounded-control px-3 py-4 hover:bg-sunken sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+            <li key={r.id}>
+              <Link href={`/panel/reportes/${r.id}`} className="block rounded-control hover:brightness-[0.97]">
+                <StatusCard color={STATE_STATUS[r.state].color} className="flex flex-col gap-1 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                 <div className="min-w-0">
                   <p className={r.state === 'enviado' ? 'font-bold' : 'font-semibold'}>{nameOf(r.employeeId)} · {REPORT_REASONS[r.reason]}</p>
                   <p className="text-sm text-ink-soft">{branchName(r.branchId)} · cita {r.folio} del {longDate(r.apptOn)} · recibido el {longDate(r.sentOn)}</p>
                   <p className="mt-1 line-clamp-2 max-w-prose text-[15px]">{r.text}</p>
                 </div>
                 <div className="shrink-0 sm:pt-0.5"><StateLabel state={r.state} /></div>
+                </StatusCard>
               </Link>
             </li>
           ))}

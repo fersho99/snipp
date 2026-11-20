@@ -1,10 +1,9 @@
 import type { TextStyle } from 'react-native';
 
 // SNIPP design tokens. The interface is grayscale (photos keep their own
-// color) plus three status colors the client asked for after the approval
-// (17/11/2026): green (done), orange (pending), red (cancelled). Each one
-// passes WCAG AA (4.5:1 or more) on white, paper and its soft tint. No state is told apart by color alone: each one pairs an icon
-// with explicit text (see components/Appointment.tsx StatusLine).
+// color) plus the five status colors of SRS v1.2, section 4.1 (see `status`
+// below). They replace the three colors of 17/11/2026. No state is told
+// apart by color alone: each one pairs an icon with explicit text (RN-19).
 // Contrast (WCAG): ink on paper 16.9, inkSoft on paper 6.4, on sunken 5.7.
 
 export const color = {
@@ -20,13 +19,21 @@ export const color = {
   divider: '#DCDCDC', // 1 px between rows of dense web tables only
   white: '#FFFFFF',
   scrim: 'rgba(20,20,20,0.5)',
-  success: '#1E7B34',
-  successSoft: '#E7F4EA',
-  warning: '#A8530A',
-  warningSoft: '#FCEFE0',
-  danger: '#C42B2B',
-  dangerSoft: '#FCEBEB',
 };
+
+// SRS v1.2, 4.1: status colors. `stripe` is the 5 px left edge of a card,
+// `soft` and `text` the label (each pair is 6.3:1 to 9.4:1). Color is used
+// only on the stripe, the label, notices and counters (RN-19).
+export type StatusColor = 'verde' | 'ambar' | 'rojo' | 'azul' | 'gris';
+export const status: Record<StatusColor, { stripe: string; soft: string; text: string }> = {
+  verde: { stripe: '#1E8E3E', soft: '#E6F4EA', text: '#0D652D' }, // confirmed or paid
+  ambar: { stripe: '#F9AB00', soft: '#FEF4D6', text: '#7A4F01' }, // changed or needs attention
+  rojo: { stripe: '#D93025', soft: '#FCE8E6', text: '#A50E0E' }, // cancelled or a problem
+  azul: { stripe: '#1A73E8', soft: '#E8F0FE', text: '#174EA6' }, // ready or informative
+  gris: { stripe: '#9AA0A6', soft: '#F1F3F4', text: '#3C4043' }, // finished, current, inactive
+};
+
+export const stripeWidth = 5;
 
 export const space = { xs: 4, s: 8, m: 12, l: 16, xl: 24, xxl: 32, xxxl: 48, huge: 64 };
 

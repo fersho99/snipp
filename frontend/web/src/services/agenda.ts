@@ -17,7 +17,7 @@ function failIfForced() {
 
 export const STATUS: Record<AppointmentStatus, string> = {
   confirmada: 'Confirmada',
-  cambio: 'Esperando respuesta del cliente',
+  cambio: 'Cambio sin respuesta', // SRS v1.2, 4.2.2
   atendida: 'Atendida',
   'no-asistio': 'No asistió',
   'empleado-no-se-presento': 'Empleado no se presentó',

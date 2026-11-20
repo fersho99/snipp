@@ -98,6 +98,9 @@ export interface Appointment {
   // Minutes from midnight.
   start: number;
   status: AppointmentStatus;
+  // RF-M07: start (minutes) before the client rescheduled it, for the amber
+  // label «Reagendada · antes 12:00 pm» (SRS v1.2, 4.2.1).
+  rescheduledFrom?: number | null;
   businessNote?: string;
   changedAt?: string;
   // RF-M08: a change the business proposed and the client has not answered.
@@ -106,11 +109,17 @@ export interface Appointment {
   report?: Report | null;
 }
 
-// Icon used next to a status text; a status never depends on color alone.
-export type Tone = 'done' | 'pending' | 'stopped' | 'soft';
+// SRS v1.2, 4.1: each status has a color and an icon besides its text, so it
+// never depends on color alone (RN-19). Icons: check (confirmed, paid,
+// attended, delivered), arrows (rescheduled), alert (needs attention or a
+// problem), cross (cancelled), clock (expiry), bag (ready for pickup) and
+// info (informative notices).
+export type StatusColor = 'verde' | 'ambar' | 'rojo' | 'azul' | 'gris';
+export type StatusIcon = 'check' | 'reagendada' | 'atencion' | 'cancelada' | 'reloj' | 'bolsa' | 'info';
 export interface StatusText {
   label: string;
-  tone: Tone;
+  color: StatusColor;
+  icon: StatusIcon;
 }
 
 // RF-M09: a product of one branch with its stock.

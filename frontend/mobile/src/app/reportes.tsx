@@ -4,7 +4,7 @@ import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
 import { OfflineState, Skeleton } from '../components/States';
-import { StatusLine } from '../components/Appointment';
+import { StatusCard, StatusLine } from '../components/Appointment';
 import useConnectivity from '../hooks/useConnectivity';
 import { canReport, describe, reasonLabel, reportStatusOf, startDate, useAppointments } from '../data/appointments';
 import { font, space } from '../theme/tokens';
@@ -78,7 +78,7 @@ function ReportItem({ appt }: { appt: Appointment }) {
     atendido: `El Jefe de ${d.branch.name} lo marcó como atendido.`,
   } as Record<string, string>)[r.state];
   return (
-    <View style={{ gap: 2 }}>
+    <StatusCard tone={status.color} style={{ gap: 2 }}>
       <StatusLine status={status} />
       <Txt variant="body" style={{ fontFamily: font.bodySemi, marginTop: space.xs }}>
         {d.employee.name}: {reasonLabel(r.reason).toLowerCase()}
@@ -87,10 +87,10 @@ function ReportItem({ appt }: { appt: Appointment }) {
       <Txt variant="body" style={{ marginTop: space.s }}>“{r.text}”</Txt>
       <Txt variant="small" style={{ marginTop: space.s }}>Enviado el {r.sentOn}. {meaning}</Txt>
       <Button variant="link" label="Ver la cita" onPress={() => router.push(`/cita/${appt.folio}`)} style={{ alignSelf: 'flex-start' }} />
-    </View>
+    </StatusCard>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { marginTop: space.xxl, gap: space.xxl },
+  list: { marginTop: space.xxl, gap: space.l },
 });

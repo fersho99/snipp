@@ -1,50 +1,26 @@
-// How each appointment status looks in the agenda. Traffic light asked by
-// the client after the approval (17/11/2026): green = confirmed, orange =
-// waiting for the client's answer, red = cancelled. Finished appointments
-// (attended or no-shows) stay gray. A status never depends on color alone:
-// each one has its icon and its text, and the pending one a dashed edge.
-import { CheckCircle, Clock, Prohibit, UserMinus, XCircle, type Icon } from '@phosphor-icons/react'
+// How each appointment status looks in the agenda (SRS v1.2, 4.2.2 "Agenda
+// del día"): a white block with the 5 px stripe of its color and a label
+// with icon and text. Green «Confirmada»; amber «Cambio sin respuesta»; red
+// «Cancelada», «No asistió» or «Empleado no se presentó»; gray «Atendida».
+import type { Status } from '../../components/status'
+import { STRIPE } from '../../components/status'
 import type { AppointmentStatus } from '../../types/domain'
+import { STATUS } from '../../services/agenda'
 
-export const STATUS_ICON: Record<AppointmentStatus, Icon> = {
-  confirmada: CheckCircle,
-  cambio: Clock,
-  atendida: CheckCircle,
-  'no-asistio': UserMinus,
-  'empleado-no-se-presento': XCircle,
-  cancelada: Prohibit,
+const LOOK: Record<AppointmentStatus, Pick<Status, 'color' | 'icon'>> = {
+  confirmada: { color: 'verde', icon: 'check' },
+  cambio: { color: 'ambar', icon: 'atencion' },
+  cancelada: { color: 'rojo', icon: 'cancelada' },
+  'no-asistio': { color: 'rojo', icon: 'atencion' },
+  'empleado-no-se-presento': { color: 'rojo', icon: 'atencion' },
+  atendida: { color: 'gris', icon: 'check' },
 }
 
-export type Light = 'verde' | 'naranja' | 'rojo' | 'gris'
-export const LIGHT: Record<AppointmentStatus, Light> = {
-  confirmada: 'verde',
-  cambio: 'naranja',
-  cancelada: 'rojo',
-  atendida: 'gris',
-  'no-asistio': 'gris',
-  'empleado-no-se-presento': 'gris',
-}
+export const apptStatus = (status: AppointmentStatus): Status => ({ label: STATUS[status], ...LOOK[status] })
 
 // Block in the day grid and row in the week list.
-export const BLOCK_CLASS: Record<Light, string> = {
-  verde: 'border-l-[3px] border-success bg-success-soft text-ink hover:brightness-95',
-  naranja: 'border-l-[3px] border-dashed border-warning bg-warning-soft text-ink hover:brightness-95',
-  rojo: 'border-l-[3px] border-danger bg-danger-soft text-ink hover:brightness-95',
-  gris: 'bg-sunken text-ink-soft hover:bg-sunken-pressed',
-}
+export const blockClass = (status: AppointmentStatus) =>
+  `border border-divider bg-raised text-ink hover:bg-gris-soft ${STRIPE[LOOK[status].color]}`
 
-// Small swatch for the legend.
-export const SWATCH_CLASS: Record<Light, string> = {
-  verde: 'border-l-[3px] border-success bg-success-soft',
-  naranja: 'border-l-[3px] border-dashed border-warning bg-warning-soft',
-  rojo: 'border-l-[3px] border-danger bg-danger-soft',
-  gris: 'bg-sunken',
-}
-
-// Color of the status icon next to its text.
-export const ICON_CLASS: Record<Light, string> = {
-  verde: 'text-success',
-  naranja: 'text-warning',
-  rojo: 'text-danger',
-  gris: 'text-ink-soft',
-}
+// Blocked hours: gray stripes plus the reason (SRS v1.2, 4.1 and 4.2.2).
+export const BLOCKED_STYLE = { backgroundImage: 'repeating-linear-gradient(135deg, #F1F3F4 0 6px, #E3E3E3 6px 12px)' }

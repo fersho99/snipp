@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { Button, Dialog, Note, TextField } from '../../components/ui'
-import { ICON_CLASS, LIGHT, STATUS_ICON } from './agendaIcons'
+import { apptStatus } from './agendaIcons'
+import { StatusTag } from '../../components/status'
 import { DEMO_TODAY } from '../../data/demo'
 import { networkMessage, type ApiError } from '../../services/auth'
 import {
@@ -30,7 +31,6 @@ export function AppointmentDialog({ session, appt, nameOf, onClose }: { session:
   const [done, setDone] = useState<string | null>(null)
   const [failure, setFailure] = useState<ApiError | null>(null)
   const [busy, setBusy] = useState(false)
-  const Icon = STATUS_ICON[appt.status]
   const active = isUpcoming(appt)
   const first = appt.client.split(' ')[0]
 
@@ -63,9 +63,8 @@ export function AppointmentDialog({ session, appt, nameOf, onClose }: { session:
         <dt className="text-ink-soft">Cita</dt>
         <dd className="tabular">{appt.folio}</dd>
         <dt className="text-ink-soft">Estado</dt>
-        <dd className="inline-flex items-center gap-1.5 font-semibold">
-          <Icon size={18} weight={appt.status === 'atendida' || appt.status === 'confirmada' ? 'fill' : 'regular'} className={ICON_CLASS[LIGHT[appt.status]]} aria-hidden="true" />
-          {STATUS[appt.status]}{appt.status === 'cancelada' && appt.cancelledBy ? ` (por ${appt.cancelledBy === 'cliente' ? 'el cliente' : `el ${appt.cancelledBy}`})` : ''}
+        <dd>
+          <StatusTag status={{ ...apptStatus(appt.status), label: `${STATUS[appt.status]}${appt.status === 'cancelada' && appt.cancelledBy ? ` (por ${appt.cancelledBy === 'cliente' ? 'el cliente' : `el ${appt.cancelledBy}`})` : ''}` }} />
         </dd>
       </dl>
       {appt.status === 'cambio' ? <p className="text-sm">Le avisamos del cambio a {first}; puede aceptarlo, reagendar o cancelar desde la app.</p> : null}
