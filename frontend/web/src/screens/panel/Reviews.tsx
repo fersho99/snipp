@@ -11,7 +11,7 @@ import { longDate } from '../../theme'
 
 // Overall rating of each branch, as the app shows it (same numbers as the mobile catalog).
 const RATING: Record<string, { average: number; count: number }> = { 'los-compas-centro': { average: 4.7, count: 212 }, 'los-compas-norte': { average: 4.5, count: 86 } }
-const selectCls = 'min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
+const selectCls = 'min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
 
 // Reseñas del negocio (RF-W23), Jefe only. Each review can be reported to
 // the Administrator with a reason; it stays visible until the Administrator

@@ -53,7 +53,7 @@ export default function Subscription() {
       ) : null}
 
       {/* Where it stands */}
-      <section className={`mt-8 flex flex-col gap-2 rounded-control bg-raised p-5 ${STRIPE[subStatus.color]}`} aria-labelledby="estado-sub">
+      <section className={`mt-8 flex flex-col gap-2 rounded-control border border-divider bg-raised p-5 ${STRIPE[subStatus.color]}`} aria-labelledby="estado-sub">
         <StatusTag status={subStatus} className="self-start" />
         <div>
           <h2 id="estado-sub" className="text-lg font-semibold">

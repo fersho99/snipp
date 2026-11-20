@@ -59,7 +59,7 @@ function TimeInput({ label, value, onChange }: { label: string; value: string; o
       value={value}
       step={900}
       onChange={(e) => onChange(e.target.value)}
-      className="tabular min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft focus:bg-raised"
+      className="tabular min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft focus:bg-raised"
     />
   )
 }

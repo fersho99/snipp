@@ -1,20 +1,22 @@
 @import "tailwindcss";
 
-/* SNIPP web: grayscale identity shared with the app (SRS v1.1, decision D1).
-   Photos keep their color. Status colors follow SRS v1.2, section 4.1, and
+/* SNIPP web: grayscale identity shared with the app. Base of SRS v1.2,
+   section 4.1: white background, light gray surfaces (#F5F5F5), borders
+   #E3E3E3, main text #111111 and secondary text #6B6B6B (5.3:1 on white,
+   4.9:1 on the gray surface). Photos keep their color. Status colors follow SRS v1.2, section 4.1, and
    replace the three colors of 17/11/2026. Each status uses a 5 px stripe
    (stripe tone) and a label (soft fill + dark text, 6.3:1 to 9.4:1), and
    always goes with an icon and text (RN-19). */
 @theme {
-  --color-paper: #F5F5F5;
-  --color-raised: #FFFFFF;
-  --color-sunken: #E8E8E8;
-  --color-sunken-pressed: #DADADA;
-  --color-ink: #141414;
+  --color-paper: #FFFFFF; /* page background */
+  --color-raised: #FFFFFF; /* cards and dialogs, with a divider border */
+  --color-sunken: #F5F5F5; /* light gray surfaces: fields, side menu, secondary buttons */
+  --color-sunken-pressed: #EBEBEB;
+  --color-ink: #111111;
   --color-ink-pressed: #333333;
-  --color-ink-soft: #595959;
+  --color-ink-soft: #6B6B6B;
   --color-gray-light: #BDBDBD;
-  --color-divider: #DCDCDC;
+  --color-divider: #E3E3E3; /* borders */
 
   --color-verde: #1E8E3E;
   --color-verde-soft: #E6F4EA;

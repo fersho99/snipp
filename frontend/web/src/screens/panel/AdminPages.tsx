@@ -92,7 +92,7 @@ function PlanForm({ plan, onCancel, onDone }: { plan?: Plan; onCancel: () => voi
     }
   }
   return (
-    <form onSubmit={submit} noValidate className="my-6 flex flex-col gap-5 rounded-control bg-raised p-5">
+    <form onSubmit={submit} noValidate className="my-6 flex flex-col gap-5 rounded-control border border-divider bg-raised p-5">
       <p className="font-semibold">{plan ? `Editar plan ${plan.name}` : 'Plan nuevo'}</p>
       <TextField label="Nombre" value={form.name} onChange={set('name')} error={errors.name} autoFocus />
       <div className="grid gap-5 sm:grid-cols-2">

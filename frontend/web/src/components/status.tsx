@@ -84,5 +84,5 @@ export const NOTICE_ICON: Record<StatusColor, string> = {
 
 // White card with the stripe of its status color.
 export function StatusCard({ color, children, className = '' }: { color: StatusColor; children: ReactNode; className?: string }) {
-  return <div className={`rounded-control bg-raised ${STRIPE[color]} ${className}`}>{children}</div>
+  return <div className={`rounded-control border border-divider bg-raised ${STRIPE[color]} ${className}`}>{children}</div>
 }

@@ -135,7 +135,7 @@ function ServiceForm({ businessId, branchId, service, onCancel, onSaved }: { bus
   }
 
   return (
-    <form onSubmit={submit} noValidate className="my-6 flex max-w-2xl flex-col gap-5 rounded-control bg-raised p-5">
+    <form onSubmit={submit} noValidate className="my-6 flex max-w-2xl flex-col gap-5 rounded-control border border-divider bg-raised p-5">
       <p className="font-semibold">{'id' in service ? `Editar ${service.name}` : 'Servicio nuevo'}</p>
       <TextField label="Nombre" value={form.name} onChange={set('name')} error={errors.name} autoFocus />
       <TextArea label="Descripción" rows={3} value={form.description} onChange={set('description')} hint="Qué incluye, para que el cliente sepa qué está reservando." />

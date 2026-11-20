@@ -17,7 +17,7 @@ import type { StaffMember, StaffState } from '../../services/staff'
 type NameOf = (id: string) => string
 type Notice = { title: string; body: string }
 
-const selectCls = 'min-h-11 w-full rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
+const selectCls = 'min-h-11 w-full rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
 const FIELD = 'flex flex-col gap-1.5'
 
 // One appointment: details and, for whoever may manage it (RN-03), change
