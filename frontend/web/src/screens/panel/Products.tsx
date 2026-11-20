@@ -6,13 +6,12 @@ import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { useBranchPanel } from '@/components/PanelContext'
 import { ArrowLeft, ImageSquare, Plus, UploadSimple } from '@phosphor-icons/react'
-import { Button, Dialog, Note, TextArea, TextField } from '../../components/ui'
+import { FieldError, Button, Dialog, Note, TextArea, TextField } from '../../components/ui'
 import { StatusTag } from '../../components/status'
-import { networkMessage, type ApiError } from '../../services/auth'
+import useAction from '@/lib/useAction'
 import { imageProblem, MAX_IMAGE_MB } from '../../services/branches'
 import { adjustStock, productLabel, saveProduct, useShopStore } from '../../services/shop'
 import { longDate, money, timeOfDay } from '../../theme'
-import { toast } from '@/lib/toast'
 
 // Productos e inventario of the branch picked in the menu (RF-W19, RF-W20).
 // `sub` = 'detalle' opens one product (or "nuevo").
@@ -149,29 +148,22 @@ function AdjustDialog({ product, onClose, onDone }: { product: Product; onClose:
   const [value, setValue] = useState(String(product.stock))
   const [reason, setReason] = useState(REASONS[0])
   const [error, setError] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
+  const adjusting = useAction({ busy: 'Guardando...', done: 'Existencias guardadas', failed: 'No se pudo guardar' })
   const n = Number(value)
   const valid = /^\d+$/.test(value.trim())
-  const submit = async () => {
+  const submit = () => {
     if (!valid) return setError('Escribe cuántas piezas hay, en número entero.')
     if (n === product.stock) return setError('Es la misma cantidad que ya tiene.')
-    setBusy(true)
-    setFailure(null)
-    try {
-      await adjustStock(product.id, n, reason)
-      onDone(`${productLabel(product)} quedó con ${n} ${n === 1 ? 'pieza' : 'piezas'}.`)
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(false)
-    }
+    adjusting.run(() => adjustStock(product.id, n, reason), {
+      onDone: () => onDone(`${productLabel(product)} quedó con ${n} ${n === 1 ? 'pieza' : 'piezas'}.`),
+    })
   }
   return (
     <Dialog
       open
       onClose={onClose}
       title={`Ajustar existencias de ${productLabel(product)}`}
-      actions={<><Button variant="secondary" onClick={onClose}>Cancelar</Button><Button onClick={submit} loading={busy}>Guardar</Button></>}
+      actions={<><Button variant="secondary" onClick={onClose} disabled={adjusting.busy}>Cancelar</Button><Button {...adjusting.button} onClick={submit}>Guardar</Button></>}
     >
       <p>Hoy hay {product.stock} {product.stock === 1 ? 'pieza' : 'piezas'}.</p>
       <TextField label="Piezas que hay ahora" inputMode="numeric" value={value} onChange={(e) => { setValue(e.target.value); setError(null) }} error={error} hint={valid && n !== product.stock ? `Cambio: ${n > product.stock ? '+' : '−'}${Math.abs(n - product.stock)}` : undefined} />
@@ -181,7 +173,6 @@ function AdjustDialog({ product, onClose, onDone }: { product: Product; onClose:
           {REASONS.map((r) => <option key={r}>{r}</option>)}
         </select>
       </div>
-      {failure ? <Note title={networkMessage(failure).title}>No se guardó el ajuste. Intenta de nuevo.</Note> : null}
     </Dialog>
   )
 }
@@ -198,8 +189,9 @@ function ProductEditor() {
   const existing = isNew ? null : s.products.find((p) => p.id === decodeURIComponent(productId))
   const [form, setForm] = useState<ProductDraft>(() => (existing ? { name: existing.name, size: existing.size, description: existing.description, howTo: existing.howTo, photo: existing.photo, price: String(existing.price), stock: String(existing.stock) } : EMPTY))
   const [errors, setErrors] = useState<Record<string, string | null | undefined>>({})
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
+  const saving = useAction(isNew
+    ? { busy: 'Agregando...', done: 'Producto agregado', failed: 'No se pudo agregar' }
+    : { busy: 'Guardando...', done: 'Guardado', failed: 'No se pudo guardar' })
   const [saved, setSaved] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
@@ -229,22 +221,12 @@ function ProductEditor() {
     if (!Number.isFinite(price) || price <= 0) next.price = 'Escribe el precio en pesos, mayor que cero.'
     if (isNew && !/^\d+$/.test(String(form.stock).trim())) next.stock = 'Escribe cuántas piezas hay, en número entero (puede ser 0).'
     setErrors(next)
-    setFailure(null)
     if (Object.keys(next).length) return
-    setBusy(true)
+    setSaved(false)
     const data = { ...(existing ?? {}), name: form.name.trim(), size: form.size.trim(), price, description: form.description.trim(), howTo: form.howTo.trim(), photo: form.photo, stock: isNew || !existing ? Number(form.stock) : existing.stock }
-    try {
-      await saveProduct(activeBranch.id, data)
-      if (isNew) {
-        toast(`Agregaste ${productLabel({ name: data.name, size: data.size })}. Ya aparece en la tienda de la app.`)
-        router.replace('/panel/productos')
-      }
-      else setSaved(true)
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(false)
-    }
+    saving.run(() => saveProduct(activeBranch.id, data), isNew
+      ? { success: `Agregaste ${productLabel({ name: data.name, size: data.size })}. Ya aparece en la tienda de la app.`, onDone: () => router.replace('/panel/productos') }
+      : { onDone: () => setSaved(true) })
   }
 
   return (
@@ -268,7 +250,7 @@ function ProductEditor() {
             <input ref={fileInput} type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = '' }} />
           </div>
         </div>
-        {errors.photo ? <p className="text-sm font-medium" role="alert">{errors.photo}</p> : null}
+        {errors.photo ? <FieldError>{errors.photo}</FieldError> : null}
 
         <div className="grid gap-5 sm:grid-cols-[2fr_1fr]">
           <TextField label="Nombre" value={form.name} onChange={set('name')} error={errors.name} />
@@ -289,9 +271,8 @@ function ProductEditor() {
         <TextArea label="Descripción" rows={3} value={form.description} onChange={set('description')} hint="Para qué sirve; aparece en la ficha del producto en la app." />
         <TextArea label="Cómo se usa" rows={2} value={form.howTo} onChange={set('howTo')} />
 
-        {failure ? <Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note> : null}
         {saved ? <Note tone="done" title="Producto guardado. Ya se ve así en la tienda de la app." /> : null}
-        <Button type="submit" loading={busy} className="self-start">{isNew ? 'Agregar a la tienda' : 'Guardar cambios'}</Button>
+        <Button type="submit" {...saving.button} className="self-start">{isNew ? 'Agregar a la tienda' : 'Guardar cambios'}</Button>
       </form>
 
       {!isNew && existing ? <Moves productId={existing.id} /> : null}

@@ -8,13 +8,12 @@ import { STRIPE, StatusTag } from '../../components/status'
 import { Button, Note } from '../../components/ui'
 import { AppointmentDialog, BlockDialog, BulkCancelDialog, BulkReassignDialog } from './AgendaDialogs'
 import { DEMO_TODAY } from '../../data/demo'
-import { networkMessage, type ApiError } from '../../services/auth'
+import useAction from '@/lib/useAction'
 import { removeBlock, STATUS } from '../../services/agenda'
 import { useStaffStore } from '../../services/staff'
 import { addDays, dayMonth, longDate, sameDay, timeOfDay } from '../../theme'
 import type { Appointment, AppointmentStatus, Block, Branch } from '../../types/domain'
 import type { StaffMember } from '../../services/staff'
-import { toast } from '@/lib/toast'
 type NameOf = (id: string) => string
 type Notice = { title: string; body: string }
 
@@ -338,21 +337,7 @@ function WeekList({ days, branch, appts, blocks, nameOf, onOpen }: ViewProps & {
 
 // RF-W15: breaks and days off, current and upcoming.
 function Blocks({ blocks, nameOf, canRemove }: { blocks: Block[]; nameOf: NameOf; canRemove: (b: Block) => boolean }) {
-  const [busy, setBusy] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
   const fmt = (b: Block) => (sameDay(b.from, b.to) ? `${longDate(b.from)}, ${timeOfDay(b.from)} a ${timeOfDay(b.to)}` : `Del ${longDate(b.from)} al ${longDate(b.to)}`)
-  const remove = async (id: string) => {
-    setBusy(id)
-    setFailure(null)
-    try {
-      await removeBlock(id)
-      toast('Quitaste el bloqueo. Ese horario ya se puede reservar en la app.')
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(null)
-    }
-  }
   return (
     <section className="mt-12" aria-labelledby="bloqueos">
       <h2 id="bloqueos" className="text-lg font-semibold">Horarios bloqueados</h2>
@@ -365,18 +350,27 @@ function Blocks({ blocks, nameOf, canRemove }: { blocks: Block[]; nameOf: NameOf
                 <p className="font-medium">{nameOf(b.employeeId)} · {b.reason}</p>
                 <p className="text-sm text-ink-soft">{fmt(b)}</p>
               </div>
-              {canRemove(b) ? (
-                <button type="button" onClick={() => remove(b.id)} disabled={busy === b.id} className="min-h-11 text-sm font-medium underline underline-offset-4 disabled:text-ink-soft">
-                  {busy === b.id ? 'Quitando…' : 'Quitar'}
-                </button>
-              ) : null}
+              {canRemove(b) ? <RemoveBlock id={b.id} /> : null}
             </li>
           ))}
         </ul>
       ) : (
         <p className="mt-3 text-ink-soft">No hay horarios bloqueados.</p>
       )}
-      {failure ? <div className="mt-3"><Note title={networkMessage(failure).title}>No se quitó el bloqueo. Intenta de nuevo.</Note></div> : null}
     </section>
+  )
+}
+
+function RemoveBlock({ id }: { id: string }) {
+  const removing = useAction({ busy: 'Quitando...', done: 'Quitado', failed: 'No se pudo quitar' })
+  return (
+    <Button
+      variant="secondary"
+      {...removing.button}
+      onClick={() => removing.run(() => removeBlock(id), { success: 'Quitaste el bloqueo. Ese horario ya se puede reservar en la app.' })}
+      className="min-h-11 shrink-0 px-4"
+    >
+      Quitar
+    </Button>
   )
 }

@@ -7,7 +7,7 @@ import { useSyncExternalStore } from 'react'
 import { DEMO_TODAY, plans as seedPlans } from '../data/demo'
 import { addMonths } from '../theme'
 import { ApiError } from './auth'
-import { getDemoEstado } from './panel'
+import { takeForcedError } from './panel'
 import type { Plan, Subscription } from '../types/domain'
 
 export interface Payment { id: string; on: Date; planId: string; amount: number; ref: string }
@@ -106,9 +106,9 @@ export function applyLoadedSubscription(businessId: string, subscription: Subscr
 }
 
 function failIfForced(codes: string[] = []) {
-  const e = getDemoEstado()
+  const e = takeForcedError('error-guardar', ...(codes.includes('card') ? ['error-pago'] : []))
   if (e === 'error-guardar') throw new ApiError('server')
-  if (codes.includes('card') && e === 'error-pago') throw new ApiError('card')
+  if (e === 'error-pago') throw new ApiError('card')
 }
 
 // RF-W25: paying extends the expiry by the plan's months, counted from the

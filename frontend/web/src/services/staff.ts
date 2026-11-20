@@ -7,7 +7,7 @@ import { useSyncExternalStore } from 'react'
 import { DEMO_TODAY, employees as baseEmployees, pendingRequests } from '../data/demo'
 import { buildAppointments, directory, seedBlocks, staffProfiles } from '../data/staff'
 import { ApiError } from './auth'
-import { getDemoEstado } from './panel'
+import { takeForcedError } from './panel'
 import type { JoinRequest } from '../data/demo'
 import type { Appointment, AppointmentStatus, Block, Employee, HistoryEvent, WeekHours } from '../types/domain'
 
@@ -108,7 +108,7 @@ export function resetDemoStaff(estado: string | null) {
 }
 
 function failIfForced() {
-  if (getDemoEstado() === 'error-guardar') throw new ApiError('server')
+  if (takeForcedError('error-guardar')) throw new ApiError('server')
 }
 
 // ---------- Rules ----------

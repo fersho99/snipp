@@ -19,6 +19,14 @@ const DAY = 24 * 60 * 60 * 1000
 let demoEstado: string | null = null
 export const setDemoEstado = (estado: string | null) => { demoEstado = estado }
 export const getDemoEstado = () => demoEstado
+// A forced save error (?estado=error-guardar and similar) fails only once, so
+// "Reintentar" can be tried and goes through (SRS v1.2, 4.2).
+export function takeForcedError(...estados: string[]) {
+  if (!demoEstado || !estados.includes(demoEstado)) return null
+  const e = demoEstado
+  demoEstado = null
+  return e
+}
 
 // Branch picked in the Jefe's selector, kept while the session lasts.
 let pickedBranch: string | null = null

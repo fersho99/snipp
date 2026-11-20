@@ -10,7 +10,7 @@ import { useBranchPanel } from '@/components/PanelContext'
 import { ArrowLeft } from '@phosphor-icons/react'
 import { StatusCard, StatusTag } from '../../components/status'
 import { Button, Dialog, Note, TextArea } from '../../components/ui'
-import { networkMessage, type ApiError } from '../../services/auth'
+import useAction from '@/lib/useAction'
 import { advanceOrder, cancelOrder, CLIENT_ORDER_STATE, NEXT, ORDER_STATE, orderTotal, useShopStore } from '../../services/shop'
 import { useStaffStore } from '../../services/staff'
 import { longDate, money, timeOfDay } from '../../theme'
@@ -95,10 +95,9 @@ function OrderDetail({ branch }: { branch: Branch }) {
   const { folio } = useParams<{ folio: string }>()
   const s = useShopStore()
   const o = s.orders.find((x) => x.folio === folio && x.branchId === branch.id)
-  const [busy, setBusy] = useState(false)
-  const [failure, setFailure] = useState<ApiError | null>(null)
   const [done, setDone] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const advancing = useAction({ busy: 'Guardando...', done: 'Estado guardado', failed: 'No se pudo guardar' })
 
   if (!o) {
     return (
@@ -111,19 +110,13 @@ function OrderDetail({ branch }: { branch: Branch }) {
   }
 
   const first = o.client.split(' ')[0]
-  const advance = async () => {
-    const next = NEXT[o.status]
-    if (!next) return
-    setBusy(true)
-    setFailure(null)
-    try {
-      await advanceOrder(o.folio)
-      setDone(`${first} ya ve «${CLIENT_ORDER_STATE[next]}» en la app y recibió una notificación.`)
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(false)
-    }
+  const nextStatus = NEXT[o.status]
+  const advance = () => {
+    if (!nextStatus) return
+    setDone(null)
+    advancing.run(() => advanceOrder(o.folio), {
+      onDone: () => setDone(`${first} ya ve «${CLIENT_ORDER_STATE[nextStatus]}» en la app y recibió una notificación.`),
+    })
   }
 
   return (
@@ -175,11 +168,10 @@ function OrderDetail({ branch }: { branch: Branch }) {
           ))}
         </ol>
         {done ? <div className="mt-4"><Note tone="done" title={done} /></div> : null}
-        {failure ? <div className="mt-4"><Note title={networkMessage(failure).title}>No se guardó el cambio. Intenta de nuevo.</Note></div> : null}
         {NEXT[o.status] ? (
           <div className="mt-5 flex flex-wrap gap-3">
-            <Button onClick={advance} loading={busy}>{ACTION[NEXT[o.status] ?? 'pagado']}</Button>
-            <Button variant="secondary" onClick={() => { setCancelling(true); setDone(null) }}>Cancelar y reembolsar</Button>
+            <Button {...advancing.button} onClick={advance}>{ACTION[NEXT[o.status] ?? 'pagado']}</Button>
+            <Button variant="secondary" disabled={advancing.busy} onClick={() => { setCancelling(true); setDone(null) }}>Cancelar y reembolsar</Button>
           </div>
         ) : null}
       </section>
@@ -193,34 +185,25 @@ function OrderDetail({ branch }: { branch: Branch }) {
 function CancelDialog({ order, onClose, onDone }: { order: Order; onClose: () => void; onDone: () => void }) {
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
-  const submit = async () => {
+  const refunding = useAction({ busy: 'Reembolsando...', done: 'Reembolsado', failed: 'No se pudo reembolsar' })
+  const submit = () => {
     if (!reason.trim()) return setError('Escribe el motivo; el cliente lo ve junto al reembolso.')
-    setBusy(true)
-    setFailure(null)
-    try {
-      await cancelOrder(order.folio, reason.trim())
-      onDone()
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(false)
-    }
+    refunding.run(() => cancelOrder(order.folio, reason.trim()), {
+      onDone,
+      reason: (err) => (typeof err === 'object' && err !== null && 'code' in err && err.code === 'stripe'
+        ? 'Stripe no pudo hacer el reembolso. El pedido sigue pagado y no se canceló; intenta de nuevo en unos minutos.'
+        : 'No se canceló el pedido por un problema con el servidor. Intenta de nuevo en un momento.'),
+    })
   }
   return (
     <Dialog
       open
       onClose={onClose}
       title={`¿Cancelar el pedido ${order.folio}?`}
-      actions={<><Button variant="secondary" onClick={onClose}>No</Button><Button onClick={submit} loading={busy}>Sí, cancelar y reembolsar</Button></>}
+      actions={<><Button variant="secondary" onClick={onClose} disabled={refunding.busy}>No</Button><Button {...refunding.button} onClick={submit}>Sí, cancelar y reembolsar</Button></>}
     >
       <p>Stripe le devuelve {money(orderTotal(order))} a {order.client} en la misma tarjeta. Las piezas regresan a las existencias de la sucursal. No se puede deshacer.</p>
       <TextArea label="Motivo" rows={2} value={reason} onChange={(e) => { setReason(e.target.value); setError(null) }} error={error} hint="Por ejemplo: La sucursal se quedó sin pomada." />
-      {failure ? (
-        <Note title={failure.code === 'stripe' ? 'Stripe no pudo hacer el reembolso' : networkMessage(failure).title}>
-          {failure.code === 'stripe' ? 'El pedido sigue pagado y no se canceló. Intenta de nuevo en unos minutos.' : 'No se canceló el pedido. Intenta de nuevo.'}
-        </Note>
-      ) : null}
     </Dialog>
   )
 }

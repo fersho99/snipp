@@ -1,16 +1,18 @@
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import type { ImageStyle, StyleProp, ViewStyle } from 'react-native';
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
+import type { StyleProp as RNStyleProp } from 'react-native';
 import type { Branch, Product, StatusText } from '../types/domain';
 import { MAX_CARTS, cart, cartSummary, getCart, openCarts } from '../data/shop';
 import type { CartExpiry, CartSummary } from '../data/shop';
 import { toast } from '../data/toast';
+import useAction, { wait } from '../hooks/useAction';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MinusIcon, PlusIcon, ShoppingBagIcon } from 'phosphor-react-native';
 import Txt from './Txt';
-import Button from './Button';
+import Button, { type ButtonProps } from './Button';
 import { PhotoPlaceholder } from './States';
 import { StatusLine, StatusNotice } from './Appointment';
 import { money } from '../theme/format';
@@ -69,6 +71,34 @@ export function addToBranchCart(branch: Branch, product: Product, qty = 1) {
   return result;
 }
 
+// "Agregar" with its answer (RNF-M06): "Agregando...", then green "Agregado"
+// with the notice of addToBranchCart, or red "No se pudo agregar". With 3
+// carts of other branches it opens the limit sheet instead (`onLimit`).
+// `fail` forces the error once, to try the red answer.
+export function AddToCartButton({ branch, product, qty = 1, label, variant = 'primary', fail, disabled, onLimit, onAdded, style }: {
+  branch: Branch; product: Product; qty?: number; label: string; variant?: 'primary' | 'secondary'; fail?: boolean; disabled?: boolean;
+  onLimit: () => void; onAdded?: () => void; style?: RNStyleProp<ViewStyle>;
+}) {
+  const adding = useAction({ busy: 'Agregando...', done: 'Agregado', failed: 'No se pudo agregar' });
+  const failNext = useRef(!!fail);
+  const press = () => {
+    if (!getCart(branch.id) && openCarts().length >= MAX_CARTS) { onLimit(); return; }
+    adding.run(async () => {
+      await wait(500);
+      if (failNext.current) {
+        failNext.current = false;
+        return { ok: false, reason: 'No pudimos agregar el producto. Revisa tu internet e inténtalo de nuevo.' };
+      }
+      const r = addToBranchCart(branch, product, qty);
+      if (r === 'out-of-stock') return { ok: false, reason: `${product.name} se agotó en ${branch.name}.`, retry: false };
+      if (r === 'limit') { onLimit(); return { ok: false, reason: 'Ya tienes 3 carritos abiertos. Paga o vacía uno para agregar este producto.', retry: false }; }
+      onAdded?.();
+      return { ok: true };
+    });
+  };
+  return <Button variant={variant} label={label} {...adding.button} disabled={disabled} onPress={press} style={style} />;
+}
+
 // Pinned bar to open this branch's cart from the store or a product.
 export function CartBar({ summary }: { summary: CartSummary | null }) {
   if (!summary?.count) return null;
@@ -100,14 +130,14 @@ function Sheet({ visible, onClose, children }: { visible: boolean; onClose: () =
 }
 
 // Actions that cannot be undone ask first (SRS v1.2, 4.2), like "Vaciar carrito".
-export function ConfirmSheet({ visible, title, body, confirmLabel, onConfirm, onCancel }: { visible: boolean; title: string; body: string; confirmLabel: string; onConfirm: () => void; onCancel: () => void }) {
+export function ConfirmSheet({ visible, title, body, confirmLabel, confirmButton, onConfirm, onCancel }: { visible: boolean; title: string; body: string; confirmLabel: string; confirmButton?: Pick<ButtonProps, 'loading' | 'busyLabel' | 'result'>; onConfirm: () => void; onCancel: () => void }) {
   return (
     <Sheet visible={visible} onClose={onCancel}>
       <Txt variant="title" accessibilityRole="header">{title}</Txt>
       <Txt variant="body" style={{ marginTop: space.m }}>{body}</Txt>
       <View style={{ gap: space.s, marginTop: space.xl }}>
-        <Button variant="danger" label={confirmLabel} onPress={onConfirm} />
-        <Button variant="secondary" label="Cancelar" onPress={onCancel} />
+        <Button variant="danger" label={confirmLabel} {...confirmButton} onPress={onConfirm} />
+        <Button variant="secondary" label="Cancelar" onPress={onCancel} disabled={!!confirmButton?.loading || !!confirmButton?.result} />
       </View>
     </Sheet>
   );
