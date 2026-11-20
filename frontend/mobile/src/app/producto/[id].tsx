@@ -5,27 +5,27 @@ import Screen, { BackButton } from '../../components/Screen';
 import Txt from '../../components/Txt';
 import Button from '../../components/Button';
 import { ErrorNote, OfflineState } from '../../components/States';
-import { CartBar, OtherBranchModal, ProductPhoto, QtyStepper } from '../../components/Shop';
+import { CartBar, CartLimitSheet, ProductPhoto, QtyStepper, addToBranchCart } from '../../components/Shop';
 import useConnectivity from '../../hooks/useConnectivity';
 import { getBranch, branches } from '../../data/catalog';
-import { cart, cartSummary, getProduct, pointsEarned, stockStatus, useCart } from '../../data/shop';
+import { cartSummary, getProduct, pointsEarned, stockStatus, useCarts } from '../../data/shop';
+import type { CartSummary } from '../../data/shop';
 import { money } from '../../theme/format';
 import { color, space, status } from '../../theme/tokens';
 import { StatusLine } from '../../components/Appointment';
 import CartButton from '../../components/CartButton';
-import { DoneNote } from '../../components/Done';
 
 // Product detail: photo, price, stock, description, quantity and add.
-// Out of stock: no quantity and no add button.
+// Out of stock: no quantity and no add button. It adds to the cart of this
+// branch only (RF-M09); with 3 carts of other branches the limit sheet opens.
 export default function ProductDetail() {
   const { id, sucursal, estado } = useLocalSearchParams<{ id?: string; sucursal?: string; estado?: string }>();
   const branch = getBranch(sucursal ?? 'los-compas-centro') ?? branches[0];
   const product = getProduct(branch.id, id ?? '');
   const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
-  const c = useCart();
+  const carts = useCarts();
   const [qty, setQty] = useState(1);
-  const [pending, setPending] = useState(false);
-  const [added, setAdded] = useState<number | null>(null);
+  const [limit, setLimit] = useState(false);
 
   if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
   if (!product) {
@@ -38,22 +38,23 @@ export default function ProductDetail() {
   }
 
   const out = product.stock <= 0;
-  const inCart = c.branchId === branch.id ? c.items.find((i) => i.productId === product.id)?.qty ?? 0 : 0;
+  const mine = carts.find((c) => c.branchId === branch.id);
+  const inCart = mine?.items.find((i) => i.productId === product.id)?.qty ?? 0;
   const maxMore = Math.max(0, product.stock - inCart);
-  const summary = cartSummary(c, false);
+  const summary = mine ? cartSummary(mine) : null;
 
   const add = () => {
-    const r = cart.add(branch.id, product.id, qty);
-    if (r === 'other-branch') setPending(true);
-    else { setAdded(qty); setQty(1); }
+    const r = addToBranchCart(branch, product, qty);
+    if (r === 'limit') setLimit(true);
+    else setQty(1);
   };
 
   const footer = out ? null : (
     <View style={{ gap: space.s }}>
-      {c.branchId === branch.id && summary.count ? <CartBar summary={summary} /> : null}
+      {summary?.count ? <CartBar summary={summary} /> : null}
       <Button
-        variant={c.branchId === branch.id && summary.count ? 'secondary' : 'primary'}
-        label={maxMore ? `Agregar ${qty} al carrito, ${money(product.price * qty)}` : 'Ya tienes todas las piezas disponibles'}
+        variant={summary?.count ? 'secondary' : 'primary'}
+        label={maxMore ? 'Agregar al carrito de esta sucursal' : 'Ya tienes todas las piezas disponibles'}
         disabled={!maxMore}
         onPress={add}
       />
@@ -64,7 +65,7 @@ export default function ProductDetail() {
     <Screen footer={footer}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <BackButton />
-        <CartButton />
+        <CartButton branchId={branch.id} />
       </View>
       <ProductPhoto product={product} style={[{ marginTop: space.s }, out && { opacity: 0.6 }]} />
 
@@ -89,17 +90,11 @@ export default function ProductDetail() {
           <View style={{ flex: 1 }}>
             <Txt variant="label">Cantidad</Txt>
             <StatusLine status={stockStatus(product.stock)} style={{ marginTop: space.xs }} />
-            {inCart ? <Txt variant="small" numeric>{inCart} ya en tu carrito</Txt> : null}
+            {inCart ? <Txt variant="small" numeric>{inCart} ya en el carrito de esta sucursal</Txt> : null}
           </View>
           <QtyStepper value={Math.min(qty, Math.max(1, maxMore))} onChange={setQty} max={Math.max(1, maxMore)} label="Cantidad" />
         </View>
       )}
-
-      {added ? (
-        <DoneNote style={{ marginTop: space.m }}>
-          Agregaste {added} {added === 1 ? 'pieza' : 'piezas'} al carrito.
-        </DoneNote>
-      ) : null}
 
       <Txt variant="body" style={{ marginTop: space.xl }}>{product.description}</Txt>
       <Txt variant="label" style={{ marginTop: space.xl }}>Cómo se usa</Txt>
@@ -109,12 +104,11 @@ export default function ProductDetail() {
         Se paga en la app y se recoge en {branch.name}, {branch.address}. No hay envío a domicilio.
       </Txt>
 
-      <OtherBranchModal
-        visible={pending}
-        currentBranch={c.branchId ? getBranch(c.branchId) : null}
-        newBranch={branch}
-        onCancel={() => setPending(false)}
-        onConfirm={() => { cart.replaceWith(branch.id, product.id, qty); setPending(false); setAdded(qty); setQty(1); }}
+      <CartLimitSheet
+        visible={limit}
+        branch={branch}
+        carts={carts.map((c) => cartSummary(c)).filter((c): c is CartSummary => !!c)}
+        onCancel={() => setLimit(false)}
       />
     </Screen>
   );

@@ -151,13 +151,18 @@ export interface Order {
   timeline: [OrderStatus, string][];
 }
 
+// RF-M09, RN-06, RN-18: one cart per branch, up to 3 at a time. `price` is
+// the unit price when the product was added, to warn if it changed.
 export interface CartItem {
   productId: string;
   qty: number;
+  price: number;
 }
 export interface Cart {
-  branchId: string | null;
+  branchId: string;
   items: CartItem[];
+  updatedAt: number; // ms; the cart empties 7 days after its last change
+  warned?: boolean; // the "one day before" notification was already sent
 }
 
 // RF-M15: a points movement in one business.
@@ -171,7 +176,7 @@ export interface PointsMovement {
 }
 
 // RF-M16.
-export type NotificationKind = 'confirmacion' | 'recordatorio-24h' | 'recordatorio-1h' | 'cambio' | 'cancelacion' | 'reagendada' | 'pedido-listo';
+export type NotificationKind = 'confirmacion' | 'recordatorio-24h' | 'recordatorio-1h' | 'cambio' | 'cancelacion' | 'reagendada' | 'pedido-listo' | 'carrito-por-vaciar' | 'carrito-vaciado';
 export interface AppNotification {
   id: string;
   kind: NotificationKind;

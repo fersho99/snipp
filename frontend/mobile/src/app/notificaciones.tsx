@@ -1,6 +1,6 @@
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowsClockwiseIcon, BellIcon, CalendarCheckIcon, ShoppingBagIcon, XCircleIcon } from 'phosphor-react-native';
+import { ArrowsClockwiseIcon, BellIcon, CalendarCheckIcon, ClockIcon, ShoppingBagIcon, TrashIcon, XCircleIcon } from 'phosphor-react-native';
 import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
@@ -19,11 +19,14 @@ const ICON = {
   reagendada: ArrowsClockwiseIcon,
   cancelacion: XCircleIcon,
   'pedido-listo': ShoppingBagIcon,
+  'carrito-por-vaciar': ClockIcon,
+  'carrito-vaciado': TrashIcon,
 };
 const GROUPS = [['hoy', 'Hoy'], ['ayer', 'Ayer'], ['antes', 'Antes']];
 
 // Notifications received (RF-M16, SRS section 4): confirmation, reminders 24 h
-// and 1 h before, changes and cancellations of appointments, order ready.
+// and 1 h before, changes and cancellations of appointments, order ready,
+// cart about to expire and cart emptied (RN-18).
 // Each one opens the appointment or order it talks about.
 // States: ?estado=permiso-desactivado | sin-notificaciones | cargando | sin-conexion
 export default function Notifications() {
