@@ -2,19 +2,19 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { ShoppingBagIcon } from 'phosphor-react-native';
 import Txt from './Txt';
-import { cartSummary, useCart } from '../data/shop';
+import { useCarts } from '../data/shop';
 import { color, font, touch } from '../theme/tokens';
 
-// Cart icon with the number of pieces, in the header of the branch, the
-// store and the product (client request after the approval). Always
-// visible, so the client can open the cart from anywhere they shop.
-export default function CartButton() {
-  const count = cartSummary(useCart(), false).count;
+// Carts icon with the number of open carts, in the header of the branch, the
+// store and the product. Always visible, so the client can open the carts
+// from anywhere they shop; it opens on the cart of `branchId` if there is one.
+export default function CartButton({ branchId }: { branchId?: string }) {
+  const count = useCarts().length;
   return (
     <Pressable
-      onPress={() => router.push('/carrito')}
+      onPress={() => router.push(branchId ? { pathname: '/carrito', params: { sucursal: branchId } } : '/carrito')}
       accessibilityRole="button"
-      accessibilityLabel={count ? `Carrito, ${count} ${count === 1 ? 'pieza' : 'piezas'}` : 'Carrito vacío'}
+      accessibilityLabel={count ? `Carritos, ${count} ${count === 1 ? 'abierto' : 'abiertos'}` : 'Carritos, ninguno abierto'}
       hitSlop={4}
       style={({ pressed }) => [styles.button, pressed && { opacity: 0.6 }]}
     >

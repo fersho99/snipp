@@ -89,7 +89,7 @@ export default function BranchProfile() {
     >
       <View style={[styles.padded, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
         <BackButton />
-        <CartButton />
+        <CartButton branchId={branch.id} />
       </View>
 
       {/* Gallery, full width */}

@@ -16,6 +16,7 @@ export const businesses: Business[] = [
     branches: [
       { id: 'los-compas-centro', name: 'Barbería Los Compas', address: 'Av. Obregón y Calle 5', neighborhood: 'Col. Centro', phone: '653 534 2210' },
       { id: 'los-compas-norte', name: 'Los Compas Norte', address: 'Av. Libertad y Calle 32', neighborhood: 'Col. Burócrata', phone: '653 536 1184' },
+      { id: 'los-compas-sur', name: 'Los Compas Sur', address: 'Av. Sinaloa y Calle 40', neighborhood: 'Col. Industrial', phone: '653 537 2045' },
     ],
   },
   {

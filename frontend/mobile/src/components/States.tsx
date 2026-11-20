@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WarningCircleIcon, WifiSlashIcon } from 'phosphor-react-native';
 import Txt from './Txt';
 import Button from './Button';
-import { color, radius, space } from '../theme/tokens';
+import { color, radius, space, status, stripeWidth } from '../theme/tokens';
 
 // Full-screen "no internet" state. The app has no offline mode, so every
 // screen that needs the network falls back to this with a retry.
@@ -34,8 +34,8 @@ export function ErrorNote({ title, children, action }: { title: string; children
       <View style={styles.errorBar} />
       <View style={{ flex: 1, gap: space.xs }}>
         <View style={{ flexDirection: 'row', gap: space.xs, alignItems: 'flex-start' }}>
-          <WarningCircleIcon size={18} color={color.ink} weight="fill" style={{ marginTop: 1 }} />
-          <Txt variant="label" style={{ color: color.ink, fontFamily: 'Onest_600SemiBold', flex: 1 }}>{title}</Txt>
+          <WarningCircleIcon size={18} color={status.rojo.text} weight="fill" style={{ marginTop: 1 }} />
+          <Txt variant="label" style={{ color: status.rojo.text, fontFamily: 'Onest_600SemiBold', flex: 1 }}>{title}</Txt>
         </View>
         {children ? <Txt variant="small" style={{ color: color.ink }}>{children}</Txt> : null}
         {action}
@@ -73,8 +73,9 @@ export function PhotoPlaceholder({ filename, style, compact }: { filename?: stri
 
 const styles = StyleSheet.create({
   offline: { flex: 1, backgroundColor: color.paper, paddingHorizontal: space.xl },
-  errorNote: { flexDirection: 'row', gap: space.m, paddingVertical: space.xs },
-  errorBar: { width: 3, borderRadius: 2, backgroundColor: color.ink },
+  // SRS v1.2, 4.1: failed action or error in red (light fill, stripe and icon).
+  errorNote: { flexDirection: 'row', gap: space.m, padding: space.m, paddingLeft: 0, backgroundColor: status.rojo.soft, borderRadius: radius.control, overflow: 'hidden' },
+  errorBar: { width: stripeWidth, alignSelf: 'stretch', marginVertical: -space.m, backgroundColor: status.rojo.stripe },
   placeholder: {
     backgroundColor: color.sunken,
     borderRadius: radius.photo,

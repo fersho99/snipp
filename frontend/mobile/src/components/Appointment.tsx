@@ -8,7 +8,7 @@ import { ArrowsClockwiseIcon, CalendarBlankIcon, CheckCircleIcon, ClockIcon, Hou
 import Txt from './Txt';
 import { color, font, radius, space, status as statusColor, stripeWidth, touch } from '../theme/tokens';
 import { CountBadge } from './CartButton';
-import { cartSummary, useCart } from '../data/shop';
+import { useCarts } from '../data/shop';
 
 // SRS v1.2, 4.1: a status is a label with the light fill of its color, an
 // icon and the text in the dark tone of that color. Never color alone (RN-19).
@@ -67,29 +67,31 @@ export function DateBlock({ date, muted }: { date: Date; muted?: boolean }) {
   );
 }
 
-const TABS: { path: string; label: string; Icon: ComponentType<IconProps>; push?: boolean }[] = [
+const TABS: { path: string; label: string; Icon: ComponentType<IconProps> }[] = [
   { path: '/inicio', label: 'Inicio', Icon: HouseIcon },
   { path: '/citas', label: 'Mis citas', Icon: CalendarBlankIcon },
-  { path: '/carrito', label: 'Carrito', Icon: ShoppingBagIcon, push: true },
+  { path: '/carrito', label: 'Carritos', Icon: ShoppingBagIcon },
   { path: '/cuenta', label: 'Cuenta', Icon: UserIcon },
 ];
 
-// Bottom navigation for the top-level client screens.
+// Bottom navigation for the top-level client screens: Inicio, Mis citas,
+// Carritos and Cuenta. Carritos carries the number of open carts (1 to 3) in
+// a black circle; with no carts there is no number (SRS v1.2, 4.2).
 export function TabBar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const cartCount = cartSummary(useCart(), false).count;
+  const cartCount = useCarts().length;
   return (
     <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, space.s) }]} accessibilityRole="tablist">
-      {TABS.map(({ path, label, Icon, push }) => {
+      {TABS.map(({ path, label, Icon }) => {
         const active = pathname === path;
         return (
           <Pressable
             key={path}
-            onPress={() => (active ? null : push ? router.push(path) : router.replace(path))}
+            onPress={() => (active ? null : router.replace(path))}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
-            accessibilityLabel={path === '/carrito' && cartCount ? `Carrito, ${cartCount} ${cartCount === 1 ? 'pieza' : 'piezas'}` : label}
+            accessibilityLabel={path === '/carrito' && cartCount ? `Carritos, ${cartCount} ${cartCount === 1 ? 'abierto' : 'abiertos'}` : label}
             style={styles.tab}
           >
             <View style={[styles.tabMark, active && { backgroundColor: color.ink }]} />
