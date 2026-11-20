@@ -11,6 +11,7 @@ import { networkMessage, type ApiError } from '../../services/auth'
 import { imageProblem, MAX_IMAGE_MB } from '../../services/branches'
 import { acceptInvitation, expiresOn, lastAppointmentOf, saveProfile, sendRequest, useStaffStore } from '../../services/staff'
 import { longDate, timeOfDay } from '../../theme'
+import { NOTICE, NOTICE_ICON } from '../../components/status'
 
 // Mi perfil, for the Empleado (RF-W11): own photo, visible name and
 // specialties, which the app shows when a client picks a professional.
@@ -189,8 +190,8 @@ function Migration({ me, email, store }: { me: StaffMember; email: string; store
     <section className="mt-16 border-t border-divider pt-8" aria-labelledby="migrar">
       <h2 id="migrar" className="text-xl font-bold">Cambiarte a otro negocio</h2>
       {pending ? (
-        <div className="mt-4 flex gap-3 rounded-control bg-sunken px-5 py-4">
-          <ArrowsLeftRight size={22} weight="bold" className="mt-0.5 shrink-0" aria-hidden="true" />
+        <div className={`mt-4 flex gap-3 rounded-control px-5 py-4 ${NOTICE.ambar}`}>
+          <ArrowsLeftRight size={22} weight="bold" className={`mt-0.5 shrink-0 ${NOTICE_ICON.ambar}`} aria-hidden="true" />
           <div>
             <p className="font-semibold">{me.migration?.to} aceptó tu solicitud: tu migración está pendiente</p>
             <p className="mt-1 text-sm">

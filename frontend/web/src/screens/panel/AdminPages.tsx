@@ -178,7 +178,7 @@ export function Businesses() {
                     </td>
                     <td className="tabular px-3 py-3 text-sm">{last ? <>{money(last.amount)}, {longDate(last.on)}<br /><span className="text-ink-soft">{last.ref}</span></> : <span className="text-ink-soft">Sin pagos</span>}</td>
                     <td className="px-3 py-3">
-                      {b.suspended ? <span className="inline-flex items-center gap-1 font-semibold"><PauseCircle size={16} weight="fill" aria-hidden="true" />Suspendido</span> : visible ? 'Visible' : 'Oculto por pago pendiente'}
+                      {b.suspended ? <StatusTag status={{ color: 'gris', icon: 'pausa', label: 'Suspendido' }} /> : visible ? 'Visible' : 'Oculto por pago pendiente'}
                     </td>
                     <td className="py-3 pl-3 text-right">
                       <button type="button" onClick={() => { setTarget(b); setNotice(null) }} className="min-h-11 font-medium underline underline-offset-4">

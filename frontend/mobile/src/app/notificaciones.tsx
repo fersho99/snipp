@@ -1,10 +1,11 @@
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowsClockwiseIcon, BellIcon, BellSlashIcon, CalendarCheckIcon, ShoppingBagIcon, XCircleIcon } from 'phosphor-react-native';
+import { ArrowsClockwiseIcon, BellIcon, CalendarCheckIcon, ShoppingBagIcon, XCircleIcon } from 'phosphor-react-native';
 import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
 import { OfflineState, Skeleton } from '../components/States';
+import { StatusNotice } from '../components/Appointment';
 import useConnectivity from '../hooks/useConnectivity';
 import { notificationStore, useNotifications } from '../data/notifications';
 import { color, font, space } from '../theme/tokens';
@@ -49,19 +50,14 @@ export default function Notifications() {
       ) : null}
 
       {estado === 'permiso-desactivado' ? (
-        <View style={styles.permission}>
-          <View style={styles.bar} />
-          <View style={{ flex: 1, gap: space.s }}>
-            <View style={{ flexDirection: 'row', gap: space.s, alignItems: 'flex-start' }}>
-              <BellSlashIcon size={20} color={color.ink} style={{ marginTop: 1 }} />
-              <Txt variant="label" style={{ flex: 1, fontFamily: font.bodySemi }}>Las notificaciones de SNIPP están desactivadas</Txt>
-            </View>
-            <Txt variant="small" style={{ color: color.ink }}>
-              Así no te llegan los recordatorios de tus citas, los cambios que haga el negocio ni el aviso de que tu pedido está listo. Aquí abajo sigues viendo todo.
-            </Txt>
-            <Button variant="link" label="Activarlas en Ajustes" onPress={() => Linking.openSettings().catch(() => {})} style={{ alignSelf: 'flex-start' }} />
-          </View>
-        </View>
+        // SRS v1.2, 4.1: needs the client's attention, so it is an amber notice.
+        <StatusNotice tone="ambar" icon="atencion" style={styles.permission}>
+          <Txt variant="label" style={{ fontFamily: font.bodySemi }}>Las notificaciones de SNIPP están desactivadas</Txt>
+          <Txt variant="small" style={{ color: color.ink }}>
+            Así no te llegan los recordatorios de tus citas, los cambios que haga el negocio ni el aviso de que tu pedido está listo. Aquí abajo sigues viendo todo.
+          </Txt>
+          <Button variant="link" label="Activarlas en Ajustes" onPress={() => Linking.openSettings().catch(() => {})} style={{ alignSelf: 'flex-start' }} />
+        </StatusNotice>
       ) : null}
 
       {estado === 'cargando' ? (
@@ -121,8 +117,7 @@ export default function Notifications() {
 }
 
 const styles = StyleSheet.create({
-  permission: { flexDirection: 'row', gap: space.m, marginTop: space.xl },
-  bar: { width: 3, borderRadius: 2, backgroundColor: color.ink },
+  permission: { marginTop: space.xl },
   row: { flexDirection: 'row', gap: space.l, alignItems: 'flex-start' },
   item: { paddingVertical: space.l },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.divider },

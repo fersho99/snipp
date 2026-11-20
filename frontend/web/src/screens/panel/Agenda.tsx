@@ -154,8 +154,8 @@ export default function Agenda() {
   )
 }
 
-function StatusText({ status, compact }: { status: AppointmentStatus; compact?: boolean }) {
-  return <StatusTag status={apptStatus(status)} compact={compact} />
+function StatusText({ status, compact, className }: { status: AppointmentStatus; compact?: boolean; className?: string }) {
+  return <StatusTag status={apptStatus(status)} compact={compact} className={className} />
 }
 
 // Key of the status colors (SRS v1.2, 4.1): stripe, icon and text.
@@ -174,8 +174,14 @@ function Legend() {
 }
 
 // «Descanso 2:00 a 3:00» or «Vacaciones · todo el día».
-const blockLabel = (b: Block, day: Date) =>
-  b.from <= day && b.to >= addDays(day, 1) ? `${b.reason} · todo el día` : `${b.reason} ${timeOfDay(b.from)} a ${timeOfDay(b.to)}`
+// Only the part of the block that falls on `day`; until 11:59 pm counts as all day.
+function blockLabel(b: Block, day: Date) {
+  const from = b.from < day ? day : b.from
+  const end = addDays(day, 1)
+  const to = b.to > end ? end : b.to
+  const allDay = from.getTime() === day.getTime() && end.getTime() - to.getTime() <= 60_000
+  return allDay ? `${b.reason} · todo el día` : `${b.reason} ${timeOfDay(from)} a ${timeOfDay(to)}`
+}
 
 // One column per Empleado, one row per hour, within the branch hours of that day.
 type ViewProps = { branch: Branch; appts: Appointment[]; blocks: Block[]; nameOf: NameOf; onOpen: (folio: string) => void }
@@ -251,8 +257,13 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
                         className={`absolute inset-x-1 overflow-hidden rounded-md px-2 py-1 text-left transition ${blockClass(a.status)}`}
                         style={{ top: top(a.start) + 1, height: h }}
                         aria-label={`${timeOfDay(a.start)}, ${a.client}, ${a.service}, ${STATUS[a.status]}`}
+                        title={`${timeOfDay(a.start)} · ${a.client} · ${a.service} · ${STATUS[a.status]}`}
                       >
-                        <p className={`tabular truncate text-xs font-semibold ${a.status === 'cancelada' ? 'line-through' : ''}`}>{timeOfDay(a.start)} · {a.client}</p>
+                        {/* Every block shows its label (RN-19); a short one keeps it on the first line. */}
+                        <p className="flex items-center gap-1.5 text-xs font-semibold">
+                          <span className={`tabular min-w-0 flex-1 truncate ${a.status === 'cancelada' ? 'line-through' : ''}`}>{timeOfDay(a.start)} · {a.client}</span>
+                          {h > 52 ? null : <StatusText status={a.status} compact className="shrink-0" />}
+                        </p>
                         {h > 34 ? <p className="truncate text-xs">{a.service}</p> : null}
                         {h > 52 ? <StatusText status={a.status} compact /> : null}
                       </button>

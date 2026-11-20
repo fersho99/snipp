@@ -35,6 +35,19 @@ export function StatusLine({ status, style }: { status: StatusText; style?: Styl
   );
 }
 
+// On-screen notice (SRS v1.2, 4.1 "Avisos en pantalla"): light fill of its
+// status color, the stripe and the same icon as its label.
+export function StatusNotice({ tone, icon, children, style }: { tone: StatusColor; icon: StatusIcon; children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const Icon = ICON[icon];
+  const c = statusColor[tone];
+  return (
+    <View style={[styles.notice, { backgroundColor: c.soft, borderLeftColor: c.stripe }, style]}>
+      <Icon size={20} color={c.text} weight={icon === 'reagendada' ? 'bold' : 'fill'} style={{ marginTop: 2 }} />
+      <View style={{ flex: 1, gap: space.xs }}>{children}</View>
+    </View>
+  );
+}
+
 // White card with the 5 px stripe of its status color on the left edge; the
 // rest of the card stays white (SRS v1.2, 4.1).
 export function StatusCard({ tone, children, style }: { tone: StatusColor; children: ReactNode; style?: StyleProp<ViewStyle> }) {
@@ -94,6 +107,7 @@ export function TabBar() {
 
 const styles = StyleSheet.create({
   status: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: space.xs, paddingHorizontal: space.s, paddingVertical: 2, borderRadius: 6 },
+  notice: { flexDirection: 'row', gap: space.m, padding: space.l, borderRadius: radius.control, borderLeftWidth: stripeWidth },
   card: { backgroundColor: color.raised, borderRadius: radius.control, borderLeftWidth: stripeWidth, padding: space.l },
   dateBlock: { width: 56, alignItems: 'center' },
   dateDay: { fontFamily: font.title, fontSize: 30, lineHeight: 34, letterSpacing: -0.6, color: color.ink },

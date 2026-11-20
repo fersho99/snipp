@@ -13,6 +13,7 @@ import { networkMessage, type ApiError } from '../../services/auth'
 import { createBranch, imageProblem, MAX_IMAGE_MB, saveBranch, setBranchActive } from '../../services/branches'
 import BranchServices from './BranchServices'
 import { toast } from '@/lib/toast'
+import { NOTICE, NOTICE_ICON } from '../../components/status'
 
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
@@ -353,9 +354,9 @@ function Inactive({ businessId, branch }: { businessId: string; branch: Branch }
     }
   }
   return (
-    <div className="mt-6 flex flex-col gap-3 rounded-control bg-sunken px-5 py-4 sm:flex-row sm:items-center sm:justify-between" role="status">
+    <div className={`mt-6 flex flex-col gap-3 rounded-control px-5 py-4 sm:flex-row sm:items-center sm:justify-between ${NOTICE.gris}`} role="status">
       <div className="flex gap-3">
-        <PauseCircle size={22} weight="fill" className="mt-0.5 shrink-0" aria-hidden="true" />
+        <PauseCircle size={22} weight="fill" className={`mt-0.5 shrink-0 ${NOTICE_ICON.gris}`} aria-hidden="true" />
         <div>
           <p className="font-semibold">Esta sucursal está desactivada</p>
           <p className="text-sm">No aparece en la app ni recibe reservas nuevas. Al reactivarla vuelve con sus datos, fotos y servicios como estaban.</p>

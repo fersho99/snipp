@@ -7,7 +7,7 @@ import Screen, { BackButton } from '../../components/Screen';
 import Txt from '../../components/Txt';
 import Button from '../../components/Button';
 import { ErrorNote, OfflineState, PhotoPlaceholder, Skeleton } from '../../components/States';
-import { StatusLine } from '../../components/Appointment';
+import { StatusLine, StatusNotice } from '../../components/Appointment';
 import useConnectivity from '../../hooks/useConnectivity';
 import { CANCEL_HOURS, NOW_NEAR_C10482, appointmentStore, canReport, canReview, changeWindow, describe, reportStatusOf, statusOf, useAppointment } from '../../data/appointments';
 import { notificationStore } from '../../data/notifications';
@@ -61,13 +61,12 @@ export default function AppointmentDetail() {
 
       {appt.status === 'cambio' && proposed ? (
         <Pressable onPress={() => router.push(`/cambio/${appt.folio}`)} accessibilityRole="button" style={styles.changeLine}>
-          <View style={[styles.bar, { backgroundColor: color.ink }]} />
-          <View style={{ flex: 1, gap: space.xs }}>
+          <StatusNotice tone="ambar" icon="atencion">
             <Txt variant="body">
               {d.branch.name} propone que te atienda {proposed.name} en lugar de {d.employee.name.split(' ')[0]}.
             </Txt>
             <Txt variant="label" style={{ textDecorationLine: 'underline' }}>Aceptar, reagendar o cancelar</Txt>
-          </View>
+          </StatusNotice>
         </Pressable>
       ) : null}
 
@@ -130,13 +129,12 @@ export default function AppointmentDetail() {
           </View>
         ) : (
           <View style={styles.actions}>
-            <View style={styles.blocked}>
-              <View style={[styles.bar, { backgroundColor: color.inkSoft }]} />
-              <Txt variant="body" style={{ flex: 1 }}>
+            <StatusNotice tone="azul" icon="info">
+              <Txt variant="body">
                 Ya no puedes cancelar ni reagendar desde la app porque faltan menos de {CANCEL_HOURS} horas
                 {win.minutesLeft ? ` (tu cita es en ${win.minutesLeft} minutos)` : ''}.
               </Txt>
-            </View>
+            </StatusNotice>
           </View>
         )
       ) : null}
@@ -258,15 +256,13 @@ function DetailSkeleton() {
 }
 
 const styles = StyleSheet.create({
-  changeLine: { flexDirection: 'row', gap: space.m, marginTop: space.xl, minHeight: touch },
-  bar: { width: 3, borderRadius: 2 },
+  changeLine: { marginTop: space.xl, minHeight: touch },
   section: { marginTop: space.xxl },
   person: { flexDirection: 'row', alignItems: 'center', gap: space.l, marginTop: space.s },
   personPhoto: { width: 64, height: 64, padding: space.xs },
   contactRow: { flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: 40 },
   priceBlock: { marginTop: space.xxl, flexDirection: 'row', alignItems: 'center', gap: space.l, backgroundColor: color.sunken, borderRadius: radius.control, padding: space.l },
   actions: { marginTop: space.xxl, gap: space.m },
-  blocked: { flexDirection: 'row', gap: space.m },
   backdrop: { flex: 1, backgroundColor: color.scrim },
   sheet: {
     backgroundColor: color.raised,

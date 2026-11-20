@@ -5,7 +5,7 @@ import Screen from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
 import { OfflineState, Skeleton } from '../components/States';
-import { DateBlock, StatusCard, StatusLine, TabBar } from '../components/Appointment';
+import { DateBlock, StatusCard, StatusLine, StatusNotice, TabBar } from '../components/Appointment';
 import useConnectivity from '../hooks/useConnectivity';
 import { canReport, canReview, describe, isUpcoming, startDate, statusOf, useAppointments } from '../data/appointments';
 import { color, font, space, stripeWidth, touch } from '../theme/tokens';
@@ -39,11 +39,12 @@ export default function MyAppointments() {
 
       {pendingChange && !loading ? (
         <Pressable onPress={() => router.push(`/cambio/${pendingChange.folio}`)} accessibilityRole="button" style={styles.changeLine}>
-          <View style={styles.changeBar} />
-          <Txt variant="body" style={{ flex: 1 }}>
-            {describe(pendingChange).branch.name} cambió tu cita del {describe(pendingChange).dateLabel.split(' de ')[0]}.{' '}
-            <Txt variant="body" style={styles.linkText}>Revisa el cambio</Txt>
-          </Txt>
+          <StatusNotice tone="ambar" icon="atencion">
+            <Txt variant="body">
+              {describe(pendingChange).branch.name} cambió tu cita del {describe(pendingChange).dateLabel.split(' de ')[0]}.{' '}
+              <Txt variant="body" style={styles.linkText}>Revisa el cambio</Txt>
+            </Txt>
+          </StatusNotice>
         </Pressable>
       ) : null}
 
@@ -186,8 +187,7 @@ function ListSkeleton() {
 const stripeOffset = stripeWidth + space.l + 56 + space.l;
 
 const styles = StyleSheet.create({
-  changeLine: { flexDirection: 'row', gap: space.m, marginTop: space.l, minHeight: touch, alignItems: 'stretch' },
-  changeBar: { width: 3, borderRadius: 2, backgroundColor: color.ink },
+  changeLine: { marginTop: space.l, minHeight: touch },
   linkText: { fontFamily: font.bodySemi, textDecorationLine: 'underline' },
   tabs: { flexDirection: 'row', gap: space.xl, marginTop: space.xl },
   tab: { minHeight: touch, justifyContent: 'flex-end' },
