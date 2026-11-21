@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import useAction, { wait } from '../../hooks/useAction';
 import { StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Screen, { BackButton } from '../../components/Screen';
@@ -14,15 +15,17 @@ import { color, font, space } from '../../theme/tokens';
 
 // The business changed professional, date or time. The client accepts,
 // reschedules or cancels, with no minimum-notice limit.
-// States: ?estado=sin-conexion
+// States: ?estado=error (the first answer fails) | sin-conexion
 export default function ChangeNotice() {
   const { folio, estado } = useLocalSearchParams<{ folio?: string; estado?: string }>();
   const appt = useAppointment(folio ?? 'C-10490');
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const [confirmCancel, setConfirmCancel] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
+  const accepting = useAction({ busy: 'Aceptando...', done: 'Cambio aceptado', failed: 'No se pudo aceptar' });
+  const cancelling = useAction({ busy: 'Cancelando...', done: 'Cita cancelada', failed: 'No se pudo cancelar' });
+  const failNext = useRef(estado === 'error');
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} detail="Sin internet no podemos enviar tu respuesta a la barbería. Tu cita sigue igual mientras tanto." />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} detail="Sin internet no podemos enviar tu respuesta a la barbería. Tu cita sigue igual mientras tanto." />;
   if (!appt) return null;
 
   const d = describe(appt);
@@ -53,30 +56,45 @@ export default function ChangeNotice() {
     !whenChanged ? ', mismo día y hora.' : '.',
   ].join('');
 
-  const respond = async (kind: string) => {
-    setBusy(kind);
-    await new Promise((r) => setTimeout(r, 800));
-    setBusy(null);
-    if (kind === 'aceptar') {
-      appointmentStore.update(appt.folio, { status: 'confirmada', employeeId: newEmployee.id, date: ch.date ?? appt.date, start: newStart, change: null });
-      router.replace(`/cita/${appt.folio}?aviso=aceptada`);
-    } else if (kind === 'cancelar') {
-      appointmentStore.update(appt.folio, { status: 'cancelada-cliente', change: null });
-      router.replace(`/cita/${appt.folio}?aviso=cancelada`);
+  const respond = (kind: 'aceptar' | 'cancelar') => (kind === 'aceptar' ? accepting : cancelling).run(async () => {
+    await wait(800);
+    if (failNext.current) {
+      failNext.current = false;
+      return { ok: false, reason: 'No pudimos enviar tu respuesta. Revisa tu internet e inténtalo de nuevo; tu cita no cambió.' };
     }
-  };
+    if (kind === 'aceptar') {
+      return {
+        ok: true,
+        message: `Listo: aceptaste el cambio de tu cita ${appt.folio}`,
+        next: () => {
+          appointmentStore.update(appt.folio, { status: 'confirmada', employeeId: newEmployee.id, date: ch.date ?? appt.date, start: newStart, change: null });
+          router.replace(`/cita/${appt.folio}?aviso=aceptada`);
+        },
+      };
+    }
+    return {
+      ok: true,
+      message: `Listo: cancelaste tu cita del ${d.dateLabel.split(' de ')[0]}`,
+      detail: ['No hay ningún cargo.'],
+      next: () => {
+        appointmentStore.update(appt.folio, { status: 'cancelada-cliente', change: null });
+        router.replace(`/cita/${appt.folio}?aviso=cancelada`);
+      },
+    };
+  });
+  const busy = accepting.busy || cancelling.busy;
 
   const footer = confirmCancel ? (
     <View style={{ gap: space.s }}>
       <Txt variant="body" style={{ marginBottom: space.xs }}>¿Cancelar tu cita de {d.service.name.toLowerCase()} del {d.dateLabel.split(' de ')[0]}? La barbería recibe el aviso.</Txt>
-      <Button variant="danger" label="Sí, cancelar cita" loading={busy === 'cancelar'} onPress={() => respond('cancelar')} />
-      <Button variant="secondary" label="No, regresar" onPress={() => setConfirmCancel(false)} />
+      <Button variant="danger" label="Sí, cancelar cita" {...cancelling.button} onPress={() => respond('cancelar')} />
+      <Button variant="secondary" label="No, regresar" onPress={() => setConfirmCancel(false)} disabled={busy} />
     </View>
   ) : (
     <View style={{ gap: space.s }}>
-      <Button label="Aceptar el cambio" loading={busy === 'aceptar'} onPress={() => respond('aceptar')} />
-      <Button variant="secondary" label="Reagendar" onPress={() => router.push({ pathname: '/reagendar', params: { cita: appt.folio, desdeCambio: '1' } })} />
-      <Button variant="link" label="Cancelar cita" onPress={() => setConfirmCancel(true)} style={{ alignSelf: 'center' }} />
+      <Button label="Aceptar el cambio" {...accepting.button} onPress={() => respond('aceptar')} />
+      <Button variant="secondary" label="Reagendar" disabled={busy} onPress={() => router.push({ pathname: '/reagendar', params: { cita: appt.folio, desdeCambio: '1' } })} />
+      <Button variant="link" label="Cancelar cita" disabled={busy} onPress={() => setConfirmCancel(true)} style={{ alignSelf: 'center' }} />
     </View>
   );
 

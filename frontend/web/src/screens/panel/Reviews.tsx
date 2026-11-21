@@ -5,13 +5,13 @@ import { useState } from 'react'
 import { useBusinessPanel } from '@/components/PanelContext'
 import { Flag, Star } from '@phosphor-icons/react'
 import { Button, Dialog, Note, TextArea } from '../../components/ui'
-import { networkMessage, type ApiError } from '../../services/auth'
+import useAction from '@/lib/useAction'
 import { reportReview, REVIEW_REPORT_REASONS, useReportsStore } from '../../services/reports'
 import { longDate } from '../../theme'
 
 // Overall rating of each branch, as the app shows it (same numbers as the mobile catalog).
 const RATING: Record<string, { average: number; count: number }> = { 'los-compas-centro': { average: 4.7, count: 212 }, 'los-compas-norte': { average: 4.5, count: 86 } }
-const selectCls = 'min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
+const selectCls = 'min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
 
 // Reseñas del negocio (RF-W23), Jefe only. Each review can be reported to
 // the Administrator with a reason; it stays visible until the Administrator
@@ -110,19 +110,10 @@ function ReportDialog({ review, onClose, onDone }: { review: Review; onClose: ()
   const [reason, setReason] = useState(REVIEW_REPORT_REASONS[0])
   const [detail, setDetail] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
-  const submit = async () => {
+  const sending = useAction({ busy: 'Enviando...', done: 'Reporte enviado', failed: 'No se pudo enviar' })
+  const submit = () => {
     if (reason === 'Otro' && !detail.trim()) return setError('Explica el motivo para que el Administrador lo entienda.')
-    setBusy(true)
-    setFailure(null)
-    try {
-      await reportReview(review.id, reason, detail.trim())
-      onDone()
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(false)
-    }
+    sending.run(() => reportReview(review.id, reason, detail.trim()), { onDone })
   }
   return (
     <Dialog
@@ -131,8 +122,8 @@ function ReportDialog({ review, onClose, onDone }: { review: Review; onClose: ()
       title="Reportar reseña al Administrador"
       actions={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button onClick={submit} loading={busy}>Enviar reporte</Button>
+          <Button variant="secondary" onClick={onClose} disabled={sending.busy}>Cancelar</Button>
+          <Button {...sending.button} onClick={submit}>Enviar reporte</Button>
         </>
       }
     >
@@ -147,7 +138,6 @@ function ReportDialog({ review, onClose, onDone }: { review: Review; onClose: ()
       </div>
       <TextArea label={reason === 'Otro' ? 'Explica el motivo' : 'Detalles (opcional)'} rows={3} value={detail} onChange={(e) => { setDetail(e.target.value); setError(null) }} error={error} />
       <p className="text-sm text-ink-soft">Solo el Administrador puede eliminar una reseña.</p>
-      {failure ? <Note title={networkMessage(failure).title}>No se envió el reporte. Intenta de nuevo.</Note> : null}
     </Dialog>
   )
 }

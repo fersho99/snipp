@@ -20,7 +20,8 @@ const SCREENS = [
   {
     group: 'Lote W2: estructura del panel',
     items: [
-      { title: 'Panel del Jefe (Martín Salazar), con selector de sucursal', path: '/panel?como=jefe', states: [['Prueba gratuita termina en 7 días', 'aviso-prueba'], ['Suscripción vence en 7 días', 'aviso-suscripcion'], ['Suscripción vencida', 'vencida'], ['Sin sucursales', 'sin-sucursales'], ['Cargando', 'cargando'], ['Sin conexión', 'sin-conexion'], ['Error del servidor', 'error-servidor']] },
+      { title: 'Panel del Jefe (Martín Salazar), con selector de sucursal', path: '/panel?como=jefe', states: [['Prueba gratuita termina en 7 días', 'aviso-prueba'], ['Suscripción vence en 7 días', 'aviso-suscripcion'], ['Suscripción vencida', 'vencida'], ['Sin sucursales', 'sin-sucursales'], ['Cargando', 'cargando'], ['Sin conexión', 'sin-conexion'], ['Error del servidor', 'error-servidor'], ['Tardó demasiado (15 s)', 'tardo']] },
+      { title: 'Pantalla de error: página que no existe', path: '/panel/seccion-inexistente?como=jefe', states: [] },
       { title: 'Panel del Empleado (Luis Ortega)', path: '/panel?como=empleado', states: [['Suscripción vencida', 'vencida'], ['Prueba por vencer (el Empleado no ve el aviso)', 'aviso-prueba']] },
       { title: 'Empleado entrando a una sección del Jefe (sin acceso)', path: '/panel/reportes?como=empleado', states: [] },
       { title: 'Empleado sin negocio (Sofía Ramos)', path: '/panel?como=sin-negocio', states: [] },

@@ -1,30 +1,74 @@
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Animated, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
 import type { DimensionValue, StyleProp, ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { WarningCircleIcon, WifiSlashIcon } from 'phosphor-react-native';
+import { ExclamationMarkIcon, HourglassIcon, WarningCircleIcon, WifiSlashIcon, XIcon } from 'phosphor-react-native';
 import Txt from './Txt';
 import Button from './Button';
+import { TabBar } from './Appointment';
 import { color, radius, space, status, stripeWidth } from '../theme/tokens';
 
-// Full-screen "no internet" state. The app has no offline mode, so every
-// screen that needs the network falls back to this with a retry.
-export function OfflineState({ onRetry, retrying, detail }: { onRetry: () => void; retrying?: boolean; detail?: string }) {
+// Error screen (RF-M18, RN-20, SRS v1.2, 4.2 "Pantalla de error"): full
+// screen on white, keeping the tab bar on the main sections. Red icon for the
+// case, title and a plain explanation, with no technical details, codes or
+// support contacts (client request, 20/11/2026). Black "Reintentar" and the
+// "Volver al inicio" link. The screen behind keeps what was typed, so a
+// successful retry brings it back as it was.
+export type ScreenFailure = 'sin-conexion' | 'servidor' | 'tiempo' | 'no-existe' | 'esperando';
+
+const FAILURE: Record<Exclude<ScreenFailure, 'esperando'>, { Icon: typeof WifiSlashIcon; title: string; body: string }> = {
+  'sin-conexion': { Icon: WifiSlashIcon, title: 'No hay conexión', body: 'SNIPP necesita internet. Revisa tu wifi o tus datos móviles y vuelve a intentar.' },
+  servidor: { Icon: ExclamationMarkIcon, title: 'Algo salió mal', body: 'Tuvimos un problema de nuestro lado y no pudimos cargar esta pantalla. Vuelve a intentar en un momento.' },
+  tiempo: { Icon: HourglassIcon, title: 'Esto tardó demasiado', body: 'La pantalla no respondió en 15 segundos. Puede ser tu conexión o el servidor; vuelve a intentar.' },
+  'no-existe': { Icon: XIcon, title: 'Ya no está disponible', body: 'Lo que buscas ya no existe o el enlace está mal escrito.' },
+};
+
+export function ErrorScreen({ kind, title, detail, onRetry, retrying, tabs, home = '/inicio' }: {
+  kind: ScreenFailure; title?: string; detail?: string; onRetry: () => void; retrying?: boolean; tabs?: boolean; home?: string;
+}) {
   const insets = useSafeAreaInsets();
+  const bottom = tabs ? <TabBar /> : null;
+  if (kind === 'esperando') {
+    return (
+      <View style={{ flex: 1, backgroundColor: color.paper }}>
+        <View style={[styles.waiting, { paddingTop: insets.top }]} accessible accessibilityLabel="Cargando" accessibilityLiveRegion="polite">
+          <ActivityIndicator size="large" color={color.ink} />
+          <Txt variant="bodySoft" style={{ marginTop: space.l }}>Cargando...</Txt>
+        </View>
+        {bottom}
+      </View>
+    );
+  }
+  const f = FAILURE[kind];
   return (
-    <View style={[styles.offline, { paddingTop: insets.top + space.huge, paddingBottom: insets.bottom + space.xl }]}>
-      <WifiSlashIcon size={24} color={color.ink} />
-      <Txt variant="title" style={{ marginTop: space.l }} accessibilityRole="header">
-        No hay conexión a internet
-      </Txt>
-      <Txt variant="bodySoft" style={{ marginTop: space.s }}>
-        {detail ?? 'SNIPP necesita internet para revisar tu cuenta y mostrar horarios libres. Revisa tu wifi o tus datos móviles y vuelve a intentar.'}
-      </Txt>
-      <View style={{ flex: 1 }} />
-      <Button label="Reintentar" onPress={onRetry} loading={retrying} />
+    <View style={{ flex: 1, backgroundColor: color.paper }}>
+      <View style={[styles.offline, { paddingTop: insets.top + space.xl, paddingBottom: tabs ? space.xl : insets.bottom + space.xl }]}>
+        {/* Centered: the red icon on its light red circle, title and explanation. */}
+        <View style={styles.errorBody}>
+          <View style={styles.errorIcon}>
+            <f.Icon size={44} color={status.rojo.stripe} weight={kind === 'servidor' || kind === 'no-existe' ? 'bold' : 'fill'} />
+          </View>
+          <Txt variant="title" style={styles.errorTitle} accessibilityRole="header">{title ?? f.title}</Txt>
+          <Txt variant="bodySoft" style={styles.errorText}>{detail ?? f.body}</Txt>
+        </View>
+        <Button label="Reintentar" onPress={onRetry} loading={retrying} busyLabel="Reintentando..." />
+        <Button variant="link" label="Volver al inicio" onPress={() => router.replace(home)} style={{ alignSelf: 'center', marginTop: space.m }} />
+      </View>
+      {bottom}
     </View>
   );
+}
+
+// The connection and loading failures every screen can get (see
+// hooks/useConnectivity.ts). `detail` explains the "no internet" case for
+// that screen ("Tus carritos se quedan como están").
+export function OfflineState({ kind = 'sin-conexion', onRetry, retrying, detail, tabs, home }: {
+  kind?: ScreenFailure | null; onRetry: () => void; retrying?: boolean; detail?: string; tabs?: boolean; home?: string;
+}) {
+  const k = kind ?? 'sin-conexion';
+  return <ErrorScreen kind={k} detail={k === 'sin-conexion' ? detail : undefined} onRetry={onRetry} retrying={retrying} tabs={tabs} home={home} />;
 }
 
 // Inline banner for a failed request when the rest of the screen still works.
@@ -73,6 +117,11 @@ export function PhotoPlaceholder({ filename, style, compact }: { filename?: stri
 
 const styles = StyleSheet.create({
   offline: { flex: 1, backgroundColor: color.paper, paddingHorizontal: space.xl },
+  waiting: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  errorBody: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: space.xxl },
+  errorIcon: { width: 96, height: 96, borderRadius: 48, backgroundColor: status.rojo.soft, alignItems: 'center', justifyContent: 'center' },
+  errorTitle: { marginTop: space.xl, textAlign: 'center' },
+  errorText: { marginTop: space.s, textAlign: 'center', maxWidth: 320 },
   // SRS v1.2, 4.1: failed action or error in red (light fill, stripe and icon).
   errorNote: { flexDirection: 'row', gap: space.m, padding: space.m, paddingLeft: 0, backgroundColor: status.rojo.soft, borderRadius: radius.control, overflow: 'hidden' },
   errorBar: { width: stripeWidth, alignSelf: 'stretch', marginVertical: -space.m, backgroundColor: status.rojo.stripe },

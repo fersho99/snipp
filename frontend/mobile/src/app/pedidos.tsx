@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
-import { ErrorNote, OfflineState, Skeleton } from '../components/States';
+import { OfflineState, Skeleton } from '../components/States';
 import { StatusCard, StatusLine } from '../components/Appointment';
 import useConnectivity from '../hooks/useConnectivity';
 import { branchOf } from '../data/catalog';
@@ -15,31 +15,22 @@ import type { Order } from '../types/domain';
 
 // My orders (RF-M11): history and status of each order. The branch changes
 // the status on the web and it shows here.
-// States: ?estado=sin-pedidos | cargando | error | sin-conexion
+// States: ?estado=sin-pedidos | cargando | error (server error screen) | tardo | sin-conexion
 export default function MyOrders() {
   const { estado } = useLocalSearchParams<{ estado?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado === 'error' ? 'error-servidor' : estado);
   const all = useOrders();
-  const [failed, setFailed] = useState(estado === 'error');
-  const [reloading, setReloading] = useState(false);
   const [tab, setTab] = useState<'recoger' | 'anteriores'>('recoger');
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
 
   const orders = estado === 'sin-pedidos' ? [] : all;
   const pending = orders.filter((o) => o.status === 'pagado' || o.status === 'listo');
   const past = orders.filter((o) => o.status === 'entregado' || o.status === 'cancelado');
   const ready = pending.filter((o) => o.status === 'listo');
 
-  const reload = async () => {
-    setReloading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setReloading(false);
-    setFailed(false);
-  };
-
   let title = 'Mis pedidos';
-  if (!failed && estado !== 'cargando') {
+  if (estado !== 'cargando') {
     if (ready.length === 1) title = `Tu pedido ${ready[0].folio} está listo para recoger`;
     else if (ready.length > 1) title = `Tienes ${ready.length} pedidos listos para recoger`;
     else if (!orders.length) title = 'Todavía no has comprado nada';
@@ -50,12 +41,6 @@ export default function MyOrders() {
       <BackButton />
       {estado === 'cargando' ? (
         <OrdersSkeleton />
-      ) : failed ? (
-        <View style={{ marginTop: space.m, gap: space.xl }}>
-          <Txt variant="title" accessibilityRole="header">Mis pedidos</Txt>
-          <ErrorNote title="No pudimos cargar tus pedidos">Hubo un problema con el servidor. Tus pedidos y pagos siguen igual.</ErrorNote>
-          <Button variant="secondary" label="Reintentar" loading={reloading} onPress={reload} />
-        </View>
       ) : (
         <>
           <Txt variant="title" accessibilityRole="header" style={{ marginTop: space.m }}>{title}</Txt>

@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, TextInput, View, type StyleProp, type ViewStyle,
 import type { ReactNode } from 'react';
 import { EyeIcon, EyeSlashIcon, WarningCircleIcon } from 'phosphor-react-native';
 import Txt from './Txt';
-import { color, font, radius, space, touch } from '../theme/tokens';
+import { color, font, radius, space, status, touch } from '../theme/tokens';
 
 type TextFieldProps = Omit<TextInputProps, 'style'> & {
   label: string;
@@ -14,8 +14,9 @@ type TextFieldProps = Omit<TextInputProps, 'style'> & {
   style?: StyleProp<ViewStyle>;
 };
 
-// Labelled input on a sunken fill (no border at rest). Focus adds a 2 px
-// gray ring; an error adds a 2 px ink ring plus icon and message below.
+// Labelled input on a light gray fill with a gray border. Focus darkens the
+// border; an error turns it red and adds a red message with an icon below
+// (SRS v1.2, 4.2 "Errores de formulario"). What was typed stays.
 const TextField = forwardRef<React.ComponentRef<typeof TextInput>, TextFieldProps>(function TextField(
   { label, hint, error, secure, prefix, editable = true, style, ...inputProps },
   ref,
@@ -64,10 +65,7 @@ const TextField = forwardRef<React.ComponentRef<typeof TextInput>, TextFieldProp
         ) : null}
       </View>
       {error ? (
-        <View style={styles.errorRow} accessibilityLiveRegion="polite">
-          <WarningCircleIcon size={18} color={color.ink} weight="regular" style={{ marginTop: 1 }} />
-          <Txt variant="small" style={styles.errorText}>{error}</Txt>
-        </View>
+        <FieldError>{error}</FieldError>
       ) : hint ? (
         <Txt variant="small">{hint}</Txt>
       ) : null}
@@ -76,6 +74,16 @@ const TextField = forwardRef<React.ComponentRef<typeof TextInput>, TextFieldProp
 });
 
 export default TextField;
+
+// Red message with an icon under a field or a group (stars, reasons).
+export function FieldError({ children }: { children: ReactNode }) {
+  return (
+    <View style={styles.errorRow} accessibilityLiveRegion="polite">
+      <WarningCircleIcon size={18} color={status.rojo.text} weight="fill" style={{ marginTop: 1 }} />
+      <Txt variant="small" style={styles.errorText}>{children}</Txt>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   wrap: { gap: space.s },
@@ -87,13 +95,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingLeft: space.l,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: color.divider,
   },
-  readOnly: { backgroundColor: 'transparent', paddingLeft: 0 },
+  readOnly: { backgroundColor: 'transparent', borderColor: 'transparent', paddingLeft: 0 },
   multiField: { alignItems: 'stretch' },
   multiInput: { minHeight: 136, paddingTop: 14, paddingBottom: 14, lineHeight: 23 },
   focused: { borderColor: color.inkSoft, backgroundColor: color.raised },
-  errored: { borderColor: color.ink },
+  errored: { borderColor: status.rojo.stripe },
   prefix: { marginRight: space.s },
   input: {
     flex: 1,
@@ -106,5 +114,5 @@ const styles = StyleSheet.create({
   },
   eye: { width: touch, height: touch, alignItems: 'center', justifyContent: 'center' },
   errorRow: { flexDirection: 'row', gap: space.s, alignItems: 'flex-start' },
-  errorText: { color: color.ink, fontFamily: 'Onest_500Medium', flex: 1 },
+  errorText: { color: status.rojo.text, fontFamily: 'Onest_500Medium', flex: 1 },
 });

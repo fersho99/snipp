@@ -5,8 +5,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useBusinessPanel } from '@/components/PanelContext'
 import { ImageSquare, Plus } from '@phosphor-icons/react'
-import { Button, Note } from '../../components/ui'
-import { networkMessage, type ApiError } from '../../services/auth'
+import { FieldError, Button, Note } from '../../components/ui'
+import useAction from '@/lib/useAction'
 import { saveMinNotice } from '../../services/branches'
 import { count } from '../../theme'
 import BranchEditor from './BranchEditor'
@@ -90,8 +90,7 @@ function MinNotice({ businessId, hours }: { businessId: string; hours: number })
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(String(hours))
   const [error, setError] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [saving, setSaving] = useState(false)
+  const saving = useAction({ busy: 'Guardando...', done: 'Guardado', failed: 'No se pudo guardar' })
   const [saved, setSaved] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
@@ -102,17 +101,7 @@ function MinNotice({ businessId, hours }: { businessId: string; hours: number })
       return
     }
     setError(null)
-    setFailure(null)
-    setSaving(true)
-    try {
-      await saveMinNotice(businessId, n)
-      setEditing(false)
-      setSaved(true)
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setSaving(false)
-    }
+    saving.run(() => saveMinNotice(businessId, n), { onDone: () => { setEditing(false); setSaved(true) } })
   }
 
   const rule = (h: number) => (h === 0 ? 'hasta el momento en que empieza su cita' : `hasta ${h === 1 ? '1 hora' : `${h} horas`} antes de su cita`)
@@ -135,16 +124,15 @@ function MinNotice({ businessId, hours }: { businessId: string; hours: number })
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 aria-invalid={!!error || undefined}
-                className={`tabular min-h-12 w-28 rounded-control border-2 bg-sunken px-4 text-base outline-none focus:bg-raised ${error ? 'border-ink' : 'border-transparent focus:border-ink-soft'}`}
+                className={`tabular min-h-12 w-28 rounded-control border-2 bg-sunken px-4 text-base outline-none focus:bg-raised ${error ? 'border-rojo' : 'border-divider focus:border-ink-soft'}`}
               />
               <span>horas antes de la cita</span>
             </div>
-            {error ? <p className="text-sm font-medium" role="alert">{error}</p> : <p className="text-sm text-ink-soft">Por defecto son 2 horas.</p>}
+            {error ? <FieldError>{error}</FieldError> : <p className="text-sm text-ink-soft">Por defecto son 2 horas.</p>}
           </div>
-          {failure ? <Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note> : null}
           <div className="flex gap-3">
-            <Button type="submit" loading={saving}>Guardar</Button>
-            <Button type="button" variant="secondary" onClick={() => { setEditing(false); setValue(String(hours)); setError(null); setFailure(null) }}>Cancelar</Button>
+            <Button type="submit" {...saving.button}>Guardar</Button>
+            <Button type="button" variant="secondary" disabled={saving.busy} onClick={() => { setEditing(false); setValue(String(hours)); setError(null) }}>Cancelar</Button>
           </div>
         </form>
       ) : (

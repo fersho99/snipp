@@ -110,10 +110,10 @@ export function TabBar() {
 const styles = StyleSheet.create({
   status: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: space.xs, paddingHorizontal: space.s, paddingVertical: 2, borderRadius: 6 },
   notice: { flexDirection: 'row', gap: space.m, padding: space.l, borderRadius: radius.control, borderLeftWidth: stripeWidth },
-  card: { backgroundColor: color.raised, borderRadius: radius.control, borderLeftWidth: stripeWidth, padding: space.l },
+  card: { backgroundColor: color.raised, borderRadius: radius.control, borderWidth: 1, borderColor: color.divider, borderLeftWidth: stripeWidth, padding: space.l },
   dateBlock: { width: 56, alignItems: 'center' },
   dateDay: { fontFamily: font.title, fontSize: 30, lineHeight: 34, letterSpacing: -0.6, color: color.ink },
-  tabBar: { flexDirection: 'row', backgroundColor: color.raised, paddingTop: 0 },
+  tabBar: { flexDirection: 'row', backgroundColor: color.raised, paddingTop: 0, borderTopWidth: 1, borderTopColor: color.divider },
   tab: { flex: 1, minHeight: touch + 12, alignItems: 'center', justifyContent: 'center', gap: 2 },
   tabMark: { position: 'absolute', top: 0, width: 32, height: 3, borderRadius: 2, backgroundColor: 'transparent' },
 });

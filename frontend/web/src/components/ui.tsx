@@ -4,7 +4,7 @@
 // separation by space and a sunken tone. Focus is always visible.
 import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import Link from 'next/link'
-import { CheckCircle, Eye, EyeSlash, WarningCircle } from '@phosphor-icons/react'
+import { CheckCircle, Eye, EyeSlash, WarningCircle, XCircle } from '@phosphor-icons/react'
 const isotipo = '/brand/snipp-isotipo.png'
 const wordmark = '/brand/snipp-wordmark.png'
 
@@ -20,15 +20,38 @@ export function Logo({ size = 36 }: { size?: number }) {
 const base = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-control px-5 text-[15px] font-semibold transition-colors disabled:cursor-not-allowed'
 const variants: Record<'primary' | 'secondary', string> = {
   primary: 'bg-ink text-white hover:bg-ink-pressed disabled:bg-gray-light disabled:text-white',
-  secondary: 'bg-sunken text-ink hover:bg-sunken-pressed disabled:text-ink-soft',
+  secondary: 'bg-sunken text-ink ring-1 ring-inset ring-divider hover:bg-sunken-pressed disabled:text-ink-soft',
 }
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary'; loading?: boolean }
-export function Button({ variant = 'primary', loading, children, className = '', ...props }: ButtonProps) {
+// `busyLabel` is the text while it works ("Guardando..."); `result` turns it
+// green with a check ("Guardado") or red with a cross ("No se pudo
+// guardar") for about 1.5 s (SRS v1.2, 4.2; see lib/useAction.ts).
+type ButtonResult = { tone: 'verde' | 'rojo'; label: string } | null
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary'; loading?: boolean; busyLabel?: string; result?: ButtonResult }
+export function Button({ variant = 'primary', loading, busyLabel, result, children, className = '', disabled, ...props }: ButtonProps) {
+  // Dark tones of green and red keep white text above 4.5:1.
+  const look = result ? (result.tone === 'verde' ? 'bg-verde-text text-white' : 'bg-rojo-text text-white') : variants[variant]
   return (
-    <button className={`${base} ${variants[variant]} ${className}`} disabled={loading || props.disabled} aria-busy={loading || undefined} {...props}>
-      {loading ? <Spinner /> : null}
-      {children}
+    <button
+      className={`${base} ${look} ${className}`}
+      {...props}
+      disabled={loading || !!result || disabled}
+      aria-busy={loading || undefined}
+      aria-live="polite"
+    >
+      {result ? (
+        <>
+          {result.tone === 'verde' ? <CheckCircle size={18} weight="fill" aria-hidden="true" /> : <XCircle size={18} weight="fill" aria-hidden="true" />}
+          {result.label}
+        </>
+      ) : loading ? (
+        <>
+          <Spinner />
+          {busyLabel ?? children}
+        </>
+      ) : (
+        children
+      )}
     </button>
   )
 }
@@ -43,8 +66,9 @@ function Spinner() {
   return <span className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />
 }
 
-// Labelled input on a sunken fill. Focus adds a gray ring; an error an ink
-// ring plus icon and message. `secure` adds the show/hide control.
+// Labelled input on a light gray fill with a gray border. Focus darkens the
+// border; an error turns it red and adds a red message with an icon (SRS
+// v1.2, 4.2 "Errores de formulario"). `secure` adds the show/hide control.
 type FieldBase = { label: ReactNode; hint?: ReactNode; error?: ReactNode; className?: string }
 type TextFieldProps = FieldBase & Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> & { secure?: boolean; prefix?: ReactNode }
 export function TextField({ label, hint, error, secure, prefix, className = '', ...props }: TextFieldProps) {
@@ -56,7 +80,7 @@ export function TextField({ label, hint, error, secure, prefix, className = '', 
       <label htmlFor={id} className="text-[15px] font-medium">{label}</label>
       <div
         className={`flex min-h-12 items-center rounded-control border-2 bg-sunken pl-4 transition-colors focus-within:bg-raised ${
-          error ? 'border-ink' : 'border-transparent focus-within:border-ink-soft'
+          error ? 'border-rojo' : 'border-divider focus-within:border-ink-soft'
         }`}
       >
         {prefix ? <span className="tabular mr-2 text-ink-soft">{prefix}</span> : null}
@@ -80,8 +104,8 @@ export function TextField({ label, hint, error, secure, prefix, className = '', 
         ) : null}
       </div>
       {error ? (
-        <p id={`${id}-error`} className="flex items-start gap-2 text-sm font-medium text-ink" role="alert">
-          <WarningCircle size={18} className="mt-px shrink-0" />
+        <p id={`${id}-error`} className="flex items-start gap-2 text-sm font-medium text-rojo-text" role="alert">
+          <WarningCircle size={18} weight="fill" className="mt-px shrink-0" />
           {error}
         </p>
       ) : hint ? (
@@ -91,18 +115,28 @@ export function TextField({ label, hint, error, secure, prefix, className = '', 
   )
 }
 
-// Inline message with a 3 px bar: a failed request (error) or a done action
-// (done). A done action is green (client request after the approval): soft
-// green fill, green bar and icon, text in ink so it stays easy to read.
+// Red message with an icon under a field or a group (SRS v1.2, 4.2).
+export function FieldError({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <p className={`flex items-start gap-2 text-sm font-medium text-rojo-text ${className}`} role="alert">
+      <WarningCircle size={18} weight="fill" className="mt-px shrink-0" />
+      <span>{children}</span>
+    </p>
+  )
+}
+
+// Inline message with a bar: a failed request (error) in red or a done
+// action (done) in green, each with the light fill of its color, its bar and
+// icon; the text stays in ink so it is easy to read (SRS v1.2, 4.1).
 type NoteProps = { tone?: 'error' | 'done'; title: ReactNode; children?: ReactNode; action?: ReactNode }
 export function Note({ tone = 'error', title, children, action }: NoteProps) {
   const done = tone === 'done'
   const Icon = done ? CheckCircle : WarningCircle
   return (
-    <div className={`flex gap-3 ${done ? 'rounded-control bg-verde-soft py-3 pr-4' : ''}`} role={done ? 'status' : 'alert'}>
-      <span className={`w-[3px] shrink-0 rounded-full ${done ? 'bg-verde' : 'bg-ink'}`} />
+    <div className={`flex gap-3 rounded-control py-3 pr-4 ${done ? 'bg-verde-soft' : 'bg-rojo-soft'}`} role={done ? 'status' : 'alert'}>
+      <span className={`w-[3px] shrink-0 rounded-full ${done ? 'bg-verde' : 'bg-rojo'}`} />
       <div className="flex flex-col gap-1">
-        <p className="flex items-start gap-1.5 font-semibold">
+        <p className={`flex items-start gap-1.5 font-semibold ${done ? '' : 'text-rojo-text'}`}>
           <Icon size={18} weight="fill" className={`mt-0.5 shrink-0 ${done ? 'text-verde-text' : ''}`} />
           {title}
         </p>
@@ -131,13 +165,13 @@ export function TextArea({ label, hint, error, className = '', rows = 4, ...prop
         aria-invalid={!!error || undefined}
         aria-describedby={describedBy}
         className={`rounded-control border-2 bg-sunken px-4 py-3 text-base text-ink outline-none transition-colors placeholder:text-ink-soft focus:bg-raised ${
-          error ? 'border-ink' : 'border-transparent focus:border-ink-soft'
+          error ? 'border-rojo' : 'border-divider focus:border-ink-soft'
         }`}
         {...props}
       />
       {error ? (
-        <p id={`${id}-error`} className="flex items-start gap-2 text-sm font-medium text-ink" role="alert">
-          <WarningCircle size={18} className="mt-px shrink-0" />
+        <p id={`${id}-error`} className="flex items-start gap-2 text-sm font-medium text-rojo-text" role="alert">
+          <WarningCircle size={18} weight="fill" className="mt-px shrink-0" />
           {error}
         </p>
       ) : hint ? (

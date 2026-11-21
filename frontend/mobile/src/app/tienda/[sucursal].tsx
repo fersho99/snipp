@@ -3,16 +3,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Screen, { BackButton } from '../../components/Screen';
 import Txt from '../../components/Txt';
-import Button from '../../components/Button';
 import { OfflineState, Skeleton } from '../../components/States';
-import { CartBar, CartLimitSheet, ProductPhoto, addToBranchCart } from '../../components/Shop';
+import { AddToCartButton, CartBar, CartLimitSheet, ProductPhoto } from '../../components/Shop';
 import { StatusLine } from '../../components/Appointment';
 import useConnectivity from '../../hooks/useConnectivity';
 import { getBranch, openStatus, branches } from '../../data/catalog';
 import { cartSummary, pointsAt, productsFor, seedDemoCarts, stockStatus, useCarts } from '../../data/shop';
 import { money } from '../../theme/format';
 import { color, font, space } from '../../theme/tokens';
-import type { Product } from '../../types/domain';
 import CartButton from '../../components/CartButton';
 import type { CartSummary } from '../../data/shop';
 
@@ -20,12 +18,12 @@ import type { CartSummary } from '../../data/shop';
 // Branch store: products for pickup only. Out of stock cannot be added.
 // Each branch has its own cart (RF-M09); with 3 carts open, a product of
 // another branch is not added and the limit sheet opens.
-// States: ?estado=cargando | sin-conexion | limite (3 carts
+// States: ?estado=cargando | sin-conexion | error (adding fails once) | limite (3 carts
 // of other branches are open and you try to add here)
 export default function Store() {
   const { sucursal, estado } = useLocalSearchParams<{ sucursal?: string; estado?: string }>();
   const branch = getBranch(sucursal) ?? branches[0];
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const carts = useCarts();
   const mine = carts.find((c) => c.branchId === branch.id);
   const summary = mine ? cartSummary(mine) : null;
@@ -40,11 +38,7 @@ export default function Store() {
     }
   }, [estado]);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
-
-  const add = (product: Product) => {
-    if (addToBranchCart(branch, product, 1) === 'limit') setLimit(true);
-  };
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
 
   const available = items.filter((p) => p.stock > 0).length;
   const points = pointsAt(branch.businessId);
@@ -101,7 +95,7 @@ export default function Store() {
                   <StatusLine status={stockStatus(p.stock)} style={{ marginTop: space.s }} />
                   {out ? null : (
                     <>
-                      <Button variant="secondary" label="Agregar" onPress={() => add(p)} style={styles.addBtn} />
+                      <AddToCartButton branch={branch} product={p} variant="secondary" label="Agregar" fail={estado === 'error'} onLimit={() => setLimit(true)} style={styles.addBtn} />
                       {qty ? (
                         <Txt variant="small" numeric style={{ marginTop: space.xs, color: color.ink }}>{qty} en tu carrito</Txt>
                       ) : null}

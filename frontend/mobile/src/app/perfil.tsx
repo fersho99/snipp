@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import useAction, { wait } from '../hooks/useAction';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -8,7 +9,7 @@ import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
 import TextField from '../components/TextField';
-import { ErrorNote, OfflineState, Skeleton } from '../components/States';
+import { OfflineState, Skeleton } from '../components/States';
 import useConnectivity from '../hooks/useConnectivity';
 import { client } from '../data/demo';
 import { pointBalances } from '../data/shop';
@@ -18,18 +19,18 @@ import { DoneNote } from '../components/Done';
 const AVATAR = 88;
 
 // Edit profile: photo, name, phone. Email is the username and is read-only.
-// States: ?estado=cargando | error-guardar | sin-conexion
+// States: ?estado=cargando | error-guardar (saving fails once) | sin-conexion
 export default function EditProfile() {
   const { estado } = useLocalSearchParams<{ estado?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const [loadingProfile, setLoadingProfile] = useState(estado === 'cargando');
   const [saved, setSaved] = useState({ name: client.name, phone: client.phone, photo: client.photo });
   const [name, setName] = useState(client.name);
   const [phone, setPhone] = useState(client.phone);
   const [photo, setPhoto] = useState(client.photo);
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(estado === 'error-guardar');
+  const saving = useAction({ busy: 'Guardando...', done: 'Guardado', failed: 'No se pudo guardar' });
+  const failNext = useRef(estado === 'error-guardar');
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
   // The catalogue's "cargando" state stays on screen; otherwise this would
@@ -38,7 +39,7 @@ export default function EditProfile() {
     if (estado !== 'cargando') setLoadingProfile(false);
   }, [estado]);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
   if (loadingProfile) return <ProfileSkeleton />;
 
   const dirty = name !== saved.name || phone !== saved.phone || photo !== saved.photo;
@@ -53,31 +54,36 @@ export default function EditProfile() {
     if (!result.canceled) setPhoto(result.assets[0].uri);
   };
 
-  const save = async () => {
+  const save = () => {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = 'Escribe tu nombre.';
     if (phone.replace(/\D/g, '').length !== 10) e.phone = 'El teléfono debe tener 10 dígitos, sin el +52.';
     setErrors(e);
     if (Object.keys(e).length) return;
-    setSaving(true);
-    setSaveError(false);
-    await new Promise((r) => setTimeout(r, 900));
-    setSaving(false);
-    if (estado === 'error-guardar') {
-      setSaveError(true);
-      return;
-    }
-    setSaved({ name, phone, photo });
-    const now = new Date();
-    const h = now.getHours() % 12 || 12;
-    setSavedAt(`${h}:${String(now.getMinutes()).padStart(2, '0')} ${now.getHours() >= 12 ? 'pm' : 'am'}`);
+    saving.run(async () => {
+      await wait(900);
+      if (failNext.current) {
+        failNext.current = false;
+        return { ok: false, reason: 'No se guardaron tus cambios por un problema con el servidor. Tus datos siguen como estaban; inténtalo de nuevo.' };
+      }
+      return {
+        ok: true,
+        message: 'Listo: guardamos tus datos',
+        next: () => {
+          setSaved({ name, phone, photo });
+          const now = new Date();
+          const h = now.getHours() % 12 || 12;
+          setSavedAt(`${h}:${String(now.getMinutes()).padStart(2, '0')} ${now.getHours() >= 12 ? 'pm' : 'am'}`);
+        },
+      };
+    });
   };
 
   const initials = name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
   const points = pointBalances()[0];
 
   return (
-    <Screen footer={<Button label="Guardar cambios" onPress={save} loading={saving} disabled={!dirty} />}>
+    <Screen footer={<Button label="Guardar cambios" {...saving.button} onPress={save} disabled={!dirty && !saving.busy} />}>
       <BackButton />
 
       <View style={styles.header}>
@@ -130,11 +136,6 @@ export default function EditProfile() {
           <Txt variant="small">Es tu usuario para entrar, por eso no se cambia desde aquí.</Txt>
         </View>
 
-        {saveError ? (
-          <ErrorNote title="No se guardaron tus cambios">
-            Hubo un problema con el servidor. Tus datos siguen como estaban; intenta de nuevo en un momento.
-          </ErrorNote>
-        ) : null}
         {savedAt && !dirty ? (
           <DoneNote>Guardado a las {savedAt}. Tus próximas citas ya muestran estos datos.</DoneNote>
         ) : null}

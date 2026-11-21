@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import useAction, { wait } from '../hooks/useAction';
 import { View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Screen, { BackButton } from '../components/Screen';
@@ -19,16 +20,17 @@ import type { LabeledSlot } from '../components/Booking';
 // time; the folio stays the same. Respects the business's minimum notice
 // (RN-03) unless the business made the change (?desdeCambio=1, RN-04).
 // Dates up to two months from today (RN-02).
-// States: ?estado=menos-de-2h | sin-conexion
+// States: ?estado=menos-de-2h | error (saving fails once) | sin-conexion
 export default function Reschedule() {
   const { cita, desdeCambio, estado } = useLocalSearchParams<{ cita?: string; desdeCambio?: string; estado?: string }>();
   const appt = useAppointment(cita ?? 'C-10482');
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const fromChange = desdeCambio === '1';
   const [date, setDate] = useState<Date | null>(null);
   const [slot, setSlot] = useState<LabeledSlot | null>(null);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const saving = useAction({ busy: 'Reagendando...', done: 'Cita reagendada', failed: 'No se pudo reagendar' });
+  const failNext = useRef(estado === 'error');
 
   const d = appt && describe(appt);
   // After a business change, the client keeps the professional the business proposed.
@@ -42,7 +44,7 @@ export default function Reschedule() {
       .map((s) => ({ ...s, label: minutesLabel(s.start) }));
   }, [appt, date, employeeId]);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
   if (!appt || !d || !employee || !employeeId) return null;
 
   const now = estado === 'menos-de-2h' ? NOW_NEAR_C10482 : DEMO_TODAY;
@@ -70,11 +72,13 @@ export default function Reschedule() {
     setLoading(false);
   };
 
-  const save = async () => {
-
-    if (!slot || !date) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 900));
+  const save = () => saving.run(async () => {
+    if (!slot || !date) return { ok: false, reason: 'Elige un nuevo horario.', retry: false };
+    await wait(900);
+    if (failNext.current) {
+      failNext.current = false;
+      return { ok: false, reason: 'No pudimos cambiar tu cita. Revisa tu internet e inténtalo de nuevo; tu cita sigue como estaba.' };
+    }
     appointmentStore.update(appt.folio, { date: iso(date), start: slot.start, employeeId, status: 'confirmada', change: null, rescheduledFrom: appt.start });
     notificationStore.push({
       kind: 'reagendada',
@@ -82,11 +86,16 @@ export default function Reschedule() {
       body: `${d.service.name} con ${employee.name} en ${d.branch.name}. Sigue con el folio ${appt.folio}.`,
       route: `/cita/${appt.folio}`,
     });
-    setSaving(false);
     const target = `/cita/${appt.folio}?aviso=reagendada`;
-    if (router.canDismiss?.()) router.dismissTo(target);
-    else router.replace(target);
-  };
+    return {
+      ok: true,
+      message: `Listo: tu cita cambió al ${longDate(date).split(' de ')[0]} a las ${slot.label}`,
+      next: () => {
+        if (router.canDismiss?.()) router.dismissTo(target);
+        else router.replace(target);
+      },
+    };
+  });
 
   return (
     <Screen
@@ -94,7 +103,7 @@ export default function Reschedule() {
         <Button
           label={slot && date ? `Cambiar al ${longDate(date).split(' de ')[0]} a las ${slot.label}` : 'Elige un nuevo horario'}
           disabled={!slot}
-          loading={saving}
+          {...saving.button}
           onPress={save}
         />
       }

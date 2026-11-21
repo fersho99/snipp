@@ -5,20 +5,19 @@ import { LockSimpleIcon, MapPinIcon } from 'phosphor-react-native';
 import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
-import { ErrorNote, OfflineState } from '../components/States';
+import { OfflineState } from '../components/States';
 import { ConfirmSheet, ProductPhoto, QtyStepper, expiryStatus, piecesLabel } from '../components/Shop';
 import { StatusLine, StatusNotice, TabBar } from '../components/Appointment';
 import useConnectivity from '../hooks/useConnectivity';
 import { getBusiness } from '../data/demo';
 import { cart, cartSummary, createOrder, getCart, pointsEarned, seedDemoCarts, useCarts } from '../data/shop';
 import { declineMessage, payOrder } from '../services/payments';
-import { toast } from '../data/toast';
+import useAction, { wait } from '../hooks/useAction';
 import { money } from '../theme/format';
 import { color, font, radius, space, status, stripeWidth, touch } from '../theme/tokens';
 import type { ScrollViewInstance } from 'react-native';
 import type { Cart as CartData } from '../types/domain';
 import type { CartLine, CartSummary } from '../data/shop';
-import type { PaymentResult } from '../services/payments';
 
 // Carritos (RF-M17): one cart per branch, up to 3 (RF-M09, RN-06). One cart
 // is shown at a time; the client moves between them by swiping or by tapping
@@ -27,13 +26,13 @@ import type { PaymentResult } from '../services/payments';
 // Demo: ?demo=lleno (Los Compas, Pomada + Aceite, $420) | ?demo=tres (3 carts
 // with a price change, a sold out product, an adjusted quantity and one
 // about to expire). ?sucursal=<id> opens on that branch's cart.
-// States: ?estado=vacio | pago-rechazado | sin-conexion
+// States: ?estado=vacio | pago-rechazado | error (emptying fails) | sin-conexion
 const SIDE = 28; // the next and previous carts peek this much minus GAP
 const GAP = 10;
 
 export default function Carts() {
   const { demo, estado, sucursal } = useLocalSearchParams<{ demo?: string; estado?: string; sucursal?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const carts = useCarts();
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [index, setIndex] = useState(0);
@@ -67,7 +66,7 @@ export default function Carts() {
     if (index > carts.length - 1 && carts.length) goTo(carts.length - 1, false);
   }, [carts.length]);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} detail="Sin internet no podemos cobrar ni apartar tus productos. Tus carritos se quedan como están." />;
+  if (!online) return <OfflineState kind={failure} tabs onRetry={retry} retrying={retrying} detail="Sin internet no podemos cobrar ni apartar tus productos. Tus carritos se quedan como están." />;
 
   const summaries = carts.map((c) => cartSummary(c)).filter((s): s is CartSummary => !!s);
 
@@ -138,7 +137,7 @@ export default function Carts() {
                     accessibilityElementsHidden={i !== current}
                     importantForAccessibility={i === current ? 'auto' : 'no-hide-descendants'}
                   >
-                    <CartPage data={s.cart} declineFirst={estado === 'pago-rechazado'} />
+                    <CartPage data={s.cart} declineFirst={estado === 'pago-rechazado'} failEmpty={estado === 'error'} />
                   </View>
                 ))}
               </ScrollView>
@@ -158,12 +157,13 @@ const toneLabel = (s: CartSummary) =>
   s.tone === 'rojo' ? 'tiene un producto agotado' : s.tone === 'ambar' ? s.expiry.label.toLowerCase() : `caduca en ${s.expiry.label}`;
 
 // One cart: branch, products, points, total, pay and empty.
-function CartPage({ data, declineFirst }: { data: CartData; declineFirst: boolean }) {
+function CartPage({ data, declineFirst, failEmpty }: { data: CartData; declineFirst: boolean; failEmpty: boolean }) {
   const [usePoints, setUsePoints] = useState(false);
-  const [paying, setPaying] = useState(false);
-  const [result, setResult] = useState<Exclude<PaymentResult, { status: 'paid' }> | null>(null);
-  const [declineNext, setDeclineNext] = useState(declineFirst && data.branchId === 'los-compas-centro');
+  const declineNext = useRef(declineFirst && data.branchId === 'los-compas-centro');
+  const failEmptyNext = useRef(failEmpty);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
+  const payment = useAction({ busy: 'Pagando...', done: 'Pagado', failed: 'No se pudo pagar' });
+  const emptying = useAction({ busy: 'Vaciando...', done: 'Carrito vaciado', failed: 'No se pudo vaciar' });
 
   const s = cartSummary(data, usePoints);
   if (!s) return null;
@@ -171,19 +171,36 @@ function CartPage({ data, declineFirst }: { data: CartData; declineFirst: boolea
   const business = getBusiness(branch.businessId);
   const shortBusiness = business.name.replace('Barbería ', '');
 
-  const pay = async () => {
-    setPaying(true);
-    setResult(null);
-    const r = await payOrder({ simulate: declineNext ? 'declined' : 'paid' });
-    setPaying(false);
-    if (r.status === 'paid') {
-      const folio = createOrder(s, r);
-      router.push({ pathname: '/pedido-confirmado', params: { folio } });
-    } else {
-      if (r.status === 'declined') setDeclineNext(false);
-      setResult(r);
+  // RF-M10: only this cart is charged. The order is created and the cart
+  // goes away once the green answer has been shown.
+  const pay = () => payment.run(async () => {
+    const r = await payOrder({ simulate: declineNext.current ? 'declined' : 'paid' });
+    if (r.status === 'declined') {
+      declineNext.current = false;
+      return { ok: false, reason: `${declineMessage(r.code)} No se cobró nada. Prueba con otra tarjeta o revisa con tu banco.` };
     }
-  };
+    if (r.status === 'canceled') return { ok: false, reason: 'Cerraste la ventana de pago. No se cobró nada y tu carrito sigue aquí.' };
+    return {
+      ok: true,
+      message: `Listo: pagaste ${money(s.total)} en ${branch.name}`,
+      detail: ['Recoge tu pedido en la sucursal.'],
+      next: () => router.push({ pathname: '/pedido-confirmado', params: { folio: createOrder(s, r) } }),
+    };
+  });
+
+  const empty = () => emptying.run(async () => {
+    await wait(700);
+    if (failEmptyNext.current) {
+      failEmptyNext.current = false;
+      return { ok: false, reason: 'No pudimos vaciar el carrito. Revisa tu internet e inténtalo de nuevo; tus productos siguen aquí.' };
+    }
+    return {
+      ok: true,
+      message: `Vaciaste el carrito de ${branch.name}`,
+      detail: ['Tus otros carritos no cambiaron.'],
+      next: () => { setConfirmEmpty(false); cart.empty(branch.id); },
+    };
+  });
 
   return (
     <View style={styles.page}>
@@ -198,17 +215,6 @@ function CartPage({ data, declineFirst }: { data: CartData; declineFirst: boolea
           <StatusNotice tone="ambar" icon="reloj" style={{ marginTop: space.m }}>
             <Txt variant="small" style={{ color: color.ink }}>Si no lo pagas o cambias, este carrito se vacía {expiry.when}.</Txt>
           </StatusNotice>
-        ) : null}
-
-        {result?.status === 'declined' ? (
-          <View style={{ marginTop: space.l }}>
-            <ErrorNote title={`El pago de ${money(s.total)} no pasó`}>
-              {declineMessage(result.code)} No se cobró nada. Prueba con otra tarjeta o revisa con tu banco; tu carrito se queda igual.
-            </ErrorNote>
-          </View>
-        ) : null}
-        {result?.status === 'canceled' ? (
-          <Txt variant="small" style={{ marginTop: space.l }}>Cerraste la ventana de pago. No se cobró nada y tu carrito sigue aquí.</Txt>
         ) : null}
 
         <View style={styles.lines}>
@@ -251,16 +257,16 @@ function CartPage({ data, declineFirst }: { data: CartData; declineFirst: boolea
 
       <View style={styles.pageFoot}>
         <Button
-          label={!s.count ? 'No hay productos para cobrar' : result?.status === 'declined' ? `Intentar de nuevo, ${money(s.total)}` : `Pagar ${money(s.total)} con tarjeta`}
+          label={!s.count ? 'No hay productos para cobrar' : `Pagar ${money(s.total)} con tarjeta`}
+          {...payment.button}
           onPress={pay}
-          loading={paying}
           disabled={!s.count}
         />
         <View style={styles.secure}>
           <LockSimpleIcon size={16} color={color.inkSoft} />
           <Txt variant="small">Solo se cobra este carrito</Txt>
         </View>
-        <Button variant="link" label="Vaciar carrito" onPress={() => setConfirmEmpty(true)} style={{ alignSelf: 'center' }} />
+        <Button variant="link" label="Vaciar carrito" onPress={() => setConfirmEmpty(true)} disabled={payment.busy} style={{ alignSelf: 'center' }} />
       </View>
 
       <ConfirmSheet
@@ -268,12 +274,9 @@ function CartPage({ data, declineFirst }: { data: CartData; declineFirst: boolea
         title={`¿Vaciar el carrito de ${branch.name}?`}
         body={`Se quitan sus ${piecesLabel(s.lines.length)}. Tus otros carritos no cambian.`}
         confirmLabel="Vaciar carrito"
-        onCancel={() => setConfirmEmpty(false)}
-        onConfirm={() => {
-          setConfirmEmpty(false);
-          cart.empty(branch.id);
-          toast(`Vaciaste el carrito de ${branch.name}`, { detail: ['Tus otros carritos no cambiaron.'] });
-        }}
+        confirmButton={emptying.button}
+        onCancel={() => { if (!emptying.busy) setConfirmEmpty(false); }}
+        onConfirm={empty}
       />
     </View>
   );
@@ -347,7 +350,7 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginVertical: space.m },
   pageDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.grayLight },
   pageDotActive: { width: 20, backgroundColor: color.ink },
-  page: { flex: 1, backgroundColor: color.raised, borderRadius: radius.photo, overflow: 'hidden' },
+  page: { flex: 1, backgroundColor: color.raised, borderRadius: radius.photo, borderWidth: 1, borderColor: color.divider, overflow: 'hidden' },
   pageBody: { padding: space.l, paddingBottom: space.xl },
   pageFoot: { paddingHorizontal: space.l, paddingTop: space.m, paddingBottom: space.s, gap: space.xs, borderTopWidth: 1, borderTopColor: color.divider },
   pickup: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.xs },

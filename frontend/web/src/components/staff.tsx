@@ -2,7 +2,7 @@
 
 // Pieces shared by the Jefe's and the Empleado's pages of batch W5.
 import { useMemo, useState } from 'react'
-import { Checkbox } from './ui'
+import { FieldError, Checkbox } from './ui'
 import { historyFor } from '../data/staff'
 import { useStaffStore } from '../services/staff'
 import { count, dayMonth, timeOfDay } from '../theme'
@@ -46,7 +46,7 @@ export function ScheduleEditor({ value, onChange, error }: { value: WeekHours; o
           )
         })}
       </div>
-      {error ? <p className="mt-3 text-sm font-medium" role="alert">{error}</p> : null}
+      {error ? <FieldError className="mt-3">{error}</FieldError> : null}
     </div>
   )
 }
@@ -59,7 +59,7 @@ function TimeInput({ label, value, onChange }: { label: string; value: string; o
       value={value}
       step={900}
       onChange={(e) => onChange(e.target.value)}
-      className="tabular min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft focus:bg-raised"
+      className="tabular min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft focus:bg-raised"
     />
   )
 }

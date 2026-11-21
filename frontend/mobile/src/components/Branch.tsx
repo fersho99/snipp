@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     paddingLeft: space.l,
     gap: space.m,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: color.divider,
   },
   searchFocused: { borderColor: color.ink, backgroundColor: color.raised },
   searchInput: { flex: 1, minHeight: touch, fontFamily: font.body, fontSize: 16, color: color.ink, outlineStyle: 'none' as ViewStyle['outlineStyle'] }, // web only: no browser focus outline

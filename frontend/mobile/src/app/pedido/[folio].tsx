@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import Screen, { BackButton } from '../../components/Screen';
 import Txt from '../../components/Txt';
 import Button from '../../components/Button';
-import { ErrorNote, OfflineState, Skeleton } from '../../components/States';
+import { ErrorNote, ErrorScreen, OfflineState, Skeleton } from '../../components/States';
 import { StatusLine } from '../../components/Appointment';
 import useConnectivity from '../../hooks/useConnectivity';
 import { openStatus, branchOf } from '../../data/catalog';
@@ -18,10 +18,10 @@ const STEP_LABEL: Record<string, string> = { pagado: 'Pagado', listo: 'Listo par
 // States: ?estado=cargando | sin-conexion
 export default function OrderDetail() {
   const { folio, estado } = useLocalSearchParams<{ folio?: string; estado?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const order = useOrders().find((o) => o.folio === folio);
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
   if (estado === 'cargando') {
     return (
       <Screen>
@@ -37,12 +37,7 @@ export default function OrderDetail() {
     );
   }
   if (!order) {
-    return (
-      <Screen>
-        <BackButton />
-        <ErrorNote title={`No encontramos el pedido ${folio}`}>Revisa el folio o búscalo en Mis pedidos.</ErrorNote>
-      </Screen>
-    );
+    return <ErrorScreen kind="no-existe" detail={`El pedido ${folio} ya no existe o el folio está mal escrito. Revisa tus compras en Mis pedidos.`} onRetry={retry} retrying={retrying} />;
   }
 
   const branch = branchOf(order.branchId);

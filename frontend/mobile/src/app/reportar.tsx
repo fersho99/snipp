@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import useAction, { wait } from '../hooks/useAction';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { CircleIcon, LockSimpleIcon, RadioButtonIcon } from 'phosphor-react-native';
 import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
-import TextField from '../components/TextField';
-import { ErrorNote, OfflineState } from '../components/States';
+import TextField, { FieldError } from '../components/TextField';
+import { OfflineState } from '../components/States';
 import useConnectivity from '../hooks/useConnectivity';
 import { REPORT_REASONS, canReport, describe, startDate, submitReport, useAppointments } from '../data/appointments';
 import { color, font, radius, space, touch } from '../theme/tokens';
@@ -19,21 +20,21 @@ const MAX = 800;
 // marked "Empleado no se presentó", one report per appointment (RN-15).
 // Only the Jefe and the SNIPP Administrator see it; the employee never does.
 // Opened from an appointment (?cita=) it comes preselected.
-// States: ?estado=error-enviar | sin-conexion. Blocked: no appointment can be reported.
+// States: ?estado=error-enviar (sending fails once) | sin-conexion. Blocked: no appointment can be reported.
 export default function Report() {
   const { cita, estado } = useLocalSearchParams<{ cita?: string; estado?: string }>();
   const all = useAppointments();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const reportable = all.filter(canReport).sort((a, b) => startDate(b).getTime() - startDate(a).getTime());
   const [folio, setFolio] = useState(cita ?? null);
   const [picking, setPicking] = useState(!cita);
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [text, setText] = useState('');
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState(false);
+  const sending = useAction({ busy: 'Enviando...', done: 'Reporte enviado', failed: 'No se pudo enviar' });
+  const failNext = useRef(estado === 'error-enviar');
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
 
   const appt = all.find((a) => a.folio === folio);
 
@@ -103,27 +104,32 @@ export default function Report() {
   const d = describe(appt);
   const first = d.employee.name.split(' ')[0];
 
-  const send = async () => {
+  const send = () => {
     const e: Record<string, string> = {};
     if (!reason) e.reason = 'Elige un motivo.';
     if (!text.trim()) e.text = 'Cuenta qué pasó para que el Jefe pueda darle seguimiento.';
     setErrors(e);
     if (Object.keys(e).length) return;
-    setSending(true);
-    setSendError(false);
-    await new Promise((r) => setTimeout(r, 900));
-    setSending(false);
-    if (estado === 'error-enviar') {
-      setSendError(true);
-      return;
-    }
-    // Navigate first: once saved, this appointment no longer accepts a report.
-    router.replace({ pathname: '/reportes', params: { enviado: appt.folio } });
-    if (reason) submitReport(appt.folio, { reason, text: text.trim() });
+    sending.run(async () => {
+      await wait(900);
+      if (failNext.current) {
+        failNext.current = false;
+        return { ok: false, reason: 'No se envió tu reporte por un problema con el servidor. Lo que escribiste sigue aquí; inténtalo de nuevo.' };
+      }
+      return {
+        ok: true,
+        message: `Listo: enviamos tu reporte al Jefe de ${d.branch.name}`,
+        next: () => {
+          // Navigate first: once saved, this appointment no longer accepts a report.
+          router.replace({ pathname: '/reportes', params: { enviado: appt.folio } });
+          if (reason) submitReport(appt.folio, { reason, text: text.trim() });
+        },
+      };
+    });
   };
 
   return (
-    <Screen footer={<Button label="Enviar reporte" loading={sending} onPress={send} />}>
+    <Screen footer={<Button label="Enviar reporte" {...sending.button} onPress={send} />}>
       <BackButton />
       <Txt variant="title" accessibilityRole="header" style={{ marginTop: space.m }}>
         Reporta a {d.employee.name} con el Jefe de {d.branch.name}
@@ -163,7 +169,7 @@ export default function Report() {
           );
         })}
       </View>
-      {errors.reason ? <Txt variant="small" style={{ color: color.ink }}>{errors.reason}</Txt> : null}
+      {errors.reason ? <FieldError>{errors.reason}</FieldError> : null}
 
       <TextField
         label="¿Qué pasó?"
@@ -177,11 +183,6 @@ export default function Report() {
         style={{ marginTop: space.xl }}
       />
 
-      {sendError ? (
-        <View style={{ marginTop: space.xl }}>
-          <ErrorNote title="No se envió tu reporte">Hubo un problema con el servidor. Lo que escribiste sigue aquí; intenta de nuevo.</ErrorNote>
-        </View>
-      ) : null}
     </Screen>
   );
 }

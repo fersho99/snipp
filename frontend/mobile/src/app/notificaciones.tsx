@@ -31,10 +31,10 @@ const GROUPS = [['hoy', 'Hoy'], ['ayer', 'Ayer'], ['antes', 'Antes']];
 // States: ?estado=permiso-desactivado | sin-notificaciones | cargando | sin-conexion
 export default function Notifications() {
   const { estado } = useLocalSearchParams<{ estado?: string }>();
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const all = useNotifications();
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
 
   const list = estado === 'sin-notificaciones' ? [] : all;
   const unread = list.filter((n) => !n.read).length;

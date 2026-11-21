@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import useAction, { wait } from '../hooks/useAction';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StarIcon } from 'phosphor-react-native';
 import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
-import TextField from '../components/TextField';
-import { ErrorNote, OfflineState } from '../components/States';
+import TextField, { FieldError } from '../components/TextField';
+import { ErrorScreen, OfflineState } from '../components/States';
 import useConnectivity from '../hooks/useConnectivity';
 import { canReview, describe, submitReview, useAppointment } from '../data/appointments';
 import { color, space, touch } from '../theme/tokens';
@@ -16,25 +17,20 @@ const WORDS = ['', 'Muy mal', 'Mal', 'Regular', 'Bien', 'Excelente'];
 
 // Rate the business (RF-M12): 1 to 5 stars and a review, only after an
 // attended appointment and once per appointment (RN-08).
-// States: ?estado=error-enviar | sin-conexion. Blocked: already rated or not attended.
+// States: ?estado=error-enviar (publishing fails once) | sin-conexion. Blocked: already rated or not attended.
 export default function Rate() {
   const { cita = 'C-10431', estado } = useLocalSearchParams<{ cita?: string; estado?: string }>();
   const appt = useAppointment(cita);
-  const { online, retry, retrying } = useConnectivity(estado === 'sin-conexion');
+  const { online, failure, retry, retrying } = useConnectivity(estado);
   const [stars, setStars] = useState(0);
   const [text, setText] = useState('');
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState(false);
+  const publishing = useAction({ busy: 'Publicando...', done: 'Reseña publicada', failed: 'No se pudo publicar' });
+  const failNext = useRef(estado === 'error-enviar');
 
-  if (!online) return <OfflineState onRetry={retry} retrying={retrying} />;
+  if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
   if (!appt) {
-    return (
-      <Screen>
-        <BackButton />
-        <ErrorNote title={`No encontramos la cita ${cita}`}>Revisa el folio o búscala en Mis citas.</ErrorNote>
-      </Screen>
-    );
+    return <ErrorScreen kind="no-existe" detail={`La cita ${cita} ya no existe o el folio está mal escrito. Revisa tus citas en Mis citas.`} onRetry={retry} retrying={retrying} />;
   }
 
   const d = describe(appt);
@@ -56,29 +52,34 @@ export default function Rate() {
     );
   }
 
-  const send = async () => {
+  const send = () => {
     const e: Record<string, string> = {};
     if (!stars) e.stars = 'Elige de 1 a 5 estrellas.';
     if (!text.trim()) e.text = 'Escribe tu reseña; puede ser corta.';
     setErrors(e);
     if (Object.keys(e).length) return;
-    setSending(true);
-    setSendError(false);
-    await new Promise((r) => setTimeout(r, 900));
-    setSending(false);
-    if (estado === 'error-enviar') {
-      setSendError(true);
-      return;
-    }
-    // Navigate first: once saved, this appointment no longer accepts a review.
-    const target = `/cita/${appt.folio}?aviso=calificada`;
-    if (router.canDismiss?.()) router.dismissTo(target);
-    else router.replace(target);
-    submitReview(appt.folio, { stars, text: text.trim() });
+    publishing.run(async () => {
+      await wait(900);
+      if (failNext.current) {
+        failNext.current = false;
+        return { ok: false, reason: 'No se publicó tu reseña por un problema con el servidor. Lo que escribiste sigue aquí; inténtalo de nuevo.' };
+      }
+      return {
+        ok: true,
+        message: `Listo: tu reseña ya está en la página de ${d.branch.name}`,
+        next: () => {
+          // Navigate first: once saved, this appointment no longer accepts a review.
+          const target = `/cita/${appt.folio}?aviso=calificada`;
+          if (router.canDismiss?.()) router.dismissTo(target);
+          else router.replace(target);
+          submitReview(appt.folio, { stars, text: text.trim() });
+        },
+      };
+    });
   };
 
   return (
-    <Screen footer={<Button label="Publicar reseña" loading={sending} onPress={send} />}>
+    <Screen footer={<Button label="Publicar reseña" {...publishing.button} onPress={send} />}>
       <BackButton />
       <Txt variant="small" style={{ marginTop: space.s }}>{d.branch.name}, folio {appt.folio}</Txt>
       <Txt variant="title" accessibilityRole="header" style={{ marginTop: space.s }}>
@@ -104,7 +105,7 @@ export default function Rate() {
         <Txt variant="label" style={{ marginTop: space.xs, color: stars ? color.ink : color.inkSoft }} accessibilityLiveRegion="polite">
           {stars ? `${stars} de 5: ${WORDS[stars]}` : 'Toca una estrella'}
         </Txt>
-        {errors.stars ? <Txt variant="small" style={{ color: color.ink, marginTop: space.xs }}>{errors.stars}</Txt> : null}
+        {errors.stars ? <View style={{ marginTop: space.xs }}><FieldError>{errors.stars}</FieldError></View> : null}
       </View>
 
       <TextField
@@ -119,11 +120,6 @@ export default function Rate() {
         style={{ marginTop: space.xl }}
       />
 
-      {sendError ? (
-        <View style={{ marginTop: space.xl }}>
-          <ErrorNote title="No se publicó tu reseña">Hubo un problema con el servidor. Lo que escribiste sigue aquí; intenta de nuevo.</ErrorNote>
-        </View>
-      ) : null}
     </Screen>
   );
 }

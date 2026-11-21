@@ -82,7 +82,17 @@ export const NOTICE_ICON: Record<StatusColor, string> = {
   gris: 'text-gris-text',
 }
 
+// Brief highlight of an item that just changed status (lib/flash.ts): a ring
+// in its new color.
+export const FLASH: Record<StatusColor, string> = {
+  verde: 'ring-4 ring-verde/50',
+  ambar: 'ring-4 ring-ambar/60',
+  rojo: 'ring-4 ring-rojo/50',
+  azul: 'ring-4 ring-azul/50',
+  gris: 'ring-4 ring-gris/60',
+}
+
 // White card with the stripe of its status color.
 export function StatusCard({ color, children, className = '' }: { color: StatusColor; children: ReactNode; className?: string }) {
-  return <div className={`rounded-control bg-raised ${STRIPE[color]} ${className}`}>{children}</div>
+  return <div className={`rounded-control border border-divider bg-raised ${STRIPE[color]} ${className}`}>{children}</div>
 }

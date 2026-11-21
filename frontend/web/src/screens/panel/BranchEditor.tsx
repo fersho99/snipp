@@ -1,5 +1,6 @@
 'use client'
 
+import PanelError from '@/components/PanelError'
 import type { Branch, BranchImage, DayHours } from '../../types/domain'
 import type { BranchForm } from '../../services/branches'
 import { useRef, useState } from 'react'
@@ -8,11 +9,10 @@ import { useRouter, useParams } from 'next/navigation'
 import { useQueryState } from '@/lib/navigation'
 import { useBusinessPanel } from '@/components/PanelContext'
 import { ArrowLeft, ImageSquare, PauseCircle, Star, UploadSimple } from '@phosphor-icons/react'
-import { Button, Checkbox, Dialog, Note, TextArea, TextField } from '../../components/ui'
-import { networkMessage, type ApiError } from '../../services/auth'
+import { FieldError, Button, Checkbox, Dialog, Note, TextArea, TextField } from '../../components/ui'
+import useAction from '@/lib/useAction'
 import { createBranch, imageProblem, MAX_IMAGE_MB, saveBranch, setBranchActive } from '../../services/branches'
 import BranchServices from './BranchServices'
-import { toast } from '@/lib/toast'
 import { NOTICE, NOTICE_ICON } from '../../components/status'
 
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -31,13 +31,7 @@ export default function BranchEditor({ mode }: { mode: string }) {
 
   if (mode === 'editar' && !branch) {
     // RNF-W04: a branch of another business, or one that does not exist.
-    return (
-      <div className="max-w-xl">
-        <BackLink />
-        <h1 className="mt-6 text-[28px] font-bold leading-tight">No encontramos esta sucursal</h1>
-        <p className="mt-2">Puede que la dirección esté mal escrita o que la sucursal no sea de {business.name}.</p>
-      </div>
-    )
+    return <PanelError kind="no-existe" detail={`La sucursal no existe o no es de ${business.name}.`} />
   }
 
   const view = params.get('vista') === 'servicios' ? 'servicios' : 'datos'
@@ -104,8 +98,9 @@ function BranchFormView({ businessId, branch }: { businessId: string; branch?: B
   const [form, setForm] = useState<BranchDraft>(() => (branch ? { ...branch, hours: [...branch.hours], images: [...branch.images] } : { ...EMPTY, hours: [...EMPTY.hours] }))
   const [errors, setErrors] = useState<Record<string, string | null | undefined>>({})
   const [imageError, setImageError] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [saving, setSaving] = useState(false)
+  const saving = useAction(branch
+    ? { busy: 'Guardando...', done: 'Guardado', failed: 'No se pudo guardar' }
+    : { busy: 'Registrando...', done: 'Sucursal registrada', failed: 'No se pudo registrar' })
   const [saved, setSaved] = useState(false)
   const addInput = useRef<HTMLInputElement>(null)
 
@@ -162,23 +157,16 @@ function BranchFormView({ businessId, branch }: { businessId: string; branch?: B
     if (badDay >= 0) next.hours = `Revisa el ${DAYS[badDay].toLowerCase()}: la hora de cierre debe ser después de la de apertura.`
     else if (form.hours.every((h) => !h)) next.hours = 'Marca al menos un día abierto; sin horario no se pueden reservar citas.'
     setErrors(next)
-    setFailure(null)
     if (Object.keys(next).length) return
-    setSaving(true)
+    setSaved(false)
     const data = { name: form.name.trim(), address: form.address.trim(), phone: form.phone.trim(), description: form.description.trim(), hours: form.hours, images: form.images, coverId: form.coverId }
-    try {
-      if (branch) {
-        await saveBranch(businessId, branch.id, data)
-        setSaved(true)
-        setImageError(null)
-      } else {
-        const created = await createBranch(businessId, data)
-        router.replace(`/panel/sucursales/${created.id}?vista=servicios&creada=1`)
-      }
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setSaving(false)
+    if (branch) {
+      saving.run(() => saveBranch(businessId, branch.id, data), { onDone: () => { setSaved(true); setImageError(null) } })
+    } else {
+      saving.run(() => createBranch(businessId, data), {
+        success: `Registraste ${data.name}. Ahora agrega sus servicios.`,
+        onDone: (created) => router.replace(`/panel/sucursales/${created.id}?vista=servicios&creada=1`),
+      })
     }
   }
 
@@ -218,7 +206,7 @@ function BranchFormView({ businessId, branch }: { businessId: string; branch?: B
           )
         })}
       </div>
-      {errors.hours ? <p className="mt-3 text-sm font-medium" role="alert">{errors.hours}</p> : null}
+      {errors.hours ? <FieldError className="mt-3">{errors.hours}</FieldError> : null}
 
       <h2 className="mt-12 text-lg font-semibold">Fotos</h2>
       <p className="mt-1 text-sm text-ink-soft">JPG o PNG de hasta {MAX_IMAGE_MB} MB. La portada es la primera foto que ven los clientes.</p>
@@ -270,9 +258,8 @@ function BranchFormView({ businessId, branch }: { businessId: string; branch?: B
       {imageError ? <div className="mt-4"><Note title="Algunas fotos no se agregaron">{imageError}</Note></div> : null}
 
       <div className="mt-12 flex flex-col gap-4">
-        {failure ? <Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note> : null}
         {saved ? <Note tone="done" title="Cambios guardados. Ya se ven en la app." /> : null}
-        <Button type="submit" loading={saving} className="self-start">{branch ? 'Guardar cambios' : 'Registrar sucursal'}</Button>
+        <Button type="submit" {...saving.button} className="self-start">{branch ? 'Guardar cambios' : 'Registrar sucursal'}</Button>
       </div>
     </form>
   )
@@ -286,7 +273,7 @@ function TimeInput({ label, value, onChange }: { label: string; value: string; o
       value={value}
       step={900}
       onChange={(e) => onChange(e.target.value)}
-      className="tabular min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft focus:bg-raised"
+      className="tabular min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft focus:bg-raised"
     />
   )
 }
@@ -295,21 +282,11 @@ function TimeInput({ label, value, onChange }: { label: string; value: string; o
 // nothing is deleted and booked appointments are kept.
 function Deactivate({ businessId, branch }: { businessId: string; branch: Branch }) {
   const [open, setOpen] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const confirm = async () => {
-    setBusy(true)
-    setFailure(null)
-    try {
-      await setBranchActive(businessId, branch.id, false)
-      setOpen(false)
-      toast(`Desactivaste ${branch.name}. Ya no aparece en la app; sus datos se conservan.`)
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(false)
-    }
-  }
+  const deactivating = useAction({ busy: 'Desactivando...', done: 'Sucursal desactivada', failed: 'No se pudo desactivar' })
+  const confirm = () => deactivating.run(() => setBranchActive(businessId, branch.id, false), {
+    success: `Desactivaste ${branch.name}. Ya no aparece en la app; sus datos se conservan.`,
+    onDone: () => setOpen(false),
+  })
   return (
     <section className="mt-16 border-t border-divider pt-8" aria-labelledby="desactivar">
       <h2 id="desactivar" className="text-lg font-semibold">Desactivar sucursal</h2>
@@ -321,8 +298,8 @@ function Deactivate({ businessId, branch }: { businessId: string; branch: Branch
         title={`¿Desactivar ${branch.name}?`}
         actions={
           <>
-            <Button variant="secondary" onClick={() => setOpen(false)}>No, dejarla activa</Button>
-            <Button onClick={confirm} loading={busy}>Sí, desactivar</Button>
+            <Button variant="secondary" onClick={() => setOpen(false)} disabled={deactivating.busy}>No, dejarla activa</Button>
+            <Button {...deactivating.button} onClick={confirm}>Sí, desactivar</Button>
           </>
         }
       >
@@ -332,27 +309,16 @@ function Deactivate({ businessId, branch }: { businessId: string; branch: Branch
             ? `Tiene ${branch.upcoming === 1 ? '1 cita agendada' : `${branch.upcoming} citas agendadas`} a partir de hoy. Se respetan; si necesitas cancelar alguna, hazlo desde la Agenda y el cliente recibe el aviso.`
             : 'No tiene citas agendadas a partir de hoy.'}
         </p>
-        {failure ? <Note title={networkMessage(failure).title}>No se desactivó la sucursal. Intenta de nuevo.</Note> : null}
       </Dialog>
     </section>
   )
 }
 
 function Inactive({ businessId, branch }: { businessId: string; branch: Branch }) {
-  const [busy, setBusy] = useState(false)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const reactivate = async () => {
-    setBusy(true)
-    setFailure(null)
-    try {
-      await setBranchActive(businessId, branch.id, true)
-      toast(`Reactivaste ${branch.name}. Ya aparece otra vez en la app.`)
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(false)
-    }
-  }
+  const reactivating = useAction({ busy: 'Reactivando...', done: 'Sucursal reactivada', failed: 'No se pudo reactivar' })
+  const reactivate = () => reactivating.run(() => setBranchActive(businessId, branch.id, true), {
+    success: `Reactivaste ${branch.name}. Ya aparece otra vez en la app.`,
+  })
   return (
     <div className={`mt-6 flex flex-col gap-3 rounded-control px-5 py-4 sm:flex-row sm:items-center sm:justify-between ${NOTICE.gris}`} role="status">
       <div className="flex gap-3">
@@ -360,10 +326,9 @@ function Inactive({ businessId, branch }: { businessId: string; branch: Branch }
         <div>
           <p className="font-semibold">Esta sucursal está desactivada</p>
           <p className="text-sm">No aparece en la app ni recibe reservas nuevas. Al reactivarla vuelve con sus datos, fotos y servicios como estaban.</p>
-          {failure ? <p className="mt-1 text-sm font-medium" role="alert">{networkMessage(failure).title}. Intenta de nuevo.</p> : null}
         </div>
       </div>
-      <Button onClick={reactivate} loading={busy} className="shrink-0">Reactivar sucursal</Button>
+      <Button {...reactivating.button} onClick={reactivate} className="shrink-0">Reactivar sucursal</Button>
     </div>
   )
 }

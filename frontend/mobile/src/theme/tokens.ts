@@ -1,22 +1,23 @@
 import type { TextStyle } from 'react-native';
 
-// SNIPP design tokens. The interface is grayscale (photos keep their own
-// color) plus the five status colors of SRS v1.2, section 4.1 (see `status`
-// below). They replace the three colors of 17/11/2026. No state is told
+// SNIPP design tokens. Base of SRS v1.2, section 4.1: white background,
+// light gray surfaces (#F5F5F5), borders #E3E3E3, main text #111111,
+// secondary text #6B6B6B and black primary buttons (photos keep their own
+// color), plus the five status colors (see `status` below). No state is told
 // apart by color alone: each one pairs an icon with explicit text (RN-19).
-// Contrast (WCAG): ink on paper 16.9, inkSoft on paper 6.4, on sunken 5.7.
+// Contrast (WCAG): ink on paper 18.9, inkSoft on paper 5.3, on sunken 4.9.
 
 export const color = {
-  paper: '#F5F5F5', // screen background
-  raised: '#FFFFFF', // sheets, modals, tab bar
-  sunken: '#E8E8E8', // grouping without borders, fields, secondary button
-  sunkenPressed: '#DADADA',
-  ink: '#141414', // main text, primary button, icons, selection
+  paper: '#FFFFFF', // screen background
+  raised: '#FFFFFF', // cards (with a divider border), sheets, modals, tab bar
+  sunken: '#F5F5F5', // light gray surfaces: grouping, fields, secondary button
+  sunkenPressed: '#EBEBEB',
+  ink: '#111111', // main text, primary button, icons, selection
   inkPressed: '#333333',
-  inkSoft: '#595959', // secondary text; never lighter than this for text
+  inkSoft: '#6B6B6B', // secondary text; never lighter than this for text
   grayLogo: '#7A7A7A', // decoration or text 24 px and up only (3.9:1)
   grayLight: '#BDBDBD', // decoration only (switch track off, dividers)
-  divider: '#DCDCDC', // 1 px between rows of dense web tables only
+  divider: '#E3E3E3', // borders of cards, fields and secondary buttons
   white: '#FFFFFF',
   scrim: 'rgba(20,20,20,0.5)',
 };

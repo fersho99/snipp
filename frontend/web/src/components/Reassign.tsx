@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Note } from './ui'
-import { networkMessage, type ApiError } from '../services/auth'
+import { Button } from './ui'
+import useAction from '@/lib/useAction'
 import { proposalsFor, resolveAppointments, useStaffStore, type Decision, type ReassignMode, type ResolveResult, type StaffMember } from '../services/staff'
 import { longDate, timeOfDay } from '../theme'
 
@@ -16,8 +16,9 @@ export default function Reassign({ employee, name, mode, onDone, onCancel }: Rea
   const s = useStaffStore()
   const rows = proposalsFor(s, employee.id, mode)
   const [choice, setChoice] = useState<Record<string, Decision>>(() => Object.fromEntries(rows.map((r) => [r.appt.folio, r.proposal])))
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
+  const saving = useAction(mode === 'migracion'
+    ? { busy: 'Guardando...', done: 'Cambios guardados', failed: 'No se pudo guardar' }
+    : { busy: 'Desvinculando...', done: 'Desvinculado', failed: 'No se pudo desvincular' })
   const first = name.split(' ')[0]
   const nameOf = (id: string) => s.profiles[s.staff[id]?.email]?.displayName ?? s.staff[id]?.name ?? ''
 
@@ -27,17 +28,7 @@ export default function Reassign({ employee, name, mode, onDone, onCancel }: Rea
     counts[c === 'mismo' || c === 'cancelar' ? c : 'otro']++
   }
 
-  const confirm = async () => {
-    setBusy(true)
-    setFailure(null)
-    try {
-      const result = await resolveAppointments(employee.id, choice, mode)
-      onDone(result)
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(false)
-    }
-  }
+  const confirm = () => saving.run(() => resolveAppointments(employee.id, choice, mode), { onDone })
 
   return (
     <div className="mt-3">
@@ -65,7 +56,7 @@ export default function Reassign({ employee, name, mode, onDone, onCancel }: Rea
                       id={id}
                       value={value}
                       onChange={(e) => setChoice((c) => ({ ...c, [appt.folio]: e.target.value }))}
-                      className="min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft"
+                      className="min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft"
                     >
                       {free.map((fid) => <option key={fid} value={fid}>Pasarla a {nameOf(fid)} (libre)</option>)}
                       {mode === 'migracion' && !free.length ? <option value="mismo">La atiende {first}</option> : null}
@@ -88,12 +79,11 @@ export default function Reassign({ employee, name, mode, onDone, onCancel }: Rea
       ) : (
         <p className="text-ink-soft">{first} no tiene citas agendadas a partir de hoy.</p>
       )}
-      {failure ? <div className="mt-4"><Note title={networkMessage(failure).title}>No se guardaron los cambios. Intenta de nuevo.</Note></div> : null}
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        <Button onClick={confirm} loading={busy}>
+        <Button {...saving.button} onClick={confirm}>
           {mode === 'migracion' ? 'Confirmar' : `Desvincular a ${name}`}
         </Button>
-        {onCancel ? <Button variant="secondary" onClick={onCancel}>Cancelar</Button> : null}
+        {onCancel ? <Button variant="secondary" onClick={onCancel} disabled={saving.busy}>Cancelar</Button> : null}
       </div>
     </div>
   )

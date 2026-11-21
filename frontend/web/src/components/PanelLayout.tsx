@@ -6,11 +6,12 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { Navigate } from '@/lib/navigation'
 import { PanelContext } from './PanelContext'
 import { List, SignOut, X, type Icon } from '@phosphor-icons/react'
-import { Button, Logo, Note, Skeleton } from './ui'
+import { Logo, Skeleton } from './ui'
 import SubscriptionNotice from './SubscriptionNotice'
+import PanelError from './PanelError'
 import { accounts, ROLE_LABEL } from '../data/demo'
 import { navFor } from '../data/nav'
-import { currentSession, devSignIn, networkMessage, type ApiError } from '../services/auth'
+import { currentSession, devSignIn, type ApiError } from '../services/auth'
 import { useReportsStore } from '../services/reports'
 import { useShopStore } from '../services/shop'
 import { useStaffStore } from '../services/staff'
@@ -59,6 +60,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [failure, setFailure] = useState<ApiError | null>(null)
   const [branchId, setBranchId] = useState(getPickedBranch())
   const [attempt, setAttempt] = useState(0)
+  const [timedOut, setTimedOut] = useState(false)
   // The drawer belongs to the page where it was opened: moving to another
   // section closes it.
   const [menuAt, setMenuAt] = useState<string | null>(null)
@@ -78,8 +80,16 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       .catch(setFailure)
   }, [session, attempt])
 
+  // RF-W29: "Esto tardó demasiado" after 15 seconds without an answer.
+  useEffect(() => {
+    if (!session || data || failure || timedOut) return
+    const t = setTimeout(() => setTimedOut(true), 15000)
+    return () => clearTimeout(t)
+  }, [session, data, failure, timedOut, attempt])
+
   const retry = () => {
     setFailure(null)
+    setTimedOut(false)
     setData(null)
     setAttempt((n) => n + 1)
   }
@@ -134,7 +144,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[272px_minmax(0,1fr)]">
       {/* Desktop: fixed column */}
-      <aside className="hidden border-r border-divider bg-raised lg:sticky lg:top-0 lg:block lg:h-dvh lg:overflow-y-auto">
+      <aside className="hidden border-r border-divider bg-sunken lg:sticky lg:top-0 lg:block lg:h-dvh lg:overflow-y-auto">
         {sidebar}
       </aside>
 
@@ -157,12 +167,12 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       {menuOpen ? (
         <div className="fixed inset-0 z-30 lg:hidden" role="dialog" aria-modal="true" aria-label="Menú del panel" onKeyDown={(e) => e.key === 'Escape' && setMenuOpen(false)}>
           <button type="button" className="absolute inset-0 bg-ink/40" aria-label="Cerrar menú" onClick={() => setMenuOpen(false)} />
-          <aside id="panel-menu" className="relative h-full w-[min(320px,88vw)] overflow-y-auto bg-raised">
+          <aside id="panel-menu" className="relative h-full w-[min(320px,88vw)] overflow-y-auto bg-sunken">
             <button
               type="button"
               autoFocus
               onClick={() => setMenuOpen(false)}
-              className="absolute right-3 top-4 flex size-11 items-center justify-center rounded-control hover:bg-sunken"
+              className="absolute right-3 top-4 flex size-11 items-center justify-center rounded-control hover:bg-sunken-pressed"
               aria-label="Cerrar menú"
             >
               <X size={22} />
@@ -173,14 +183,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       ) : null}
 
       <main className="min-w-0 px-4 py-6 sm:px-8 lg:px-12 lg:py-10">
-        {failure ? (
-          <div className="max-w-xl">
-            <Note title={networkMessage(failure).title} action={<Button variant="secondary" className="mt-3 self-start" onClick={retry}>Reintentar</Button>}>
-              {failure.code === 'offline'
-                ? 'SNIPP necesita internet para mostrar tu panel. Revisa tu conexión y vuelve a intentar.'
-                : 'No pudimos cargar tu panel. Intenta de nuevo en un momento.'}
-            </Note>
-          </div>
+        {failure || timedOut ? (
+          <PanelError kind={timedOut ? 'tiempo' : failure?.code === 'offline' ? 'sin-conexion' : 'servidor'} onRetry={retry} />
         ) : !ready ? (
           <div className="flex max-w-3xl flex-col gap-4" aria-busy="true" aria-label="Cargando tu panel">
             <Skeleton className="h-8 w-64" />
@@ -269,7 +273,7 @@ function Sidebar({ session, business, branches, activeBranch, onPickBranch, read
         <button
           type="button"
           onClick={onExit}
-          className="-mx-3 mt-3 flex min-h-11 items-center gap-3 rounded-control px-3 text-[15px] font-medium hover:bg-sunken"
+          className="-mx-3 mt-3 flex min-h-11 items-center gap-3 rounded-control px-3 text-[15px] font-medium hover:bg-sunken-pressed"
         >
           <SignOut size={20} aria-hidden="true" />
           Cerrar sesión
@@ -299,7 +303,7 @@ function BranchPicker({ branches, active, onPick }: { branches: Branch[]; active
         id={id}
         value={active?.id}
         onChange={(e) => onPick(e.target.value)}
-        className="min-h-11 w-full rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] font-medium text-ink outline-none focus:border-ink-soft"
+        className="min-h-11 w-full rounded-control border border-divider bg-raised px-3 text-[15px] font-medium text-ink outline-none focus:border-ink-soft"
       >
         {branches.map((b) => (
           <option key={b.id} value={b.id}>
@@ -314,14 +318,15 @@ function BranchPicker({ branches, active, onPick }: { branches: Branch[]; active
 type Badge = { count: number; tone: 'rojo' | 'gris'; noun: [string, string] }
 type Badges = Partial<Record<string, Badge>>
 
+// SRS v1.2, 4.2.2: on the light gray menu, the active section goes in black
+// with white text.
 function NavItem({ href, active, label, Icon, badge }: { href: string; active: boolean; label: string; Icon: Icon; badge?: Badge }) {
   return (
     <Link
       href={href}
       aria-current={active ? 'page' : undefined}
-      className={`relative flex min-h-11 items-center gap-3 rounded-control px-3 text-[15px] transition-colors hover:bg-sunken ${active ? 'bg-sunken font-semibold text-ink' : 'text-ink'}`}
+      className={`relative flex min-h-11 items-center gap-3 rounded-control px-3 text-[15px] transition-colors ${active ? 'bg-ink font-semibold text-white' : 'text-ink hover:bg-sunken-pressed'}`}
     >
-      {active ? <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-ink" aria-hidden="true" /> : null}
       <Icon size={20} weight={active ? 'fill' : 'regular'} aria-hidden="true" />
       {label}
       {/* RF-W14 and RF-W21: new reports (red) and orders to prepare (gray) */}

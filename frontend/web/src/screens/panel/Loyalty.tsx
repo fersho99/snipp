@@ -5,7 +5,7 @@ import type { LoyaltyRules } from '../../services/shop'
 import { useState } from 'react'
 import { useBusinessPanel } from '@/components/PanelContext'
 import { Button, Note, TextField } from '../../components/ui'
-import { networkMessage, type ApiError } from '../../services/auth'
+import useAction from '@/lib/useAction'
 import { loyaltyFor, saveLoyalty, useShopStore } from '../../services/shop'
 import { money } from '../../theme'
 
@@ -28,8 +28,7 @@ function Form({ business, rules }: { business: Business; rules: LoyaltyRules }) 
     redeem: String(rules.pesosPerPointRedeemed),
   })
   const [errors, setErrors] = useState<Record<string, string | null | undefined>>({})
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
+  const saving = useAction({ busy: 'Guardando...', done: 'Reglas guardadas', failed: 'No se pudo guardar' })
   const [saved, setSaved] = useState(false)
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => { setForm((f) => ({ ...f, [k]: e.target.value })); setErrors((x) => ({ ...x, [k]: undefined })); setSaved(false) }
   const num = (v: string) => Number(String(v).replace(/[$,\s]/g, ''))
@@ -42,17 +41,8 @@ function Form({ business, rules }: { business: Business; rules: LoyaltyRules }) 
     if (!ok(form.buy)) next.buy = 'Escribe un monto en pesos mayor que cero.'
     if (!ok(form.redeem)) next.redeem = 'Escribe un monto en pesos mayor que cero.'
     setErrors(next)
-    setFailure(null)
     if (Object.keys(next).length) return
-    setBusy(true)
-    try {
-      await saveLoyalty(business.id, { pesosPerPointAppointments: num(form.appt), pesosPerPointPurchases: num(form.buy), pesosPerPointRedeemed: num(form.redeem) })
-      setSaved(true)
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(false)
-    }
+    saving.run(() => saveLoyalty(business.id, { pesosPerPointAppointments: num(form.appt), pesosPerPointPurchases: num(form.buy), pesosPerPointRedeemed: num(form.redeem) }), { onDone: () => setSaved(true) })
   }
 
   // Live examples with the values being typed.
@@ -79,9 +69,8 @@ function Form({ business, rules }: { business: Business; rules: LoyaltyRules }) 
         <p className="mt-3 text-sm text-ink-soft">Los puntos no sirven para pagar citas: las citas se pagan en la sucursal.</p>
 
         <div className="mt-10 flex flex-col gap-4">
-          {failure ? <Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note> : null}
           {saved ? <Note tone="done" title="Reglas guardadas. Las próximas compras y citas ya suman con estos valores." /> : null}
-          <Button type="submit" loading={busy} className="self-start">Guardar reglas</Button>
+          <Button type="submit" {...saving.button} className="self-start">Guardar reglas</Button>
         </div>
       </form>
     </div>

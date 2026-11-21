@@ -7,7 +7,7 @@ import { useBusinessPanel } from '@/components/PanelContext'
 import { Circle, LockSimple, RadioButton } from '@phosphor-icons/react'
 import { Button, Dialog, Note } from '../../components/ui'
 import { STRIPE, StatusTag, type Status } from '../../components/status'
-import { networkMessage, type ApiError } from '../../services/auth'
+import useAction from '@/lib/useAction'
 import { subscriptionStatus } from '../../services/panel'
 import { paySubscription, useSubscriptionsStore } from '../../services/subscriptions'
 import { addMonths, longDate, money } from '../../theme'
@@ -53,7 +53,7 @@ export default function Subscription() {
       ) : null}
 
       {/* Where it stands */}
-      <section className={`mt-8 flex flex-col gap-2 rounded-control bg-raised p-5 ${STRIPE[subStatus.color]}`} aria-labelledby="estado-sub">
+      <section className={`mt-8 flex flex-col gap-2 rounded-control border border-divider bg-raised p-5 ${STRIPE[subStatus.color]}`} aria-labelledby="estado-sub">
         <StatusTag status={subStatus} className="self-start" />
         <div>
           <h2 id="estado-sub" className="text-lg font-semibold">
@@ -163,35 +163,20 @@ export default function Subscription() {
 // Stand-in for Stripe's payment form: in production this step opens Stripe
 // (Payment Element) and the card data never touches SNIPP.
 function PayDialog({ business, plan, onClose, onDone }: { business: Business; plan: Plan; onClose: () => void; onDone: (r: PaymentResult) => void }) {
-  const [busy, setBusy] = useState(false)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const pay = async () => {
-    setBusy(true)
-    setFailure(null)
-    try {
-      onDone(await paySubscription(business.id, plan.id))
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(false)
-    }
-  }
+  const paying = useAction({ busy: 'Pagando...', done: 'Pagado', failed: 'No se pudo pagar' })
+  const pay = () => paying.run(() => paySubscription(business.id, plan.id), { onDone })
   return (
     <Dialog
       open
       onClose={onClose}
       title={`Pagar plan ${plan.name}`}
-      actions={<><Button variant="secondary" onClick={onClose}>Cancelar</Button><Button onClick={pay} loading={busy}>Pagar {money(plan.price)}</Button></>}
+      actions={<><Button variant="secondary" onClick={onClose} disabled={paying.busy}>Cancelar</Button><Button {...paying.button} onClick={pay}>Pagar {money(plan.price)}</Button></>}
     >
       <p>{money(plan.price)} {duration(plan.months)} para {business.name}.</p>
       <div className="rounded-control bg-sunken p-4 text-sm">
         <p className="font-semibold">Formulario de pago de Stripe</p>
         <p className="mt-1 text-ink-soft">Aquí aparece el formulario seguro de Stripe para la tarjeta. En la plantilla el pago se simula en modo de prueba.</p>
       </div>
-      {failure ? (
-        <Note title={failure.code === 'card' ? 'La tarjeta fue rechazada' : networkMessage(failure).title}>
-          {failure.code === 'card' ? 'Stripe no aprobó el pago y no se cobró nada. Prueba con otra tarjeta.' : 'No se completó el pago y no se cobró nada. Intenta de nuevo.'}
-        </Note>
-      ) : null}
     </Dialog>
   )
 }

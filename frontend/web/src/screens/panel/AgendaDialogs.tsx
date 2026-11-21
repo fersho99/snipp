@@ -1,11 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Button, Dialog, Note, TextField } from '../../components/ui'
+import { FieldError, Button, Dialog, Note, TextField } from '../../components/ui'
+import useAction, { type ActionButton } from '@/lib/useAction'
+import { markChanged } from '@/lib/flash'
 import { apptStatus } from './agendaIcons'
 import { StatusTag } from '../../components/status'
 import { DEMO_TODAY } from '../../data/demo'
-import { networkMessage, type ApiError } from '../../services/auth'
 import {
   addBlock, appointmentsInside, cancelAll, canManage, freeTimes, hasStarted, needsStarted, reassign, reassignAll, reschedule, SETTABLE, setStatus, STATUS,
 } from '../../services/agenda'
@@ -17,7 +18,7 @@ import type { StaffMember, StaffState } from '../../services/staff'
 type NameOf = (id: string) => string
 type Notice = { title: string; body: string }
 
-const selectCls = 'min-h-11 w-full rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
+const selectCls = 'min-h-11 w-full rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
 const FIELD = 'flex flex-col gap-1.5'
 
 // One appointment: details and, for whoever may manage it (RN-03), change
@@ -29,31 +30,26 @@ export function AppointmentDialog({ session, appt, nameOf, onClose }: { session:
   const isJefe = session.role === 'jefe'
   const [mode, setMode] = useState<'estado' | 'reagendar' | 'reasignar' | 'cancelar' | null>(null)
   const [done, setDone] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
   const active = isUpcoming(appt)
   const first = appt.client.split(' ')[0]
+  // RNF-W07: loading, then green or red, for each way of changing the appointment.
+  const action = useAction(ACTION_LABELS[mode ?? 'estado'])
 
-  const run = async (fn: () => Promise<unknown>, message: string) => {
-    setBusy(true)
-    setFailure(null)
-    try {
-      await fn()
-      setDone(message)
-      setMode(null)
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(false)
-    }
+  // On closing, the block that changed is highlighted with its new color.
+  const close = () => {
+    if (done) markChanged(appt.folio)
+    onClose()
   }
+
+  const run = (fn: () => Promise<unknown>, message: string) =>
+    action.run(fn, { onDone: () => { setDone(message); setMode(null) } })
 
   return (
     <Dialog
       open
-      onClose={onClose}
+      onClose={close}
       title={`${appt.service} con ${nameOf(appt.employeeId)}`}
-      actions={<Button variant="secondary" onClick={onClose}>Cerrar</Button>}
+      actions={<Button variant="secondary" onClick={close}>Cerrar</Button>}
     >
       <dl className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-1.5 text-[15px]">
         <dt className="text-ink-soft">Cuándo</dt>
@@ -70,23 +66,22 @@ export function AppointmentDialog({ session, appt, nameOf, onClose }: { session:
       {appt.status === 'cambio' ? <p className="text-sm">Le avisamos del cambio a {first}; puede aceptarlo, reagendar o cancelar desde la app.</p> : null}
 
       {done ? <Note tone="done" title={done}>Le avisamos a {first} por notificación.</Note> : null}
-      {failure ? <Note title={networkMessage(failure).title}>No se guardó el cambio. Intenta de nuevo.</Note> : null}
 
       {!manage ? (
         <p className="text-sm text-ink-soft">Solo puedes gestionar tus propias citas.</p>
       ) : mode === 'estado' ? (
-        <StatusForm appt={appt} busy={busy} onCancel={() => setMode(null)} onSave={(st) => run(() => setStatus(session, appt.folio, st), `La cita quedó como «${STATUS[st]}».`)} />
+        <StatusForm appt={appt} action={action.button} onCancel={() => setMode(null)} onSave={(st) => run(() => setStatus(session, appt.folio, st), `La cita quedó como «${STATUS[st]}».`)} />
       ) : mode === 'reagendar' ? (
-        <RescheduleForm store={s} appt={appt} busy={busy} onCancel={() => setMode(null)} onSave={(at) => run(() => reschedule(session, appt.folio, at), `Reagendaste la cita al ${longDate(at)}, ${timeOfDay(at)}.`)} />
+        <RescheduleForm store={s} appt={appt} action={action.button} onCancel={() => setMode(null)} onSave={(at) => run(() => reschedule(session, appt.folio, at), `Reagendaste la cita al ${longDate(at)}, ${timeOfDay(at)}.`)} />
       ) : mode === 'reasignar' ? (
-        <ReassignForm store={s} appt={appt} nameOf={nameOf} busy={busy} onCancel={() => setMode(null)} onSave={(id) => run(() => reassign(appt.folio, id), `La cita pasó a ${nameOf(id)}.`)} />
+        <ReassignForm store={s} appt={appt} nameOf={nameOf} action={action.button} onCancel={() => setMode(null)} onSave={(id) => run(() => reassign(appt.folio, id), `La cita pasó a ${nameOf(id)}.`)} />
       ) : mode === 'cancelar' ? (
         <div className="flex flex-col gap-3 rounded-control bg-sunken p-4">
           <p className="font-semibold">¿Cancelar la cita de {first}?</p>
           <p className="text-sm">El horario queda libre en la app y {first} recibe el aviso.</p>
           <div className="flex gap-3">
-            <Button onClick={() => run(() => setStatus(session, appt.folio, 'cancelada'), 'Cancelaste la cita.')} loading={busy}>Sí, cancelar</Button>
-            <Button variant="secondary" onClick={() => setMode(null)}>No</Button>
+            <Button {...action.button} onClick={() => run(() => setStatus(session, appt.folio, 'cancelada'), 'Cancelaste la cita.')}>Sí, cancelar</Button>
+            <Button variant="secondary" onClick={() => setMode(null)} disabled={action.busy}>No</Button>
           </div>
         </div>
       ) : (
@@ -101,8 +96,15 @@ export function AppointmentDialog({ session, appt, nameOf, onClose }: { session:
   )
 }
 
-type FormProps = { appt: Appointment; busy: boolean; onCancel: () => void }
-function StatusForm({ appt, busy, onSave, onCancel }: FormProps & { onSave: (st: AppointmentStatus) => void }) {
+const ACTION_LABELS = {
+  estado: { busy: 'Guardando...', done: 'Estado guardado', failed: 'No se pudo guardar' },
+  reagendar: { busy: 'Reagendando...', done: 'Cita reagendada', failed: 'No se pudo reagendar' },
+  reasignar: { busy: 'Pasando la cita...', done: 'Cita reasignada', failed: 'No se pudo reasignar' },
+  cancelar: { busy: 'Cancelando...', done: 'Cita cancelada', failed: 'No se pudo cancelar' },
+}
+
+type FormProps = { appt: Appointment; action: ActionButton; onCancel: () => void }
+function StatusForm({ appt, action, onSave, onCancel }: FormProps & { onSave: (st: AppointmentStatus) => void }) {
   const [value, setValue] = useState<AppointmentStatus>(appt.status === 'cambio' ? 'confirmada' : appt.status)
   const started = hasStarted(appt)
   return (
@@ -117,8 +119,8 @@ function StatusForm({ appt, busy, onSave, onCancel }: FormProps & { onSave: (st:
       </div>
       {!started ? <p className="text-sm">«Atendida», «No asistió» y «Empleado no se presentó» se marcan cuando llega la hora de la cita.</p> : null}
       <div className="flex gap-3">
-        <Button onClick={() => onSave(value)} loading={busy} disabled={value === appt.status}>Guardar estado</Button>
-        <Button variant="secondary" onClick={onCancel}>Cancelar</Button>
+        <Button {...action} onClick={() => onSave(value)} disabled={value === appt.status}>Guardar estado</Button>
+        <Button variant="secondary" onClick={onCancel} disabled={action.loading || !!action.result}>Cancelar</Button>
       </div>
     </div>
   )
@@ -126,7 +128,7 @@ function StatusForm({ appt, busy, onSave, onCancel }: FormProps & { onSave: (st:
 
 // RF-W18: the business reschedules without the clients' minimum notice;
 // only free times of that Empleado are offered (RN-01).
-function RescheduleForm({ store, appt, busy, onSave, onCancel }: FormProps & { store: StaffState; onSave: (at: Date) => void }) {
+function RescheduleForm({ store, appt, action, onSave, onCancel }: FormProps & { store: StaffState; onSave: (at: Date) => void }) {
   const [day, setDay] = useState(toInputDate(appt.start < DEMO_TODAY ? DEMO_TODAY : appt.start))
   const date = fromInputDate(day)
   const times = useMemo(() => (date ? freeTimes(store, appt, appt.employeeId, date) : []), [store, appt, date])
@@ -149,15 +151,15 @@ function RescheduleForm({ store, appt, busy, onSave, onCancel }: FormProps & { s
       </div>
       {!times.length && date ? <p className="text-sm">Ese día el Empleado no trabaja, está bloqueado o ya no tiene horas libres para {appt.minutes} minutos.</p> : null}
       <div className="flex gap-3">
-        <Button onClick={() => chosen && onSave(chosen)} loading={busy} disabled={!chosen}>Reagendar</Button>
-        <Button variant="secondary" onClick={onCancel}>Cancelar</Button>
+        <Button {...action} onClick={() => chosen && onSave(chosen)} disabled={!chosen}>Reagendar</Button>
+        <Button variant="secondary" onClick={onCancel} disabled={action.loading || !!action.result}>Cancelar</Button>
       </div>
     </div>
   )
 }
 
 // RF-W16: one appointment to another Empleado free at that time.
-function ReassignForm({ store, appt, nameOf, busy, onSave, onCancel }: FormProps & { store: StaffState; nameOf: NameOf; onSave: (id: string) => void }) {
+function ReassignForm({ store, appt, nameOf, action, onSave, onCancel }: FormProps & { store: StaffState; nameOf: NameOf; onSave: (id: string) => void }) {
   const free = Object.keys(store.staff).filter((id) => id !== appt.employeeId && isFree(store, id, appt))
   const [to, setTo] = useState(free[0] ?? '')
   return (
@@ -173,8 +175,8 @@ function ReassignForm({ store, appt, nameOf, busy, onSave, onCancel }: FormProps
         <p className="text-sm">Nadie más de la sucursal está libre a esa hora. Puedes reagendarla o cancelarla.</p>
       )}
       <div className="flex gap-3">
-        <Button onClick={() => onSave(to)} loading={busy} disabled={!to}>Pasar cita</Button>
-        <Button variant="secondary" onClick={onCancel}>Cancelar</Button>
+        <Button {...action} onClick={() => onSave(to)} disabled={!to}>Pasar cita</Button>
+        <Button variant="secondary" onClick={onCancel} disabled={action.loading || !!action.result}>Cancelar</Button>
       </div>
     </div>
   )
@@ -185,8 +187,7 @@ export function BulkReassignDialog({ from, people, nameOf, onClose, onDone }: { 
   const s = useStaffStore()
   const targets = people.filter((e) => e.id !== from.id && e.status === 'activo')
   const [to, setTo] = useState(targets[0]?.id ?? '')
-  const [busy, setBusy] = useState(false)
-  const [failure, setFailure] = useState<ApiError | null>(null)
+  const action = useAction({ busy: 'Reasignando...', done: 'Citas reasignadas', failed: 'No se pudo reasignar' })
   const list = s.appointments.filter((a) => a.employeeId === from.id && isUpcoming(a)).sort((a, b) => a.start.getTime() - b.start.getTime())
 
   // Preview: walk them in order, as the API does, so two can't take the same slot.
@@ -204,20 +205,12 @@ export function BulkReassignDialog({ from, people, nameOf, onClose, onDone }: { 
     return { ok, conflicts }
   }, [s, to, list])
 
-  const confirm = async () => {
-    setBusy(true)
-    setFailure(null)
-    try {
-      const r = await reassignAll(from.id, to)
-      onDone({
-        title: `${r.moved} ${r.moved === 1 ? 'cita pasó' : 'citas pasaron'} de ${nameOf(from.id)} a ${nameOf(to)}`,
-        body: `Cada cliente recibió el aviso.${r.conflicts.length ? ` ${r.conflicts.length} ${r.conflicts.length === 1 ? 'se quedó' : 'se quedaron'} con ${nameOf(from.id)} porque ${nameOf(to)} no está libre a esa hora; cámbialas una por una.` : ''}`,
-      })
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(false)
-    }
-  }
+  const confirm = () => action.run(() => reassignAll(from.id, to), {
+    onDone: (r) => onDone({
+      title: `${r.moved} ${r.moved === 1 ? 'cita pasó' : 'citas pasaron'} de ${nameOf(from.id)} a ${nameOf(to)}`,
+      body: `Cada cliente recibió el aviso.${r.conflicts.length ? ` ${r.conflicts.length} ${r.conflicts.length === 1 ? 'se quedó' : 'se quedaron'} con ${nameOf(from.id)} porque ${nameOf(to)} no está libre a esa hora; cámbialas una por una.` : ''}`,
+    }),
+  })
 
   return (
     <Dialog
@@ -226,8 +219,8 @@ export function BulkReassignDialog({ from, people, nameOf, onClose, onDone }: { 
       title={`Reasignar las citas futuras de ${nameOf(from.id)}`}
       actions={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button onClick={confirm} loading={busy} disabled={!to || !preview.ok}>Reasignar {preview.ok || ''}</Button>
+          <Button variant="secondary" onClick={onClose} disabled={action.busy}>Cancelar</Button>
+          <Button {...action.button} onClick={confirm} disabled={!to || !preview.ok}>Reasignar {preview.ok || ''}</Button>
         </>
       }
     >
@@ -252,7 +245,6 @@ export function BulkReassignDialog({ from, people, nameOf, onClose, onDone }: { 
           ) : null}
         </>
       )}
-      {failure ? <Note title={networkMessage(failure).title}>No se reasignaron las citas. Intenta de nuevo.</Note> : null}
     </Dialog>
   )
 }
@@ -260,19 +252,10 @@ export function BulkReassignDialog({ from, people, nameOf, onClose, onDone }: { 
 export function BulkCancelDialog({ from, nameOf, onClose, onDone }: { from: StaffMember; nameOf: NameOf; onClose: () => void; onDone: (n: Notice) => void }) {
   const s = useStaffStore()
   const n = s.appointments.filter((a) => a.employeeId === from.id && isUpcoming(a)).length
-  const [busy, setBusy] = useState(false)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const confirm = async () => {
-    setBusy(true)
-    setFailure(null)
-    try {
-      const c = await cancelAll(from.id)
-      onDone({ title: `Cancelaste ${c === 1 ? '1 cita' : `${c} citas`} de ${nameOf(from.id)}`, body: 'Cada cliente recibió el aviso y los horarios quedaron libres en la app.' })
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(false)
-    }
-  }
+  const action = useAction({ busy: 'Cancelando...', done: 'Citas canceladas', failed: 'No se pudo cancelar' })
+  const confirm = () => action.run(() => cancelAll(from.id), {
+    onDone: (c) => onDone({ title: `Cancelaste ${c === 1 ? '1 cita' : `${c} citas`} de ${nameOf(from.id)}`, body: 'Cada cliente recibió el aviso y los horarios quedaron libres en la app.' }),
+  })
   return (
     <Dialog
       open
@@ -280,14 +263,13 @@ export function BulkCancelDialog({ from, nameOf, onClose, onDone }: { from: Staf
       title={`¿Cancelar todas las citas futuras de ${nameOf(from.id)}?`}
       actions={
         <>
-          <Button variant="secondary" onClick={onClose}>No</Button>
-          <Button onClick={confirm} loading={busy} disabled={!n}>Sí, cancelar {n}</Button>
+          <Button variant="secondary" onClick={onClose} disabled={action.busy}>No</Button>
+          <Button {...action.button} onClick={confirm} disabled={!n}>Sí, cancelar {n}</Button>
         </>
       }
     >
       <p>{n ? `Se cancelan ${n === 1 ? '1 cita' : `${n} citas`} y cada cliente recibe una notificación. No se puede deshacer.` : `${nameOf(from.id)} no tiene citas futuras.`}</p>
       <p className="text-sm text-ink-soft">Si alguien más puede atenderlas, mejor reasígnalas.</p>
-      {failure ? <Note title={networkMessage(failure).title}>No se cancelaron las citas. Intenta de nuevo.</Note> : null}
     </Dialog>
   )
 }
@@ -299,8 +281,7 @@ export function BlockDialog({ session, branch, people, nameOf, onClose, onDone }
   const [kind, setKind] = useState('horas')
   const [form, setForm] = useState({ day: today, from: '14:00', to: '15:00', fromDay: today, toDay: today, reason: 'Descanso', other: '' })
   const [error, setError] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
+  const action = useAction({ busy: 'Bloqueando...', done: 'Horario bloqueado', failed: 'No se pudo bloquear' })
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { setForm((f) => ({ ...f, [k]: e.target.value })); setError(null) }
 
   const range = () => {
@@ -325,18 +306,13 @@ export function BlockDialog({ session, branch, people, nameOf, onClose, onDone }
     if (r[1] <= r[0]) return setError(kind === 'horas' ? 'La hora final debe ser después de la inicial.' : 'El último día debe ser igual o posterior al primero.')
     if (r[1] < DEMO_TODAY) return setError('Ese horario ya pasó.')
     if (!reason) return setError('Escribe el motivo, por ejemplo «Curso».')
-    setBusy(true)
-    setFailure(null)
-    try {
-      await addBlock({ employeeId, branchId: branch.id, from: r[0], to: r[1], reason })
-      onDone({
+    const [from, to] = r
+    action.run(() => addBlock({ employeeId, branchId: branch.id, from, to, reason }), {
+      onDone: () => onDone({
         title: `Bloqueaste el horario de ${nameOf(employeeId)}`,
         body: `La app ya no ofrece citas en ese horario.${inside.length === 1 ? ' La cita que ya estaba agendada sigue en pie; reasígnala o cancélala desde la agenda.' : inside.length ? ` Las ${inside.length} citas que ya estaban agendadas siguen en pie; reasígnalas o cancélalas desde la agenda.` : ''}`,
-      })
-    } catch (err) {
-      setFailure(err as ApiError)
-      setBusy(false)
-    }
+      }),
+    })
   }
 
   const input = `${selectCls} tabular`
@@ -347,8 +323,8 @@ export function BlockDialog({ session, branch, people, nameOf, onClose, onDone }
       title="Bloquear horario"
       actions={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button onClick={submit} loading={busy}>Bloquear</Button>
+          <Button variant="secondary" onClick={onClose} disabled={action.busy}>Cancelar</Button>
+          <Button {...action.button} onClick={submit}>Bloquear</Button>
         </>
       }
     >
@@ -390,8 +366,7 @@ export function BlockDialog({ session, branch, people, nameOf, onClose, onDone }
             {nameOf(employeeId)} ya tiene {inside.length === 1 ? '1 cita en ese horario. Bloquearlo no la cancela: después reasígnala o cancélala.' : `${inside.length} citas en ese horario. Bloquearlo no las cancela: después reasígnalas o cancélalas.`}
           </p>
         ) : null}
-        {error ? <p className="text-sm font-medium" role="alert">{error}</p> : null}
-        {failure ? <Note title={networkMessage(failure).title}>No se bloqueó el horario. Intenta de nuevo.</Note> : null}
+        {error ? <FieldError>{error}</FieldError> : null}
       </form>
     </Dialog>
   )

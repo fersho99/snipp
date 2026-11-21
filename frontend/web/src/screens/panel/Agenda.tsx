@@ -4,17 +4,17 @@ import { useState } from 'react'
 import { useBranchPanel } from '@/components/PanelContext'
 import { CaretLeft, CaretRight, LockSimple } from '@phosphor-icons/react'
 import { apptStatus, BLOCKED_STYLE, blockClass } from './agendaIcons'
-import { STRIPE, StatusTag } from '../../components/status'
+import { FLASH, STRIPE, StatusTag } from '../../components/status'
 import { Button, Note } from '../../components/ui'
 import { AppointmentDialog, BlockDialog, BulkCancelDialog, BulkReassignDialog } from './AgendaDialogs'
 import { DEMO_TODAY } from '../../data/demo'
-import { networkMessage, type ApiError } from '../../services/auth'
+import useAction from '@/lib/useAction'
+import { useChanged } from '@/lib/flash'
 import { removeBlock, STATUS } from '../../services/agenda'
 import { useStaffStore } from '../../services/staff'
 import { addDays, dayMonth, longDate, sameDay, timeOfDay } from '../../theme'
 import type { Appointment, AppointmentStatus, Block, Branch } from '../../types/domain'
 import type { StaffMember } from '../../services/staff'
-import { toast } from '@/lib/toast'
 type NameOf = (id: string) => string
 type Notice = { title: string; body: string }
 
@@ -57,7 +57,7 @@ export default function Agenda() {
   const step = view === 'dia' ? 1 : 7
   const days = view === 'dia' ? [date] : Array.from({ length: 7 }, (_, i) => addDays(mondayOf(date), i)).filter((d) => d.getDay() !== 0 || branch.hours[0])
   const rangeLabel = view === 'dia' ? longDate(date) : `Semana del ${dayMonth(days[0])} al ${dayMonth(days[days.length - 1])}`
-  const selectCls = 'min-h-11 rounded-control border-2 border-transparent bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
+  const selectCls = 'min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft'
 
   return (
     <div className="max-w-6xl">
@@ -186,6 +186,7 @@ function blockLabel(b: Block, day: Date) {
 // One column per Empleado, one row per hour, within the branch hours of that day.
 type ViewProps = { branch: Branch; appts: Appointment[]; blocks: Block[]; nameOf: NameOf; onOpen: (folio: string) => void }
 function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewProps & { day: Date; people: StaffMember[] }) {
+  const changed = useChanged()
   const hours = branch.hours[day.getDay()]
   const todays = appts.filter((a) => sameDay(a.start, day))
   const cancelled = todays.filter((a) => a.status === 'cancelada')
@@ -202,7 +203,7 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-control bg-raised">
+      <div className="overflow-x-auto rounded-control border border-divider bg-raised">
         <div className="flex min-w-max pb-3">
           {/* time column */}
           <div className="sticky left-0 z-10 w-16 shrink-0 bg-raised">
@@ -254,7 +255,7 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
                         key={a.folio}
                         type="button"
                         onClick={() => onOpen(a.folio)}
-                        className={`absolute inset-x-1 overflow-hidden rounded-md px-2 py-1 text-left transition ${blockClass(a.status)}`}
+                        className={`absolute inset-x-1 overflow-hidden rounded-md px-2 py-1 text-left transition ${blockClass(a.status)} ${changed[a.folio] ? `z-10 ${FLASH[apptStatus(a.status).color]}` : ''}`}
                         style={{ top: top(a.start) + 1, height: h }}
                         aria-label={`${timeOfDay(a.start)}, ${a.client}, ${a.service}, ${STATUS[a.status]}`}
                         title={`${timeOfDay(a.start)} · ${a.client} · ${a.service} · ${STATUS[a.status]}`}
@@ -302,6 +303,7 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
 }
 
 function WeekList({ days, branch, appts, blocks, nameOf, onOpen }: ViewProps & { days: Date[] }) {
+  const changed = useChanged()
   return (
     <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       {days.map((d) => {
@@ -320,7 +322,7 @@ function WeekList({ days, branch, appts, blocks, nameOf, onOpen }: ViewProps & {
             <ul className="mt-2 flex flex-col gap-1.5">
               {list.map((a) => (
                 <li key={a.folio}>
-                  <button type="button" onClick={() => onOpen(a.folio)} className={`w-full rounded-md px-2 py-1.5 text-left transition ${blockClass(a.status)}`}>
+                  <button type="button" onClick={() => onOpen(a.folio)} className={`w-full rounded-md px-2 py-1.5 text-left transition ${blockClass(a.status)} ${changed[a.folio] ? FLASH[apptStatus(a.status).color] : ''}`}>
                     <p className={`tabular text-xs font-semibold ${a.status === 'cancelada' ? 'line-through' : ''}`}>{timeOfDay(a.start)} · {nameOf(a.employeeId).split(' ')[0]}</p>
                     <p className="truncate text-xs">{a.client} · {a.service}</p>
                     <StatusText status={a.status} compact />
@@ -338,21 +340,7 @@ function WeekList({ days, branch, appts, blocks, nameOf, onOpen }: ViewProps & {
 
 // RF-W15: breaks and days off, current and upcoming.
 function Blocks({ blocks, nameOf, canRemove }: { blocks: Block[]; nameOf: NameOf; canRemove: (b: Block) => boolean }) {
-  const [busy, setBusy] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
   const fmt = (b: Block) => (sameDay(b.from, b.to) ? `${longDate(b.from)}, ${timeOfDay(b.from)} a ${timeOfDay(b.to)}` : `Del ${longDate(b.from)} al ${longDate(b.to)}`)
-  const remove = async (id: string) => {
-    setBusy(id)
-    setFailure(null)
-    try {
-      await removeBlock(id)
-      toast('Quitaste el bloqueo. Ese horario ya se puede reservar en la app.')
-    } catch (err) {
-      setFailure(err as ApiError)
-    } finally {
-      setBusy(null)
-    }
-  }
   return (
     <section className="mt-12" aria-labelledby="bloqueos">
       <h2 id="bloqueos" className="text-lg font-semibold">Horarios bloqueados</h2>
@@ -365,18 +353,27 @@ function Blocks({ blocks, nameOf, canRemove }: { blocks: Block[]; nameOf: NameOf
                 <p className="font-medium">{nameOf(b.employeeId)} · {b.reason}</p>
                 <p className="text-sm text-ink-soft">{fmt(b)}</p>
               </div>
-              {canRemove(b) ? (
-                <button type="button" onClick={() => remove(b.id)} disabled={busy === b.id} className="min-h-11 text-sm font-medium underline underline-offset-4 disabled:text-ink-soft">
-                  {busy === b.id ? 'Quitando…' : 'Quitar'}
-                </button>
-              ) : null}
+              {canRemove(b) ? <RemoveBlock id={b.id} /> : null}
             </li>
           ))}
         </ul>
       ) : (
         <p className="mt-3 text-ink-soft">No hay horarios bloqueados.</p>
       )}
-      {failure ? <div className="mt-3"><Note title={networkMessage(failure).title}>No se quitó el bloqueo. Intenta de nuevo.</Note></div> : null}
     </section>
+  )
+}
+
+function RemoveBlock({ id }: { id: string }) {
+  const removing = useAction({ busy: 'Quitando...', done: 'Quitado', failed: 'No se pudo quitar' })
+  return (
+    <Button
+      variant="secondary"
+      {...removing.button}
+      onClick={() => removing.run(() => removeBlock(id), { success: 'Quitaste el bloqueo. Ese horario ya se puede reservar en la app.' })}
+      className="min-h-11 shrink-0 px-4"
+    >
+      Quitar
+    </Button>
   )
 }
