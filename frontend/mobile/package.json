@@ -30,7 +30,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "export:web": "expo export --platform web --output-dir ../web/public/app"
   },
   "private": true,
   "devDependencies": {
