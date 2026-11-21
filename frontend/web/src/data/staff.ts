@@ -1,124 +1,27 @@
-// Sample data for batch W5 (Empleados): work schedules, upcoming
-// appointments, appointment history and the businesses an Empleado can ask
-// to migrate to. Same story as the rest of the demo: today is Thursday
-// 12 November 2026, 10:00 am.
+// Sample data for batch W5 (Empleados): profiles, appointment history and
+// the businesses an Empleado can ask to migrate to. Work schedules,
+// appointments and blocks come from the data shared with the client app
+// (frontend/shared/seed.ts). Today is Thursday 12 November 2026, 10:00 am.
+import { branches, businesses, employees, rng } from '@shared/seed'
+import type { DirectoryBusiness, HistoryEvent, StaffProfile } from '../types/domain'
 
-import type { Appointment, AppointmentStatus, Block, DirectoryBusiness, HistoryEvent, StaffProfile, WeekHours } from '../types/domain'
-
-// Work schedule per weekday, Sunday first (0) to Saturday (6). null = day off.
-const week = (open: string, close: string, satClose = '18:00'): WeekHours => [null, [open, close], [open, close], [open, close], [open, close], [open, close], ['10:00', satClose]]
-
-// Profile and schedule of each Empleado (RF-W10, RF-W11). The base list of
-// employees (name, branch, bookable) is in demo.ts.
-export const staffProfiles: Record<string, StaffProfile> = {
-  luis: { displayName: 'Luis Ortega', specialties: ['Fades', 'Barba'], schedule: week('10:00', '18:00') },
-  ramon: { displayName: 'Ramón Cázares', specialties: ['Corte clásico', 'Navaja'], schedule: week('12:00', '20:00') },
-  itzel: { displayName: 'Itzel Duarte', specialties: ['Recepción'], schedule: week('10:00', '20:00') },
-  oscar: { displayName: 'Óscar Félix', specialties: ['Fades', 'Diseños'], schedule: week('10:00', '20:00') },
-}
-
-// Appointments of the branches from Monday 9 to Saturday 21 November. The
-// agenda (W6) and the reassignment of an Empleado who migrates or is
-// unlinked (W5) read the same list. These are fixed; the rest are generated
-// around them (see buildAppointments).
-const at = (day: number, time: string) => {
-  const [h, m] = time.split(':').map(Number)
-  return new Date(2026, 10, day, h, m)
-}
-const fixedAppointments: (Omit<Appointment, 'client' | 'status'> & { client?: string })[] = [
-  { folio: 'C-10521', employeeId: 'ramon', branchId: 'los-compas-centro', service: 'Corte clásico', minutes: 40, start: at(12, '12:00') },
-  { folio: 'C-10533', employeeId: 'ramon', branchId: 'los-compas-centro', service: 'Corte + barba', minutes: 60, start: at(13, '16:00') },
-  { folio: 'C-10538', employeeId: 'ramon', branchId: 'los-compas-centro', service: 'Fade', minutes: 45, start: at(14, '11:00') },
-  { folio: 'C-10540', employeeId: 'ramon', branchId: 'los-compas-centro', service: 'Corte clásico', minutes: 40, start: at(14, '13:00') },
-  { folio: 'C-10547', employeeId: 'ramon', branchId: 'los-compas-centro', service: 'Arreglo de barba', minutes: 25, start: at(17, '18:30') },
-  { folio: 'C-10552', employeeId: 'ramon', branchId: 'los-compas-centro', service: 'Corte + barba', minutes: 60, start: at(19, '13:00') },
-  { folio: 'C-10519', employeeId: 'luis', branchId: 'los-compas-centro', service: 'Fade', minutes: 45, start: at(12, '12:00') },
-  { folio: 'C-10497', employeeId: 'luis', branchId: 'los-compas-centro', service: 'Fade', minutes: 45, start: at(12, '17:00'), client: 'Andrea Valenzuela' },
-  { folio: 'C-10539', employeeId: 'luis', branchId: 'los-compas-centro', service: 'Corte + barba', minutes: 60, start: at(14, '13:00') },
-  { folio: 'C-10544', employeeId: 'luis', branchId: 'los-compas-centro', service: 'Arreglo de barba', minutes: 25, start: at(16, '11:00') },
-  { folio: 'C-10549', employeeId: 'luis', branchId: 'los-compas-centro', service: 'Fade', minutes: 45, start: at(18, '15:00') },
-  { folio: 'C-10530', employeeId: 'oscar', branchId: 'los-compas-norte', service: 'Fade', minutes: 45, start: at(13, '12:00') },
-  { folio: 'C-10536', employeeId: 'oscar', branchId: 'los-compas-norte', service: 'Corte clásico', minutes: 40, start: at(14, '10:00') },
-  { folio: 'C-10545', employeeId: 'oscar', branchId: 'los-compas-norte', service: 'Corte + barba', minutes: 60, start: at(16, '17:30') },
-]
-
-const CLIENTS = ['Jorge Méndez', 'Carlos Ríos', 'Daniela Paz', 'Iván Soto', 'Luz Gámez', 'Héctor Villa', 'Mario Leyva', 'Sergio Acosta', 'Raúl Quintero', 'Pedro Lugo', 'Emilio Castro', 'Fernando Ochoa', 'Abel Rubio', 'Tomás Zazueta', 'Óliver Corral', 'Joel Arce', 'Ricardo Peña', 'Alan Duarte']
-const SERVICE_LIST = [
-  { name: 'Corte clásico', minutes: 40 },
-  { name: 'Fade', minutes: 45 },
-  { name: 'Arreglo de barba', minutes: 25 },
-  { name: 'Corte + barba', minutes: 60 },
-]
-
-// Days off and breaks already blocked in the agenda (RF-W15).
-export const seedBlocks: Block[] = [
-  { id: 'B-1', employeeId: 'luis', branchId: 'los-compas-centro', from: at(13, '14:00'), to: at(13, '15:00'), reason: 'Descanso' },
-  { id: 'B-2', employeeId: 'oscar', branchId: 'los-compas-norte', from: at(18, '00:00'), to: at(20, '23:59'), reason: 'Vacaciones' },
-]
-
-// Fills each Empleado's days with appointments that do not overlap the fixed
-// ones, the blocks or each other. Past ones (before today 10:00) already have
-// their final status. Same result every time.
-export function buildAppointments(now: Date): Appointment[] {
-  const r = rng('agenda-w6')
-  const list: Appointment[] = fixedAppointments.map((a, i) => ({ ...a, client: a.client ?? CLIENTS[(i * 7) % CLIENTS.length], status: 'confirmada' }))
-  const overlaps = (a: { start: Date; minutes: number }, b: { start: Date; minutes: number }) => a.start < new Date(b.start.getTime() + b.minutes * 60000) && b.start < new Date(a.start.getTime() + a.minutes * 60000)
-  let folio = 10560
-  for (const [employeeId, profile] of Object.entries(staffProfiles)) {
-    if (employeeId === 'itzel') continue
-    const branchId = employeeId === 'oscar' ? 'los-compas-norte' : 'los-compas-centro'
-    for (let d = 9; d <= 21; d++) {
-      const date = new Date(2026, 10, d)
-      const hours = profile.schedule[date.getDay()]
-      if (!hours) continue
-      const [oh, om] = hours[0].split(':').map(Number)
-      const [ch, cm] = hours[1].split(':').map(Number)
-      for (let t = oh * 60 + om; t + 25 <= ch * 60 + cm; t += 30) {
-        if (r() > 0.42) continue
-        const svc = SERVICE_LIST[Math.floor(r() * SERVICE_LIST.length)]
-        const start = new Date(2026, 10, d, Math.floor(t / 60), t % 60)
-        const cand = { start, minutes: svc.minutes }
-        if (t + svc.minutes > ch * 60 + cm) continue
-        // Keep clear an hour around the fixed appointments of the branch, so
-        // the W5 reassignment examples keep someone free.
-        const nearFixed = fixedAppointments.some((f) => f.branchId === branchId && Math.abs(f.start.getTime() - start.getTime()) < 60 * 60000)
-        const busy = list.some((a) => a.employeeId === employeeId && overlaps(a, cand))
-        const blocked = seedBlocks.some((b) => b.employeeId === employeeId && start < b.to && new Date(start.getTime() + svc.minutes * 60000) > b.from)
-        if (nearFixed || busy || blocked) continue
-        let status: AppointmentStatus = 'confirmada'
-        if (start < now) {
-          const x = r()
-          status = x < 0.84 ? 'atendida' : x < 0.92 ? 'cancelada' : x < 0.98 ? 'no-asistio' : 'empleado-no-se-presento'
-        }
-        folio += 1 + Math.floor(r() * 2)
-        list.push({ folio: `C-${folio}`, employeeId, branchId, service: svc.name, minutes: svc.minutes, start, client: CLIENTS[Math.floor(r() * CLIENTS.length)], status })
-      }
-    }
-  }
-  return list.sort((a, b) => a.start.getTime() - b.start.getTime())
-}
+// Profile shown in the app and work schedule of each Empleado (RF-W10, RF-W11).
+const SPECIALTIES: Record<string, string[]> = { luis: ['Fades', 'Barba'], ramon: ['Corte clásico', 'Navaja'], itzel: ['Recepción'], oscar: ['Fades', 'Diseños'] }
+export const staffProfiles: Record<string, StaffProfile> = Object.fromEntries(
+  employees.map((e) => [e.id, { displayName: e.name, specialties: SPECIALTIES[e.id] ?? [e.specialty], schedule: e.schedule.map((h) => (h ? [h[0], h[1]] : null)) }]),
+)
 
 // Other businesses on SNIPP, for "Solicitar migración" and for an Empleado
-// without a business who asks to join one (RF-W10, RF-W12).
+// without a business who asks to join one (RF-W10, RF-W12). Barbería El Faro
+// is where Diego Armenta comes from; it has no branches in the sample data.
 export const directory: DirectoryBusiness[] = [
-  { id: 'los-compas', name: 'Barbería Los Compas', branches: [{ id: 'los-compas-centro', name: 'Los Compas Centro' }, { id: 'los-compas-norte', name: 'Los Compas Norte' }] },
-  { id: 'estudio-marisol', name: 'Estudio Marisol', branches: [{ id: 'estudio-marisol', name: 'Estudio Marisol' }] },
-  { id: 'navaja-fina', name: 'Navaja Fina', branches: [{ id: 'navaja-fina', name: 'Navaja Fina' }] },
+  ...businesses.map((b) => ({ id: b.id, name: b.name, branches: branches.filter((br) => br.businessId === b.id).map((br) => ({ id: br.id, name: br.name })) })),
   { id: 'el-faro', name: 'Barbería El Faro', branches: [{ id: 'el-faro', name: 'Barbería El Faro' }] },
 ]
 
 // Appointment history per Empleado (RF-W17): each confirmation,
 // cancellation and reschedule, with the date and who did it. Generated the
 // same every time; the newest first.
-function rng(seed: string) {
-  let h = 2166136261
-  for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619)
-  return () => {
-    h = Math.imul(h ^ (h >>> 15), 2246822507)
-    h = Math.imul(h ^ (h >>> 13), 3266489909)
-    return ((h ^= h >>> 16) >>> 0) / 4294967296
-  }
-}
 const SERVICES = ['Corte clásico', 'Fade', 'Arreglo de barba', 'Corte + barba']
 export function historyFor(employeeId: string): HistoryEvent[] {
   const r = rng(`historial-${employeeId}`)

@@ -1,10 +1,11 @@
 // Demo implementation of the store API for the business (RF-W19 to RF-W21,
 // RF-W24, RN-06, RN-07, RN-09). Products and stock per branch, orders
 // paid in the app with Stripe, and the loyalty rules of each business.
-// Same products, stock and orders as the mobile app (frontend/mobile/src/data/shop.js).
+// Same products, stock and orders as the mobile app.
 // In production the refund is a Stripe Refund in test mode and the API
 // stores only its reference (RN-17).
 import { useSyncExternalStore } from 'react'
+import { products as sharedProducts, stock as sharedStock } from '@shared/seed'
 const frasco = '/photos/producto-frasco.jpg'
 import { DEMO_TODAY } from '../data/demo'
 import { ApiError } from './auth'
@@ -62,22 +63,16 @@ export const CLIENT_ORDER_STATE: Record<OrderStatus, string> = { pagado: 'Pagado
 export const NEXT: Partial<Record<OrderStatus, OrderStatus>> = { pagado: 'listo', listo: 'entregado' }
 
 const product = (id: string, branchId: string, data: CatalogItem & { stock: number }): Product => ({ id: `${branchId}:${id}`, sku: id, branchId, ...data })
-const CATALOG: Record<string, CatalogItem> = {
-  pomada: { name: 'Pomada mate', size: '100 g', price: 230, photo: frasco, description: 'Fijación media sin brillo que se quita con agua. Es la que usa Luis para terminar los fades.', howTo: 'Toma una cantidad del tamaño de un chícharo, frótala entre las manos y aplícala con el cabello seco.' },
-  aceite: { name: 'Aceite para barba', size: '30 ml', price: 190, photo: null, description: 'Suaviza la barba y quita la comezón de las primeras semanas. Aroma a cedro.', howTo: 'De 3 a 4 gotas después de bañarte, de la raíz a las puntas.' },
-  shampoo: { name: 'Shampoo matizador', size: '300 ml', price: 310, photo: null, description: 'Neutraliza el tono amarillo en canas y cabello decolorado.', howTo: 'Úsalo una o dos veces por semana; déjalo 3 minutos antes de enjuagar.' },
-  cera: { name: 'Cera fijación media', size: '', price: 210, photo: null, description: 'Para peinados con textura que puedes rehacer durante el día.', howTo: 'Calienta un poco entre los dedos y peina en seco o con el cabello húmedo.' },
-}
+// Same catalog and stock as the mobile app (frontend/shared/seed.ts).
+const PHOTOS: Record<string, string> = { pomada: frasco }
+const CATALOG: Record<string, CatalogItem> = Object.fromEntries(
+  sharedProducts.map(({ id, name, size, price, description, howTo }) => [id, { name, size, price, description, howTo, photo: PHOTOS[id] ?? null }]),
+)
 
 function seed(): ShopState {
-  const products = [
-    product('pomada', 'los-compas-centro', { ...CATALOG.pomada, stock: 14 }),
-    product('aceite', 'los-compas-centro', { ...CATALOG.aceite, stock: 6 }),
-    product('shampoo', 'los-compas-centro', { ...CATALOG.shampoo, stock: 0 }),
-    product('cera', 'los-compas-centro', { ...CATALOG.cera, stock: 22 }),
-    product('pomada', 'los-compas-norte', { ...CATALOG.pomada, stock: 3 }),
-    product('cera', 'los-compas-norte', { ...CATALOG.cera, stock: 5 }),
-  ]
+  const products = ['los-compas-centro', 'los-compas-norte'].flatMap((branchId) =>
+    Object.entries(sharedStock[branchId] ?? {}).map(([sku, stock]) => product(sku, branchId, { ...CATALOG[sku], stock })),
+  )
   const line = (sku: string, branchId: string, qty: number): OrderLine => ({ productId: `${branchId}:${sku}`, name: `${CATALOG[sku].name}${CATALOG[sku].size ? ` ${CATALOG[sku].size}` : ''}`, qty, price: CATALOG[sku].price })
   const orders: Order[] = [
     {

@@ -1,11 +1,18 @@
 // Demo implementation of the Empleados API (RF-W10 to RF-W13, RF-W17,
-// RN-11, RN-12). One in-memory store read by the Jefe's pages, the
-// Empleado's pages and the Jefe's home (requests to review). In production
-// every action is a call to the API, which also notifies each client whose
+// RN-11, RN-12). One store read by the Jefe's pages, the Empleado's pages
+// and the Jefe's home (requests to review). Appointments and blocks live in
+// the database shared with the client app (frontend/shared/store.ts), so a
+// booking made in the app shows up in the agenda and a change made here
+// reaches the app; the rest stays in memory for now. In production every
+// action is a call to the API, which also notifies each client whose
 // appointment changes (RF-W16, RN-04).
 import { useSyncExternalStore } from 'react'
+import { appointmentStart, fromIsoDateTime, iso, isoDateTime } from '@shared/dates'
+import { services as sharedServices, employees as sharedEmployees } from '@shared/seed'
+import * as db from '@shared/store'
+import type { Appointment as SharedAppointment, Block as SharedBlock, CancelledBy, DemoData } from '@shared/types'
 import { DEMO_TODAY, employees as baseEmployees, pendingRequests } from '../data/demo'
-import { buildAppointments, directory, seedBlocks, staffProfiles } from '../data/staff'
+import { directory, staffProfiles } from '../data/staff'
 import { ApiError } from './auth'
 import { takeForcedError } from './panel'
 import type { JoinRequest } from '../data/demo'
@@ -44,10 +51,13 @@ export type Decision = string
 export type ReassignMode = 'migracion' | 'desvincular'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
-const EMAILS: Record<string, string> = { luis: 'luis.ortega@gmail.com', ramon: 'ramon.cazares@gmail.com', itzel: 'itzel.duarte@gmail.com', oscar: 'oscar.felix@gmail.com' }
+const EMAILS: Record<string, string> = Object.fromEntries(sharedEmployees.map((e) => [e.id, e.email]))
 const day = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
 
-function seed(estado: string | null): StaffState {
+// What this store keeps itself; appointments and blocks come from the shared database.
+type LocalState = Omit<StaffState, 'appointments' | 'blocks'>
+
+function seed(estado: string | null): LocalState {
   const staff: Record<string, StaffMember> = {}
   for (const e of baseEmployees) {
     staff[e.id] = { ...e, email: EMAILS[e.id], schedule: staffProfiles[e.id].schedule, status: 'activo', migration: null }
@@ -77,8 +87,6 @@ function seed(estado: string | null): StaffState {
   return {
     staff,
     profiles,
-    appointments: buildAppointments(DEMO_TODAY),
-    blocks: seedBlocks.map((b) => ({ ...b })),
     log: [], // history entries added in this session (RF-W17)
     requests: pendingRequests.map((r) => ({ ...r })),
     invitations,
@@ -88,23 +96,93 @@ function seed(estado: string | null): StaffState {
   }
 }
 
-let state = seed(null)
+// ---------- Shared records as the panel reads them ----------
+
+// The same shared record always gives the same object, so a change is
+// noticed by comparing references.
+const panelAppointments = new WeakMap<SharedAppointment, Appointment>()
+function toPanel(a: SharedAppointment): Appointment {
+  let out = panelAppointments.get(a)
+  if (!out) {
+    const service = sharedServices.find((x) => x.id === a.serviceId)
+    out = { folio: a.folio, employeeId: a.employeeId, branchId: a.branchId, service: service?.name ?? a.serviceId, minutes: service?.minutes ?? 45, start: appointmentStart(a), client: a.clientName, status: a.status, cancelledBy: a.cancelledBy }
+    panelAppointments.set(a, out)
+  }
+  return out
+}
+
+// A change made in the panel, written back on the shared record. When the
+// date, time or Empleado changes and the client has to answer (RN-04), the
+// record keeps what it was before so the app can show the change (RF-M08).
+function fromPanel(shared: SharedAppointment, a: Appointment): SharedAppointment {
+  const date = iso(a.start)
+  const start = a.start.getHours() * 60 + a.start.getMinutes()
+  const moved = date !== shared.date || start !== shared.start || a.employeeId !== shared.employeeId
+  const next: SharedAppointment = { ...shared, employeeId: a.employeeId, branchId: a.branchId, date, start, status: a.status }
+  next.cancelledBy = a.status === 'cancelada' ? ((a.cancelledBy as CancelledBy | undefined) ?? shared.cancelledBy) : undefined
+  if (a.status === 'cambio' && moved) {
+    next.previous = shared.previous ?? { employeeId: shared.employeeId, date: shared.date, start: shared.start }
+    next.changedAt = 'hoy'
+  } else if (a.status !== 'cambio') next.previous = null
+  return next
+}
+
+const panelBlocks = new WeakMap<SharedBlock, Block>()
+function blockToPanel(b: SharedBlock): Block {
+  let out = panelBlocks.get(b)
+  if (!out) {
+    out = { ...b, from: fromIsoDateTime(b.from), to: fromIsoDateTime(b.to) }
+    panelBlocks.set(b, out)
+  }
+  return out
+}
+const blockFromPanel = (b: Block): SharedBlock => ({ ...b, from: isoDateTime(b.from), to: isoDateTime(b.to) })
+
+let local = seed(null)
+let cache: { local: LocalState; data: DemoData; state: StaffState } | null = null
+function snapshot(): StaffState {
+  const data = db.getData()
+  if (!cache || cache.local !== local || cache.data !== data) {
+    cache = { local, data, state: { ...local, appointments: data.appointments.map(toPanel), blocks: data.blocks.map(blockToPanel) } }
+  }
+  return cache.state
+}
+
 const listeners = new Set<() => void>()
 // Also used by services/agenda.ts, which works on the same appointments.
 export const set = (fn: (s: StaffState) => StaffState) => {
-  state = fn(state)
+  const prev = snapshot()
+  const { appointments, blocks, ...rest } = fn(prev)
+  local = rest
+  if (appointments !== prev.appointments || blocks !== prev.blocks) {
+    const before = new Map(prev.appointments.map((a) => [a.folio, a]))
+    db.commit((d) => ({
+      ...d,
+      appointments: d.appointments.map((shared) => {
+        const a = appointments.find((x) => x.folio === shared.folio)
+        return a && a !== before.get(shared.folio) ? fromPanel(shared, a) : shared
+      }),
+      blocks: blocks === prev.blocks ? d.blocks : blocks.map(blockFromPanel),
+    }))
+  }
   listeners.forEach((l) => l())
 }
 const subscribe = (l: () => void) => {
   listeners.add(l)
-  return () => listeners.delete(l)
+  const off = db.subscribe(l)
+  return () => {
+    listeners.delete(l)
+    off()
+  }
 }
-export const useStaffStore = () => useSyncExternalStore(subscribe, () => state)
-export const getStaffStore = () => state
+export const useStaffStore = () => useSyncExternalStore(subscribe, snapshot)
+export const getStaffStore = snapshot
 
-// Screen index only: start the demo again, with the forced state applied.
+// Screen index only: start the panel's own data again, with the forced
+// state applied. The shared appointments are kept; they go back to the
+// sample data only with "Reiniciar datos de demo".
 export function resetDemoStaff(estado: string | null) {
-  state = seed(estado)
+  local = seed(estado)
 }
 
 function failIfForced() {
