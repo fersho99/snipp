@@ -27,7 +27,8 @@ export default function Store() {
   const carts = useCarts();
   const mine = carts.find((c) => c.branchId === branch.id);
   const summary = mine ? cartSummary(mine) : null;
-  const items = productsFor(branch.id);
+  // Demo: a branch that does not sell products yet.
+  const items = estado === 'sin-productos' ? [] : productsFor(branch.id);
   const [limit, setLimit] = useState(false);
 
   // Demo: 3 carts of other branches, then try to add here.
