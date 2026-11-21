@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Navigate } from '@/lib/navigation'
 import { Logo } from '../components/ui'
+import ResetDemo from '../components/ResetDemo'
 
 // Development index: every web screen and state, for review against the SRS.
 // Not part of the delivered platform: in production "/" opens Entrar.
@@ -105,6 +106,10 @@ export default function DevIndex() {
       <main className="mt-12 max-w-3xl">
         <h1 className="text-[28px] font-bold leading-tight">Pantallas de la plataforma web</h1>
         <p className="mt-2 text-ink-soft">Cuentas de prueba y contraseña en frontend/README.md.</p>
+        <p className="mt-2 text-ink-soft">
+          La app del cliente está en <a href="/app" className="font-semibold text-ink underline">/app</a> y comparte los datos con el panel (antes: <code>npm run app</code>).
+        </p>
+        <ResetDemo className="mt-3" />
         {SCREENS.map((g) => (
           <section key={g.group} className="mt-10">
             <h2 className="text-lg font-semibold">{g.group}</h2>
