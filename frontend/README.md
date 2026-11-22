@@ -17,8 +17,11 @@ npm run typecheck       # TypeScript estricto, sin generar archivos
 
 En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`). Solo existe en desarrollo; la APK abre directo en "Entrar".
 
-Cuenta de demostración para el inicio de sesión: `andrea.valenzuela@gmail.com` / `compas2025`.
-Cualquier otra combinación muestra el error de credenciales; registrarse con ese mismo correo muestra "correo ya registrado".
+Cuentas de cliente (contraseña `compas2025`):
+- `andrea.valenzuela@gmail.com` (Andrea Valenzuela): con citas, pedidos y puntos
+- `cliente.nuevo@gmail.com` (Daniel Ochoa): sin historial
+
+Sin sesión, cualquier pantalla manda a Entrar; con sesión, Entrar y Registro mandan a Inicio. El registro crea una cuenta de verdad en la base simulada (un correo repetido muestra "correo ya registrado"), y "Cerrar sesión" la cierra. La sesión dura 8 horas.
 
 ## Correr la plataforma web
 
@@ -33,10 +36,18 @@ npm run typecheck  # TypeScript
 En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`); en producción `/` abre "Entrar".
 
 Cuentas de demostración (contraseña `snipp2026` para todas):
-- Administrador: `admin@snipp.mx` (Daniela Ibarra)
-- Jefe de Barbería Los Compas: `martin.salazar@loscompas.mx` (Martín Salazar)
-- Empleado de Barbería Los Compas, sucursal Centro: `luis.ortega@gmail.com` (Luis Ortega)
-- Empleado sin negocio: `sofia.ramos@gmail.com` (Sofía Ramos); ya pidió unirse a Los Compas Centro
+
+| Correo | Rol | Caso |
+| --- | --- | --- |
+| `admin@snipp.mx` | Administrador (Daniela Ibarra) | Planes, negocios, reseñas reportadas |
+| `martin.salazar@loscompas.mx` | Jefe (Martín Salazar) | Barbería Los Compas al corriente, 2 sucursales |
+| `jefe.vencido@elfaro.mx` | Jefe (Rogelio Tapia) | Barbería El Faro, suscripción vencida: pantalla de pago pendiente |
+| `jefe.suspendido@unascoral.mx` | Jefe (Karen Lugo) | Uñas Coral, suspendido por el Administrador |
+| `luis.ortega@gmail.com` | Empleado (Luis Ortega) | Sucursal Centro |
+| `oscar.felix@gmail.com` | Empleado (Óscar Félix) | Sucursal Norte |
+| `sofia.ramos@gmail.com` | Empleado sin negocio (Sofía Ramos) | Ya pidió unirse a Los Compas Centro |
+
+Las contraseñas se guardan solo como hash SHA-256 con sal (`shared/auth.ts`). El registro de Jefe (con su negocio y el mes de prueba) y el de Empleado crean cuentas de verdad. Cada rol ve solo sus secciones; otra sección muestra "No tienes acceso a esta sección". La sesión del panel se guarda en `localStorage` (todas las pestañas la comparten) y dura 8 horas.
 
 En el índice de desarrollo, `/panel?como=jefe|empleado|sin-negocio|admin` abre el panel con esa cuenta sin escribir la contraseña (solo en `npm run dev`).
 
