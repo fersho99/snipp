@@ -176,7 +176,7 @@ export interface PointsMovement {
 }
 
 // RF-M16.
-export type NotificationKind = 'confirmacion' | 'recordatorio-24h' | 'recordatorio-1h' | 'cambio' | 'cancelacion' | 'reagendada' | 'pedido-listo' | 'carrito-por-vaciar' | 'carrito-vaciado';
+export type NotificationKind = 'confirmacion' | 'recordatorio-24h' | 'recordatorio-1h' | 'cambio' | 'cancelacion' | 'reagendada' | 'pedido-listo' | 'pedido-cancelado' | 'reporte' | 'carrito-por-vaciar' | 'carrito-vaciado';
 export interface AppNotification {
   id: string;
   kind: NotificationKind;
