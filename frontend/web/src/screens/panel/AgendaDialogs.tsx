@@ -360,7 +360,7 @@ export function BlockDialog({ session, branch, people, nameOf, onClose, onDone }
             {['Descanso', 'Vacaciones', 'Otro'].map((x) => <option key={x}>{x}</option>)}
           </select>
         </div>
-        {form.reason === 'Otro' ? <TextField label="¿Cuál?" value={form.other} onChange={set('other')} placeholder="Por ejemplo: Curso" /> : null}
+        {form.reason === 'Otro' ? <TextField label="¿Cuál?" maxLength={60} value={form.other} onChange={set('other')} placeholder="Por ejemplo: Curso" /> : null}
         {inside.length ? (
           <p className="text-sm font-medium">
             {nameOf(employeeId)} ya tiene {inside.length === 1 ? '1 cita en ese horario. Bloquearlo no la cancela: después reasígnala o cancélala.' : `${inside.length} citas en ese horario. Bloquearlo no las cancela: después reasígnalas o cancélalas.`}

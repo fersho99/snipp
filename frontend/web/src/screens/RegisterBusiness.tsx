@@ -8,7 +8,8 @@ import { Button, Note, Skeleton, TextField, TextLink } from '../components/ui'
 import { ApiError, networkMessage, registerBoss } from '../services/auth'
 import { DEMO_TODAY } from '../data/demo'
 import { getPlans } from '../services/subscriptions'
-import { addMonths, firstName, isEmail, longDate, money } from '../theme'
+import { LIMITS, checkEmail, checkLabel, checkName, checkPassword, checkPhone, collect } from '@shared/validators'
+import { addMonths, firstName, longDate, money } from '../theme'
 
 const duration = (m: number) => (m === 1 ? 'cada mes' : m === 12 ? 'cada año' : `cada ${m} meses`)
 
@@ -48,11 +49,13 @@ export default function RegisterBusiness() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const next: Record<string, string> = {}
-    if (!form.name.trim()) next.name = 'Escribe tu nombre.'
-    if (!isEmail(form.email)) next.email = 'Escribe tu correo completo, por ejemplo nombre@gmail.com.'
-    if (form.phone.replace(/\D/g, '').length !== 10) next.phone = 'El teléfono debe tener 10 dígitos, sin el +52.'
-    if (form.password.length < 8) next.password = 'Usa al menos 8 caracteres.'
-    if (!form.businessName.trim()) next.businessName = 'Escribe el nombre de tu negocio como lo conocen tus clientes.'
+    Object.assign(next, collect({
+      name: checkName(form.name),
+      email: checkEmail(form.email),
+      phone: checkPhone(form.phone),
+      password: checkPassword(form.password),
+      businessName: checkLabel(form.businessName, LIMITS.businessName, 'Escribe el nombre de tu negocio como lo conocen tus clientes.'),
+    }))
     setErrors(next)
     setFailure(null)
     if (Object.keys(next).length) return
@@ -101,24 +104,26 @@ export default function RegisterBusiness() {
         <form onSubmit={submit} noValidate className="mt-8 flex flex-col">
           <h2 className="text-lg font-semibold">Tus datos</h2>
           <div className="mt-4 flex flex-col gap-5">
-            <TextField label="Nombre completo" autoComplete="name" value={form.name} onChange={set('name')} error={errors.name} />
+            <TextField label="Nombre completo" autoComplete="name" maxLength={LIMITS.name} value={form.name} onChange={set('name')} error={errors.name} />
             <TextField
               label="Correo"
               type="email"
               autoComplete="email"
+              maxLength={LIMITS.email}
               value={form.email}
               onChange={set('email')}
               error={errors.email ?? (failure?.code === 'email-taken' ? 'Ya hay una cuenta con este correo. Entra con ella o usa otro correo.' : undefined)}
               hint="Es tu usuario para entrar al panel."
             />
-            <TextField label="Teléfono celular" prefix="+52" type="tel" autoComplete="tel-national" value={form.phone} onChange={set('phone')} error={errors.phone} />
-            <TextField label="Contraseña" secure autoComplete="new-password" value={form.password} onChange={set('password')} error={errors.password} hint="Al menos 8 caracteres." />
+            <TextField label="Teléfono celular" prefix="+52" type="tel" autoComplete="tel-national" inputMode="numeric" maxLength={12} value={form.phone} onChange={set('phone')} error={errors.phone} />
+            <TextField label="Contraseña" secure autoComplete="new-password" maxLength={LIMITS.password} value={form.password} onChange={set('password')} error={errors.password} hint="Al menos 8 caracteres, con una letra y un número." />
           </div>
 
           <h2 className="mt-10 text-lg font-semibold">Tu negocio</h2>
           <TextField
             className="mt-4"
             label="Nombre del negocio"
+            maxLength={LIMITS.businessName}
             value={form.businessName}
             onChange={set('businessName')}
             error={errors.businessName}

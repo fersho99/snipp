@@ -6,6 +6,7 @@
 // stores only its reference (RN-17).
 import { useSyncExternalStore } from 'react'
 import { products as sharedProducts, stock as sharedStock } from '@shared/seed'
+import { LIMITS, checkLabel, checkPrice, checkStock, checkText } from '@shared/validators'
 const frasco = '/photos/producto-frasco.jpg'
 import { DEMO_TODAY } from '../data/demo'
 import { ApiError } from './auth'
@@ -148,9 +149,24 @@ export const loyaltyFor = (s: ShopState, businessId: string): LoyaltyRules => s.
 // ---------- Products and stock (RF-W19, RF-W20) ----------
 
 export type ProductForm = Omit<Product, 'id' | 'sku' | 'branchId'> & { id?: string; sku?: string; branchId?: string }
+// The same checks as the form, again here (RF-W19): a request sent without
+// the screen is rejected too.
+function check(...messages: (string | null)[]) {
+  const first = messages.find(Boolean)
+  if (first) throw new ApiError('invalid', first)
+}
+
 export async function saveProduct(branchId: string, data: ProductForm): Promise<Product> {
   await wait(700)
   failIfForced()
+  check(
+    checkLabel(String(data.name ?? ''), LIMITS.productName, 'Escribe el nombre del producto.'),
+    checkText(String(data.size ?? ''), LIMITS.size),
+    checkPrice(data.price),
+    checkStock(data.stock),
+    checkText(String(data.description ?? ''), LIMITS.description),
+    checkText(String(data.howTo ?? ''), LIMITS.description),
+  )
   let saved = data as Product
   set((s) => {
     if (data.id) {
@@ -167,6 +183,7 @@ export async function saveProduct(branchId: string, data: ProductForm): Promise<
 export async function adjustStock(productId: string, newStock: number, reason: string) {
   await wait(600)
   failIfForced()
+  check(checkStock(newStock), checkText(String(reason ?? ''), LIMITS.reason, 'Escribe el motivo del ajuste.'))
   set((s) => {
     const p = s.products.find((x) => x.id === productId)
     if (!p) return s
@@ -195,6 +212,10 @@ export async function advanceOrder(folio: string) {
 export async function cancelOrder(folio: string, reason: string) {
   await wait(1000)
   failIfForced()
+  check(checkText(String(reason ?? ''), LIMITS.reason, 'Escribe el motivo de la cancelación.'))
+  // RN-20: an order is refunded once; a delivered one is not cancelled.
+  const current = state.orders.find((x) => x.folio === folio)
+  if (current && current.status !== 'pagado' && current.status !== 'listo') throw new ApiError('conflict', 'Este pedido ya no se puede cancelar.')
   set((s) => {
     const o = s.orders.find((x) => x.folio === folio)
     if (!o) return s
@@ -216,5 +237,7 @@ export async function cancelOrder(folio: string, reason: string) {
 export async function saveLoyalty(businessId: string, rules: LoyaltyRules) {
   await wait(700)
   failIfForced()
+  const values = [rules.pesosPerPointAppointments, rules.pesosPerPointPurchases, rules.pesosPerPointRedeemed]
+  if (!values.every((n) => Number.isInteger(n) && n >= 1 && n <= 1000)) throw new ApiError('invalid', 'Usa números enteros de 1 a 1,000.')
   set((s) => ({ ...s, loyalty: { ...s.loyalty, [businessId]: rules } }))
 }

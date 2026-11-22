@@ -69,6 +69,10 @@ function Spinner() {
 // Labelled input on a light gray fill with a gray border. Focus darkens the
 // border; an error turns it red and adds a red message with an icon (SRS
 // v1.2, 4.2 "Errores de formulario"). `secure` adds the show/hide control.
+// Every field has a length limit (Fase 3); a screen passes its own
+// maxLength from shared/validators.ts LIMITS, otherwise these apply.
+const FIELD_MAX = 120
+const AREA_MAX = 500
 type FieldBase = { label: ReactNode; hint?: ReactNode; error?: ReactNode; className?: string }
 type TextFieldProps = FieldBase & Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> & { secure?: boolean; prefix?: ReactNode }
 export function TextField({ label, hint, error, secure, prefix, className = '', ...props }: TextFieldProps) {
@@ -90,6 +94,7 @@ export function TextField({ label, hint, error, secure, prefix, className = '', 
           aria-invalid={!!error || undefined}
           aria-describedby={describedBy}
           className="min-h-11 flex-1 bg-transparent pr-4 text-base text-ink outline-none placeholder:text-ink-soft"
+          maxLength={FIELD_MAX}
           {...props}
         />
         {secure ? (
@@ -162,6 +167,7 @@ export function TextArea({ label, hint, error, className = '', rows = 4, ...prop
       <textarea
         id={id}
         rows={rows}
+        maxLength={AREA_MAX}
         aria-invalid={!!error || undefined}
         aria-describedby={describedBy}
         className={`rounded-control border-2 bg-sunken px-4 py-3 text-base text-ink outline-none transition-colors placeholder:text-ink-soft focus:bg-raised ${

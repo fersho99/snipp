@@ -121,6 +121,7 @@ function MinNotice({ businessId, hours }: { businessId: string; hours: number })
               <input
                 id="min-notice"
                 inputMode="numeric"
+                maxLength={3}
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 aria-invalid={!!error || undefined}

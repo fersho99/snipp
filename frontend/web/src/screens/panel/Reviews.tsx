@@ -8,6 +8,7 @@ import { Button, Dialog, Note, TextArea } from '../../components/ui'
 import useAction from '@/lib/useAction'
 import { reportReview, REVIEW_REPORT_REASONS, useReportsStore } from '../../services/reports'
 import { longDate } from '../../theme'
+import { LIMITS } from '@shared/validators'
 
 // Overall rating of each branch, as the app shows it (same numbers as the mobile catalog).
 const RATING: Record<string, { average: number; count: number }> = { 'los-compas-centro': { average: 4.7, count: 212 }, 'los-compas-norte': { average: 4.5, count: 86 } }
@@ -136,7 +137,7 @@ function ReportDialog({ review, onClose, onDone }: { review: Review; onClose: ()
           {REVIEW_REPORT_REASONS.map((x) => <option key={x}>{x}</option>)}
         </select>
       </div>
-      <TextArea label={reason === 'Otro' ? 'Explica el motivo' : 'Detalles (opcional)'} rows={3} value={detail} onChange={(e) => { setDetail(e.target.value); setError(null) }} error={error} />
+      <TextArea label={reason === 'Otro' ? 'Explica el motivo' : 'Detalles (opcional)'} rows={3} maxLength={LIMITS.reason} value={detail} onChange={(e) => { setDetail(e.target.value); setError(null) }} error={error} />
       <p className="text-sm text-ink-soft">Solo el Administrador puede eliminar una reseña.</p>
     </Dialog>
   )

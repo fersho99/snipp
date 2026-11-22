@@ -7,6 +7,7 @@
 // action is a call to the API, which also notifies each client whose
 // appointment changes (RF-W16, RN-04).
 import { useSyncExternalStore } from 'react'
+import { sessionAccount } from '@shared/auth'
 import { appointmentStart, fromIsoDateTime, iso, isoDateTime } from '@shared/dates'
 import { services as sharedServices, employees as sharedEmployees } from '@shared/seed'
 import * as db from '@shared/store'
@@ -17,6 +18,7 @@ import { ApiError } from './auth'
 import { takeForcedError } from './panel'
 import type { JoinRequest } from '../data/demo'
 import type { Appointment, AppointmentStatus, Block, Employee, HistoryEvent, WeekHours } from '../types/domain'
+import { scheduleProblem } from '../schedule'
 
 // An Empleado as the business sees them (RF-W10 to RF-W13).
 export type StaffStatus = 'activo' | 'migracion-pendiente'
@@ -150,21 +152,21 @@ function snapshot(): StaffState {
 
 const listeners = new Set<() => void>()
 // Also used by services/agenda.ts, which works on the same appointments.
+// The appointments and blocks that changed go to the shared store, which
+// checks the rules (RN-01, RN-02, RF-W18) for the signed-in account and
+// throws, saving nothing, when one is broken.
 export const set = (fn: (s: StaffState) => StaffState) => {
   const prev = snapshot()
   const { appointments, blocks, ...rest } = fn(prev)
-  local = rest
   if (appointments !== prev.appointments || blocks !== prev.blocks) {
     const before = new Map(prev.appointments.map((a) => [a.folio, a]))
-    db.commit((d) => ({
-      ...d,
-      appointments: d.appointments.map((shared) => {
-        const a = appointments.find((x) => x.folio === shared.folio)
-        return a && a !== before.get(shared.folio) ? fromPanel(shared, a) : shared
-      }),
-      blocks: blocks === prev.blocks ? d.blocks : blocks.map(blockFromPanel),
-    }))
+    const changed = db.getData().appointments.flatMap((shared) => {
+      const a = appointments.find((x) => x.folio === shared.folio)
+      return a && a !== before.get(shared.folio) ? [fromPanel(shared, a)] : []
+    })
+    db.savePanelChanges(changed, blocks === prev.blocks ? null : blocks.map(blockFromPanel), sessionAccount('panel'))
   }
+  local = rest
   listeners.forEach((l) => l())
 }
 const subscribe = (l: () => void) => {
@@ -278,6 +280,8 @@ export async function rejectRequest(requestId: string) {
 export async function saveSchedule(employeeId: string, schedule: WeekHours) {
   await wait(600)
   failIfForced()
+  const problem = scheduleProblem(schedule)
+  if (problem) throw new ApiError('invalid', problem)
   set((s) => ({ ...s, staff: { ...s.staff, [employeeId]: { ...s.staff[employeeId], schedule } } }))
 }
 

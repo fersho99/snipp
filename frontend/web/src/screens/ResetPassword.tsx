@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AuthLayout from '../components/AuthLayout'
+import { LIMITS, checkPassword } from '@shared/validators'
 import { Button, Note, TextField, TextLink } from '../components/ui'
 import { ApiError, networkMessage, resetPassword } from '../services/auth'
 
@@ -23,8 +24,9 @@ export default function ResetPassword() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password.length < 8) {
-      setError('Usa al menos 8 caracteres.')
+    const invalid = checkPassword(password)
+    if (invalid) {
+      setError(invalid)
       return
     }
     setLoading(true)
@@ -72,10 +74,11 @@ export default function ResetPassword() {
           label="Contraseña nueva"
           secure
           autoComplete="new-password"
+          maxLength={LIMITS.password}
           value={password}
           onChange={(e) => { setPassword(e.target.value); setError(null) }}
           error={error}
-          hint="Al menos 8 caracteres."
+          hint="Al menos 8 caracteres, con una letra y un número."
         />
         {failure ? <Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note> : null}
         <Button type="submit" loading={loading}>{loading ? 'Guardando' : 'Guardar contraseña'}</Button>

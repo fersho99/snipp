@@ -9,7 +9,8 @@ const year = (d: Date) => (d.getFullYear() === CURRENT_YEAR ? '' : ` de ${d.getF
 export const longDate = (d: Date) => `${DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}${year(d)}`
 export const dayMonth = (d: Date) => `${d.getDate()} de ${MONTHS[d.getMonth()]}${year(d)}`
 export const addMonths = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth() + n, d.getDate())
-export const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.trim())
+// The same check the app and the shared store use (shared/validators.ts).
+export { isEmail } from '@shared/validators'
 export const firstName = (s: string) => s.trim().split(/\s+/)[0] ?? ''
 export const timeOfDay = (d: Date) => {
   const h = d.getHours() % 12 || 12
