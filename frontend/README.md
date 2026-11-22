@@ -67,6 +67,34 @@ Una cita reservada en `/app` aparece en la agenda del panel, y un cambio hecho e
 
 `frontend/shared/` tiene los tipos (`types.ts`), el único conjunto de datos de ejemplo (`seed.ts`: negocios, sucursales, servicios, Empleados, cliente, productos, bloqueos y citas), las fechas (`dates.ts`) y el almacén (`store.ts`, con versión de esquema: al cambiar la forma de los datos se sube `SCHEMA_VERSION`). Web y app lo importan como `@shared/...`.
 
+## Validaciones y seguridad
+
+- **Validadores compartidos** (`shared/validators.ts`): correo, teléfono de 10 dígitos, nombre (letras, espacios, `.`, `'` y `-`), contraseña (8 a 64 caracteres, con letra y número), precio (mayor que 0), existencias (entero, 0 o más), horarios (inicio antes del fin), fecha de cita (hasta 2 meses, RN-02) e imagen (JPG o PNG hasta 5 MB). `LIMITS` da el largo máximo de cada campo: los formularios lo usan como `maxLength` y los validadores lo revisan. El error sale en rojo debajo del campo y lo escrito se conserva.
+- **Reglas de negocio en el almacén** (`shared/rules.ts`, aplicadas en `shared/store.ts`), no solo en la pantalla:
+  - Citas: sin encimarse con otra cita ni con un bloqueo (RN-01), hasta 2 meses (RN-02), cancelar o reagendar hasta 2 horas antes (RN-03), una reseña por cita atendida (RN-08), un reporte por cita atendida o con "Empleado no se presentó" (RN-15).
+  - No se reserva en un negocio vencido o suspendido, y no aparece en la app (RN-13).
+  - Un Empleado solo cambia sus propias citas y no las pasa a otro; el Jefe, las de su negocio (RF-W16 a RF-W18). El cliente solo cambia las suyas, y solo los datos permitidos.
+  - Tienda (en `mobile/src/data/shop.ts` hasta que los pedidos pasen al almacén en la Fase 4): 3 carritos (RN-06), cantidades enteras sin pasar de las existencias (RN-07, RN-18), puntos solo del mismo negocio y sin pasar del saldo ni del total (RN-09), y un mismo pago no crea dos pedidos (RN-20).
+- **Prueba desde la consola** (solo con `npm run dev`): en la pestaña del panel, `snippApi` llama al almacén como la cuenta con sesión en la app o en el panel. Por ejemplo, con Andrea en `/app` y Óscar en el panel:
+
+  ```js
+  await snippApi.book({ branchId: 'los-compas-norte', employeeId: 'oscar', serviceId: 'fade', date: '2027-03-01', start: 600 })  // rechazada: más de 2 meses
+  await snippApi.panelChange('C-10520', { employeeId: 'ramon' })                                                            // rechazada: no es su cita
+  ```
+
+- **Inyección:** todo lo que se escribe se guarda y se muestra como texto. No hay `dangerouslySetInnerHTML`, `eval`, `new Function` ni `innerHTML`. La web manda cabeceras de seguridad (`web/next.config.ts`): `Content-Security-Policy` (solo recursos del mismo sitio, sin `object`, sin marcos), `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` y `Permissions-Policy`. `script-src` lleva `'unsafe-inline'` porque Next y la app exportada usan scripts en línea; quitarlo requiere un nonce por página desde el servidor.
+
+### Lo que el backend debe repetir
+
+El frontend solo ayuda a capturar bien: cualquiera puede saltarse la pantalla o editar el `localStorage`. La API debe:
+
+1. **Validar** cada campo con las mismas reglas y largos de `shared/validators.ts`, con listas permitidas, y rechazar lo demás con un código y un mensaje.
+2. **Guardar contraseñas con un hash lento** (bcrypt o Argon2 con sal por cuenta). El SHA-256 de la demo es solo para no guardar texto plano.
+3. **Usar consultas parametrizadas** (o el ORM) en todo acceso a la base de datos; nunca armar SQL con texto del usuario (RNF-G05).
+4. **Autorizar por rol y por negocio** con la cuenta del token, nunca con lo que mande la pantalla: el cliente solo sus citas y pedidos, el Empleado solo sus citas, el Jefe solo su negocio, el Administrador solo planes, negocios y reseñas reportadas.
+5. **Revisar las reglas de negocio** de `shared/rules.ts` dentro de una transacción (por ejemplo, RN-01 con un bloqueo o una restricción única para que dos reservas al mismo tiempo no pasen), e idempotencia en pagos y reembolsos (RN-20).
+6. **Escapar al mostrar** en correos y notificaciones, y mandar la CSP con nonce para quitar `'unsafe-inline'`.
+
 ## Estructura
 
 ```
