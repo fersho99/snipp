@@ -11,6 +11,8 @@ import { ApiError } from '@shared/store';
 import { DEMO_CLIENT } from '../data/demo';
 import { signUp } from '../data/session';
 import { space } from '../theme/tokens';
+import { LIMITS, checkEmail, checkName, checkPassword, checkPhone, collect } from '@shared/validators';
+import { toastError } from '../data/toast';
 
 type InputRef = React.ComponentRef<typeof TextInput>;
 type Field = 'name' | 'email' | 'phone' | 'password';
@@ -41,10 +43,7 @@ export default function SignUp() {
 
   const validate = () => {
     const e: Partial<Record<Field, string>> = {};
-    if (!form.name.trim()) e.name = 'Escribe tu nombre.';
-    if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) e.email = 'Ese correo no parece válido. Revisa que tenga @ y dominio.';
-    if (form.phone.replace(/\D/g, '').length !== 10) e.phone = 'El teléfono debe tener 10 dígitos, sin el +52.';
-    if (form.password.length < 8) e.password = 'Usa mínimo 8 caracteres.';
+    Object.assign(e, collect({ name: checkName(form.name), email: checkEmail(form.email), phone: checkPhone(form.phone), password: checkPassword(form.password) }));
     return e;
   };
 
@@ -58,6 +57,9 @@ export default function SignUp() {
       router.replace('/inicio');
     } catch (err) {
       if (err instanceof ApiError && err.code === 'email-taken') setErrors({ email: 'taken' });
+      // The store checks the fields again; the screen already did, so this only
+      // happens if both disagree.
+      else if (err instanceof ApiError && err.code === 'invalid') toastError(err.message);
       else throw err;
     } finally {
       setLoading(false);
@@ -79,6 +81,7 @@ export default function SignUp() {
       <View style={styles.form}>
         <TextField
           label="Nombre completo"
+          maxLength={LIMITS.name}
           value={form.name}
           onChangeText={set('name')}
           error={errors.name}
@@ -93,6 +96,7 @@ export default function SignUp() {
           <TextField
             ref={refs.email}
             label="Correo"
+            maxLength={LIMITS.email}
             value={form.email}
             onChangeText={set('email')}
             error={emailTaken ? `${form.email.trim()} ya tiene una cuenta en SNIPP.` : errors.email}
@@ -115,6 +119,7 @@ export default function SignUp() {
           ref={refs.phone}
           label="Teléfono celular"
           prefix="+52"
+          maxLength={12}
           value={form.phone}
           onChangeText={set('phone')}
           error={errors.phone}
@@ -129,10 +134,11 @@ export default function SignUp() {
         <TextField
           ref={refs.password}
           label="Contraseña"
+          maxLength={LIMITS.password}
           value={form.password}
           onChangeText={set('password')}
           error={errors.password}
-          hint="Mínimo 8 caracteres."
+          hint="Mínimo 8 caracteres, con una letra y un número."
           secure
           autoComplete="new-password"
           textContentType="newPassword"

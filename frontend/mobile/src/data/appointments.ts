@@ -3,6 +3,8 @@
 // agenda of the branch, and a change made there shows up here.
 import { useSyncExternalStore } from 'react';
 import * as db from '@shared/store';
+import { sessionAccount } from '@shared/auth';
+import { CANCEL_HOURS } from '@shared/rules';
 import type { Appointment as SharedAppointment, DemoData } from '@shared/types';
 import { DEMO_TODAY, client, employees, services } from './demo';
 import { addReview, getBranch } from './catalog';
@@ -16,7 +18,8 @@ function found<T>(value: T | undefined, what: string): T {
   return value;
 }
 
-export const CANCEL_HOURS = 2; // branch setting, default 2 hours
+// RN-03: branch setting, default 2 hours (shared/rules.ts).
+export { CANCEL_HOURS };
 
 // A shared record as the app shows it. During a change the business proposed
 // (RF-M08) the app shows what the client booked and the change apart.
@@ -77,12 +80,18 @@ function snapshot(): Appointment[] {
 export const appointmentStore = {
   subscribe: db.subscribe,
   getSnapshot: snapshot,
+  // The shared store checks the rules (RN-01 to RN-03, RN-08, RN-15) for the
+  // signed-in client and throws an ApiError, changing nothing, if one is broken.
   update(folio: string, patch: Partial<Appointment>) {
-    db.patchAppointment(folio, toShared(patch));
+    db.patchAppointment(folio, toShared(patch), sessionAccount('app'));
+  },
+  // The same check without saving, for screens that save after the success message.
+  check(folio: string, patch: Partial<Appointment>) {
+    db.checkAppointmentPatch(folio, toShared(patch), sessionAccount('app'));
   },
   // New booking from the app; returns its folio.
   add({ serviceId, employeeId, branchId, date, start }: Omit<Appointment, 'folio'>) {
-    return db.insertAppointment({ serviceId, employeeId, branchId, date, start, clientName: client.name, clientEmail: client.email }).folio;
+    return db.insertAppointment({ serviceId, employeeId, branchId, date, start }, sessionAccount('app')).folio;
   },
 };
 
@@ -162,18 +171,27 @@ export const canReport = (a: Appointment) => ['atendida', 'empleado-no-se-presen
 
 export const TODAY_LABEL = '12 de noviembre';
 
+// Checks a review or report with the shared store before the success
+// message (RN-08, RN-15); throws an ApiError if it is not allowed.
+export function checkReview(folio: string, review: { stars: number; text: string }) {
+  appointmentStore.check(folio, { review: { stars: review.stars, text: review.text.trim() } });
+}
+export function checkReport(folio: string, report: { reason: string; text: string }) {
+  appointmentStore.check(folio, { report: { sentOn: TODAY_LABEL, state: 'enviado', reason: report.reason, text: report.text.trim() } });
+}
+
 // RF-M12: the review is published on the business page and counts in its average.
 export function submitReview(folio: string, { stars, text }: { stars: number; text: string }) {
   const a = found(snapshot().find((x) => x.folio === folio), folio);
   const d = describe(a);
-  appointmentStore.update(folio, { review: { stars, text } });
+  appointmentStore.update(folio, { review: { stars, text: text.trim() } });
   return addReview(a.branchId, {
     id: `r-${folio}`,
     author: client.name,
     stars,
     date: TODAY_LABEL,
     service: `${d.service.name} con ${d.employee.name}`,
-    text,
+    text: text.trim(),
   });
 }
 
@@ -189,7 +207,7 @@ export const reasonLabel = (id: string) => REPORT_REASONS.find((r) => r.id === i
 
 // RF-M13: goes to the Jefe of that business; the employee never sees it (RN-15).
 export function submitReport(folio: string, { reason, text }: { reason: string; text: string }) {
-  appointmentStore.update(folio, { report: { sentOn: TODAY_LABEL, state: 'enviado', reason, text } });
+  appointmentStore.update(folio, { report: { sentOn: TODAY_LABEL, state: 'enviado', reason, text: text.trim() } });
 }
 
 // RF-M14: enviado (blue) | en revisión (amber) | atendido (green), SRS v1.2 4.1.

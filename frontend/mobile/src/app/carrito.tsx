@@ -10,7 +10,7 @@ import { ConfirmSheet, ProductPhoto, QtyStepper, expiryStatus, piecesLabel } fro
 import { StatusLine, StatusNotice, TabBar } from '../components/Appointment';
 import useConnectivity from '../hooks/useConnectivity';
 import { getBusiness } from '../data/demo';
-import { cart, cartSummary, createOrder, getCart, pointsEarned, seedDemoCarts, useCarts } from '../data/shop';
+import { cart, cartSummary, checkOrder, createOrder, getCart, pointsEarned, seedDemoCarts, useCarts } from '../data/shop';
 import { declineMessage, payOrder } from '../services/payments';
 import useAction, { wait } from '../hooks/useAction';
 import { money } from '../theme/format';
@@ -174,6 +174,7 @@ function CartPage({ data, declineFirst, failEmpty }: { data: CartData; declineFi
   // RF-M10: only this cart is charged. The order is created and the cart
   // goes away once the green answer has been shown.
   const pay = () => payment.run(async () => {
+    checkOrder(s); // nothing is charged if the cart breaks a rule
     const r = await payOrder({ simulate: declineNext.current ? 'declined' : 'paid' });
     if (r.status === 'declined') {
       declineNext.current = false;
