@@ -170,7 +170,7 @@ export async function signUpBoss(form: SignUp & { businessName: string; planId: 
   const endsOn = new Date(DEMO_TODAY.getFullYear(), DEMO_TODAY.getMonth() + 1, DEMO_TODAY.getDate())
   commit((d) => ({
     ...d,
-    businesses: [...d.businesses, { id: businessId, name: form.businessName.trim(), kind: '', subscription: { kind: 'prueba', planId: form.planId, endsOn: iso(endsOn) }, suspended: false }],
+    businesses: [...d.businesses, { id: businessId, name: form.businessName.trim(), kind: '', subscription: { kind: 'prueba', planId: form.planId, endsOn: iso(endsOn) }, suspended: false, minNoticeHours: 2, joinedOn: iso(DEMO_TODAY) }],
   }))
   return createAccount('panel', 'jefe', form, businessId)
 }

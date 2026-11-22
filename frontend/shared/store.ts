@@ -5,6 +5,7 @@
 //
 // The functions at the end have the shape of the real API (async, errors with
 // a `code`), so connecting the API later only changes their implementation.
+import { appointmentEffects, feedbackEffects } from './effects'
 import { bookingProblem, clientChangeProblem, panelChangeProblem, type Problem } from './rules'
 import { seedData } from './seed'
 import type { Account, Appointment, Block, DemoData } from './types'
@@ -12,7 +13,7 @@ import type { Account, Appointment, Block, DemoData } from './types'
 const KEY = 'snipp-demo'
 // Raise it whenever the shape of DemoData or the sample data changes: saved
 // data from another version is replaced by the new sample data.
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 interface Saved {
   version: number
@@ -155,7 +156,7 @@ export function insertAppointment(input: NewAppointment, actor: Account | null):
 export function patchAppointment(folio: string, patch: Partial<Omit<Appointment, 'folio'>>, actor: Account | null): Appointment {
   const found = checkAppointmentPatch(folio, patch, actor)
   const next = { ...found, ...patch }
-  commit((d) => ({ ...d, appointments: d.appointments.map((a) => (a.folio === folio ? next : a)) }))
+  commit((d) => feedbackEffects({ ...d, appointments: d.appointments.map((a) => (a.folio === folio ? next : a)) }, found, next))
   return next
 }
 
@@ -180,5 +181,13 @@ export function savePanelChanges(changed: Appointment[], blocks: Block[] | null,
     fail(panelChangeProblem({ ...d, appointments: d.appointments.map((a) => byFolio.get(a.folio) ?? a) }, before, next, actor))
   }
   if (blocks && (!actor || actor.role === 'admin' || actor.role === 'cliente')) throw new ApiError('forbidden', 'Tu cuenta no bloquea horarios.')
-  commit((x) => ({ ...x, appointments: x.appointments.map((a) => byFolio.get(a.folio) ?? a), blocks: blocks ?? x.blocks }))
+  // The client of each changed appointment is told, and earns points when it was attended.
+  commit((x) => {
+    let out: DemoData = { ...x, appointments: x.appointments.map((a) => byFolio.get(a.folio) ?? a), blocks: blocks ?? x.blocks }
+    for (const next of changed) {
+      const before = x.appointments.find((a) => a.folio === next.folio)
+      if (before) out = appointmentEffects(out, before, next)
+    }
+    return out
+  })
 }

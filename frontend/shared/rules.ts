@@ -60,8 +60,11 @@ export function bookingProblem(d: DemoData, slot: Slot, actor: Account | null, t
   if (!actor || actor.role !== 'cliente') return problem('forbidden', 'Entra con tu cuenta para reservar.')
   const branch = d.branches.find((b) => b.id === slot.branchId)
   if (!branch) return problem('not-found', 'Esa sucursal no existe.')
-  if (!businessVisible(d.businesses.find((b) => b.id === branch.businessId), today)) return problem('invalid', 'Este negocio no está recibiendo reservas.')
-  if (!d.services.some((s) => s.id === slot.serviceId)) return problem('not-found', 'Ese servicio no existe.')
+  if (!businessVisible(d.businesses.find((b) => b.id === branch.businessId), today) || !branch.active) return problem('invalid', 'Este negocio no está recibiendo reservas.')
+  // RN-14: only the active services of the branch.
+  if (!branch.serviceIds.includes(slot.serviceId) || branch.inactiveServiceIds.includes(slot.serviceId)) return problem('invalid', 'Este servicio no se ofrece en esta sucursal.')
+  const employee = d.employees.find((e) => e.id === slot.employeeId)
+  if (employee && (!employee.bookable || employee.status === 'baja')) return problem('invalid', 'Ese profesional no recibe citas.')
   return slotProblem(d, slot, today)
 }
 
@@ -104,8 +107,11 @@ export function clientChangeProblem(d: DemoData, before: Appointment, patch: Par
     if (cancelling ? patch.cancelledBy !== 'cliente' : status !== 'confirmada') return problem('forbidden', 'Ese cambio lo hace solo el negocio.')
     // RN-03 (RN-04: answering a change of the business has no minimum notice).
     if (before.status === 'confirmada') {
-      const deadline = appointmentStart(before).getTime() - CANCEL_HOURS * 3600 * 1000
-      if (today.getTime() >= deadline) return problem('invalid', `Ya no se puede ${cancelling ? 'cancelar' : 'cambiar'} desde la app: faltan menos de ${CANCEL_HOURS} horas. Llama a la sucursal.`)
+      // RF-W08: each business sets its notice; 2 hours by default.
+      const branch = d.branches.find((b) => b.id === before.branchId)
+      const hours = d.businesses.find((b) => b.id === branch?.businessId)?.minNoticeHours ?? CANCEL_HOURS
+      const deadline = appointmentStart(before).getTime() - hours * 3600 * 1000
+      if (today.getTime() >= deadline) return problem('invalid', `Ya no se puede ${cancelling ? 'cancelar' : 'cambiar'} desde la app: faltan menos de ${hours} ${hours === 1 ? 'hora' : 'horas'}. Llama a la sucursal.`)
     }
     if (!cancelling && moved(before, patch)) return slotProblem(d, { ...before, ...patch, folio: before.folio }, today)
   }
