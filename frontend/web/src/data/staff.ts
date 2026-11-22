@@ -12,12 +12,11 @@ export const staffProfiles: Record<string, StaffProfile> = Object.fromEntries(
 )
 
 // Other businesses on SNIPP, for "Solicitar migración" and for an Empleado
-// without a business who asks to join one (RF-W10, RF-W12). Barbería El Faro
-// is where Diego Armenta comes from; it has no branches in the sample data.
-export const directory: DirectoryBusiness[] = [
-  ...businesses.map((b) => ({ id: b.id, name: b.name, branches: branches.filter((br) => br.businessId === b.id).map((br) => ({ id: br.id, name: br.name })) })),
-  { id: 'el-faro', name: 'Barbería El Faro', branches: [{ id: 'el-faro', name: 'Barbería El Faro' }] },
-]
+// without a business who asks to join one (RF-W10, RF-W12). A suspended
+// business does not take requests (RF-W28).
+export const directory: DirectoryBusiness[] = businesses
+  .filter((b) => !b.suspended)
+  .map((b) => ({ id: b.id, name: b.name, branches: branches.filter((br) => br.businessId === b.id).map((br) => ({ id: br.id, name: br.name })) }))
 
 // Appointment history per Empleado (RF-W17): each confirmation,
 // cancellation and reschedule, with the date and who did it. Generated the

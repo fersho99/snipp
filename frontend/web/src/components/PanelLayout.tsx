@@ -26,7 +26,13 @@ import { getPickedBranch, loadPanel, setDemoEstado, setPickedBranch, signOut, su
 import type { Branch, Business, Session } from '../types/domain'
 
 // Screen index shortcut (development only): ?como=jefe | empleado | sin-negocio | admin
-const DEV_ACCOUNTS: Record<string, Session> = { admin: accounts[0], jefe: accounts[1], empleado: accounts[2], 'sin-negocio': accounts[3] }
+const byEmail = (email: string) => accounts.find((a) => a.email === email) as Session
+const DEV_ACCOUNTS: Record<string, Session> = {
+  admin: byEmail('admin@snipp.mx'),
+  jefe: byEmail('martin.salazar@loscompas.mx'),
+  empleado: byEmail('luis.ortega@gmail.com'),
+  'sin-negocio': byEmail('sofia.ramos@gmail.com'),
+}
 
 // Panel shell for the three roles (RF-W04): side menu with only the role's
 // sections, the Jefe's branch selector, and the subscription notices

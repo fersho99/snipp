@@ -50,12 +50,12 @@ function seedBusinesses(): PlatformBusiness[] {
       payments: [],
     },
     {
-      id: 'el-faro', name: 'Barbería El Faro', owner: 'Rogelio Tapia', email: 'rogelio@elfaro.mx', branches: 1, joinedOn: d(9, 5), suspended: false,
+      id: 'el-faro', name: 'Barbería El Faro', owner: 'Rogelio Tapia', email: 'jefe.vencido@elfaro.mx', branches: 1, joinedOn: d(9, 5), suspended: false,
       subscription: { kind: 'pagada', planId: 'mensual', endsOn: d(11, 5) },
       payments: [{ id: 'pay-f1', on: d(10, 5), planId: 'mensual', amount: 499, ref: 'pi_3Q6bWn2eZvKYlo2C1pLs9tUv' }],
     },
     {
-      id: 'unas-coral', name: 'Uñas Coral', owner: 'Karen Lugo', email: 'karen@unascoral.mx', branches: 1, joinedOn: d(9, 20), suspended: true,
+      id: 'unas-coral', name: 'Uñas Coral', owner: 'Karen Lugo', email: 'jefe.suspendido@unascoral.mx', branches: 1, joinedOn: d(9, 20), suspended: true,
       subscription: { kind: 'pagada', planId: 'semestral', endsOn: d(3, 20, 2027) },
       payments: [{ id: 'pay-c1', on: d(10, 20), planId: 'semestral', amount: 2694, ref: 'pi_3QBdKp2eZvKYlo2C0aTq5wYz' }],
     },
