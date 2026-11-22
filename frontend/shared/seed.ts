@@ -2,12 +2,19 @@
 // Thursday 12 November 2026, 10:00 am (see dates.ts). Every list is built the
 // same way each time, so a reset always starts from the same story.
 import { DEMO_TODAY, appointmentStart, hhmm, iso, minutesOf } from './dates'
-import type { Appointment, AppointmentStatus, Block, Branch, Business, Client, DemoData, Employee, Product, Service, WeekHours } from './types'
+import { sha256 } from './sha256'
+import type { Account, Appointment, AppointmentStatus, Block, Branch, Business, DemoData, Employee, Product, Service, WeekHours } from './types'
 
+export const hashPassword = (salt: string, password: string) => sha256(`${salt}:${password}`)
+
+// Subscriptions (RF-W25, RN-13): El Faro's ended on 5 November without
+// payment and Uñas Coral was suspended by the Administrator (RF-W28).
 export const businesses: Business[] = [
-  { id: 'los-compas', name: 'Barbería Los Compas', kind: 'Barbería' },
-  { id: 'estudio-marisol', name: 'Estudio Marisol', kind: 'Salón y uñas' },
-  { id: 'navaja-fina', name: 'Navaja Fina', kind: 'Barbería clásica' },
+  { id: 'los-compas', name: 'Barbería Los Compas', kind: 'Barbería', subscription: { kind: 'pagada', planId: 'mensual', endsOn: '2026-12-03' }, suspended: false },
+  { id: 'estudio-marisol', name: 'Estudio Marisol', kind: 'Salón y uñas', subscription: { kind: 'pagada', planId: 'anual', endsOn: '2027-03-12' }, suspended: false },
+  { id: 'navaja-fina', name: 'Navaja Fina', kind: 'Barbería clásica', subscription: { kind: 'prueba', planId: 'mensual', endsOn: '2026-11-25' }, suspended: false },
+  { id: 'el-faro', name: 'Barbería El Faro', kind: 'Barbería', subscription: { kind: 'pagada', planId: 'mensual', endsOn: '2026-11-05' }, suspended: false },
+  { id: 'unas-coral', name: 'Uñas Coral', kind: 'Uñas', subscription: { kind: 'pagada', planId: 'semestral', endsOn: '2027-03-20' }, suspended: true },
 ]
 
 export const services: Service[] = [
@@ -69,6 +76,28 @@ export const branches: Branch[] = [
     hours: [null, null, ['11:00', '21:00'], ['11:00', '21:00'], ['11:00', '21:00'], ['11:00', '21:00'], ['11:00', '21:00']],
     serviceIds: ['corte-clasico', 'barba', 'corte-barba'],
   },
+  {
+    id: 'el-faro',
+    businessId: 'el-faro',
+    name: 'Barbería El Faro',
+    address: 'Calle 8 y Av. Hidalgo',
+    neighborhood: 'Col. Pueblo Nuevo',
+    phone: '653 534 8826',
+    description: 'Barbería de cortes clásicos y fades.',
+    hours: week('10:00', '20:00'),
+    serviceIds: ['corte-clasico', 'fade', 'barba'],
+  },
+  {
+    id: 'unas-coral',
+    businessId: 'unas-coral',
+    name: 'Uñas Coral',
+    address: 'Av. Kino y Calle 15',
+    neighborhood: 'Col. Comercial',
+    phone: '653 536 4410',
+    description: 'Uñas acrílicas y de gel con cita.',
+    hours: week('10:00', '19:00', '10:00', '15:00'),
+    serviceIds: ['unas'],
+  },
 ]
 
 // Each Empleado belongs to one branch (RF-W10). Itzel works the front desk,
@@ -82,10 +111,29 @@ export const employees: Employee[] = [
   { id: 'fernanda', name: 'Fernanda Lugo', specialty: 'Uñas acrílicas', email: 'fernanda.lugo@gmail.com', businessId: 'estudio-marisol', branchId: 'estudio-marisol', bookable: true, schedule: week('09:00', '19:00', '09:00', '15:00'), serviceIds: ['unas'] },
 ]
 
-export const clients: Client[] = [
-  { firstName: 'Andrea', name: 'Andrea Valenzuela', email: 'andrea.valenzuela@gmail.com', phone: '653 118 4420' },
+// Demo accounts (RF-M01, RF-W01 to RF-W04). One password per platform,
+// written in frontend/README.md; only its salted hash is kept (RNF-G01).
+export const APP_PASSWORD = 'compas2025'
+export const PANEL_PASSWORD = 'snipp2026'
+type AccountData = Omit<Account, 'salt' | 'passwordHash'>
+const accountList: (AccountData & { password: string })[] = [
+  { email: 'admin@snipp.mx', role: 'admin', name: 'Daniela Ibarra', phone: '', businessId: null, branchId: null, password: PANEL_PASSWORD },
+  { email: 'martin.salazar@loscompas.mx', role: 'jefe', name: 'Martín Salazar', phone: '653 534 2210', businessId: 'los-compas', branchId: null, password: PANEL_PASSWORD },
+  { email: 'jefe.vencido@elfaro.mx', role: 'jefe', name: 'Rogelio Tapia', phone: '653 534 8826', businessId: 'el-faro', branchId: null, password: PANEL_PASSWORD },
+  { email: 'jefe.suspendido@unascoral.mx', role: 'jefe', name: 'Karen Lugo', phone: '653 536 4410', businessId: 'unas-coral', branchId: null, password: PANEL_PASSWORD },
+  { email: 'luis.ortega@gmail.com', role: 'empleado', name: 'Luis Ortega', phone: '', businessId: 'los-compas', branchId: 'los-compas-centro', password: PANEL_PASSWORD },
+  { email: 'oscar.felix@gmail.com', role: 'empleado', name: 'Óscar Félix', phone: '', businessId: 'los-compas', branchId: 'los-compas-norte', password: PANEL_PASSWORD },
+  { email: 'sofia.ramos@gmail.com', role: 'empleado', name: 'Sofía Ramos', phone: '', businessId: null, branchId: null, password: PANEL_PASSWORD },
+  { email: 'andrea.valenzuela@gmail.com', role: 'cliente', name: 'Andrea Valenzuela', phone: '653 118 4420', businessId: null, branchId: null, password: APP_PASSWORD },
+  { email: 'cliente.nuevo@gmail.com', role: 'cliente', name: 'Daniel Ochoa', phone: '653 120 7781', businessId: null, branchId: null, password: APP_PASSWORD },
 ]
-const ANDREA = clients[0]
+// The sample accounts get a fixed salt so the seed is the same every time;
+// new accounts get a random one (see auth.ts).
+export const accounts: Account[] = accountList.map(({ password, ...a }) => {
+  const salt = sha256(`salt:${a.email}`).slice(0, 16)
+  return { ...a, salt, passwordHash: hashPassword(salt, password) }
+})
+const ANDREA = { name: 'Andrea Valenzuela', email: 'andrea.valenzuela@gmail.com' }
 
 export const products: Product[] = [
   { id: 'pomada', name: 'Pomada mate', size: '100 g', price: 230, description: 'Fijación media sin brillo que se quita con agua. Es la que usa Luis para terminar los fades.', howTo: 'Toma una cantidad del tamaño de un chícharo, frótala entre las manos y aplícala con el cabello seco.' },
@@ -246,5 +294,5 @@ function buildAppointments(): Appointment[] {
 
 // A fresh copy of the whole sample database.
 export function seedData(): DemoData {
-  return JSON.parse(JSON.stringify({ businesses, branches, services, employees, clients, products, stock, blocks, appointments: buildAppointments() })) as DemoData
+  return JSON.parse(JSON.stringify({ accounts, businesses, branches, services, employees, products, stock, blocks, appointments: buildAppointments() })) as DemoData
 }

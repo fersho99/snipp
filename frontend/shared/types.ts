@@ -7,10 +7,34 @@
 export type DayHours = [string, string] | null
 export type WeekHours = DayHours[]
 
+// RF-W25, RF-W28, RN-13: 'prueba' is the free first month, 'pagada' a paid
+// plan. endsOn ("YYYY-MM-DD") is the last day covered.
+export interface BusinessSubscription {
+  kind: 'prueba' | 'pagada'
+  planId: string
+  endsOn: string
+}
+
 export interface Business {
   id: string
   name: string
   kind: string
+  subscription: BusinessSubscription
+  suspended: boolean
+}
+
+// RF-M01, RF-W01 to RF-W04. The password is kept only as a salted hash
+// (RNF-G01). The client app accepts 'cliente'; the panel the other roles.
+export type Role = 'cliente' | 'admin' | 'jefe' | 'empleado'
+export interface Account {
+  email: string
+  role: Role
+  name: string
+  phone: string
+  businessId: string | null
+  branchId: string | null
+  salt: string
+  passwordHash: string
 }
 
 export interface Branch {
@@ -45,13 +69,6 @@ export interface Employee {
   bookable: boolean
   schedule: WeekHours
   serviceIds: string[]
-}
-
-export interface Client {
-  firstName: string
-  name: string
-  email: string
-  phone: string
 }
 
 // RF-W19: the same product sold at several branches, each with its stock.
@@ -111,11 +128,11 @@ export interface Appointment {
 }
 
 export interface DemoData {
+  accounts: Account[]
   businesses: Business[]
   branches: Branch[]
   services: Service[]
   employees: Employee[]
-  clients: Client[]
   products: Product[]
   // branchId -> productId -> pieces.
   stock: Record<string, Record<string, number>>

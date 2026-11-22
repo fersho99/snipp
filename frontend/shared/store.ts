@@ -11,7 +11,7 @@ import type { Appointment, DemoData } from './types'
 const KEY = 'snipp-demo'
 // Raise it whenever the shape of DemoData or the sample data changes: saved
 // data from another version is replaced by the new sample data.
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 interface Saved {
   version: number
@@ -92,7 +92,7 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
 
 // ------------------------------------------------------------------- API
 
-export type ApiErrorCode = 'not-found' | 'conflict' | 'invalid' | 'forbidden' | 'server' | 'offline'
+export type ApiErrorCode = 'not-found' | 'conflict' | 'invalid' | 'forbidden' | 'credentials' | 'email-taken' | 'server' | 'offline'
 export class ApiError extends Error {
   code: ApiErrorCode
   constructor(code: ApiErrorCode, message: string = code) {
