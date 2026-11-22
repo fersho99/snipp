@@ -21,7 +21,7 @@ import { resetDemoBranches, useBusinessSetup } from '../services/branches'
 import { resetDemoStaff } from '../services/staff'
 import { resetDemoReports } from '../services/reports'
 import { resetDemoShop } from '../services/shop'
-import { applyLoadedSubscription, ensureBusiness, resetDemoSubscriptions, useSubscriptionsStore } from '../services/subscriptions'
+import { applyLoadedSubscription, resetDemoSubscriptions, useSubscriptionsStore } from '../services/subscriptions'
 import { getPickedBranch, loadPanel, setDemoEstado, setPickedBranch, signOut, subscriptionStatus } from '../services/panel'
 import type { Branch, Business, Session } from '../types/domain'
 
@@ -58,7 +58,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   })
 
   const session = currentSession()
-  const setup = useBusinessSetup(session?.businessId ?? null, session?.business)
+  const setup = useBusinessSetup(session?.businessId ?? null)
   const reportStore = useReportsStore()
   const shopStore = useShopStore()
   const staffStore = useStaffStore()
@@ -79,7 +79,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     loadPanel(session)
       .then((loaded) => {
         if (loaded.business) {
-          ensureBusiness(loaded.business)
           applyLoadedSubscription(loaded.business.id, loaded.business.subscription)
         }
         setData(loaded)

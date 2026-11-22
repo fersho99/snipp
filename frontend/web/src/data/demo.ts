@@ -1,10 +1,13 @@
 // Sample data for the web panel. Businesses, branches, services, Empleados
-// and products come from the data shared with the client app
-// (frontend/shared/seed.ts); here only what the panel adds to them.
+// and products live in the database shared with the client app
+// (frontend/shared/store.ts); here only what the panel adds to them, and
+// the functions that give them the shape the panel uses.
 // "Today" is Thursday 12 November 2026.
-import { DEMO_TODAY } from '@shared/dates'
-import { accounts as sharedAccounts, branches as sharedBranches, businesses as sharedBusinesses, employees as sharedEmployees, products as sharedProducts, services as sharedServices } from '@shared/seed'
-import type { Branch, Business, Employee, Plan, Role, Session } from '../types/domain'
+import { DEMO_TODAY, iso } from '@shared/dates'
+import { accounts as sharedAccounts } from '@shared/seed'
+import { getData } from '@shared/store'
+import type { Branch as SharedBranch, DemoData } from '@shared/types'
+import type { Branch, Business, Plan, Role, Session } from '../types/domain'
 
 export { DEMO_TODAY }
 
@@ -13,11 +16,7 @@ const fade = '/photos/trabajo-fade.jpg'
 
 // Subscription plans the Administrator manages (RF-W27). A plan created
 // there shows up here as an option when a Jefe registers. Prices are examples.
-export const plans: Plan[] = [
-  { id: 'mensual', name: 'Mensual', price: 499, months: 1 },
-  { id: 'semestral', name: 'Semestral', price: 2694, months: 6 },
-  { id: 'anual', name: 'Anual', price: 4990, months: 12 },
-]
+export const plans = (): Plan[] => getData().plans.filter((p) => p.offered).map(({ id, name, price, months }) => ({ id, name, price, months }))
 
 // Photos of each branch and the appointments already booked from today on
 // (shown before deactivating).
@@ -40,62 +39,54 @@ const PANEL_EXTRAS: Record<string, Pick<Branch, 'images' | 'coverId' | 'upcoming
   },
 }
 
-// A branch as the panel manages it (RF-W05 to RF-W09). Inactive services
-// are not offered in the app (RN-14).
-function panelBranch(id: string): Branch {
-  const b = sharedBranches.find((x) => x.id === id)
-  if (!b) throw new Error(`Missing branch ${id}`)
-  return {
-    id: b.id,
-    name: b.name,
-    address: `${b.address}, ${b.neighborhood}`,
-    phone: b.phone,
-    description: b.description,
-    hours: b.hours.map((h) => (h ? [h[0], h[1]] : null)),
-    active: true,
-    services: sharedServices.filter((x) => b.serviceIds.includes(x.id)).map((x) => ({ ...x, active: true })),
-    ...(PANEL_EXTRAS[id] ?? { images: [], coverId: null, upcoming: 0 }),
+// A shared branch as the panel manages it (RF-W05 to RF-W09). Inactive
+// services are not offered in the app (RN-14). The photos uploaded in this
+// tab stay here: they are files of this browser and do not fit in storage.
+const panelBranches = new WeakMap<SharedBranch, Branch>()
+export function panelBranch(d: DemoData, b: SharedBranch): Branch {
+  let out = panelBranches.get(b)
+  if (!out) {
+    const today = iso(DEMO_TODAY)
+    out = {
+      id: b.id,
+      name: b.name,
+      address: b.neighborhood ? `${b.address}, ${b.neighborhood}` : b.address,
+      phone: b.phone,
+      description: b.description,
+      hours: b.hours.map((h) => (h ? [h[0], h[1]] : null)),
+      active: b.active,
+      services: d.services.filter((x) => b.serviceIds.includes(x.id)).map((x) => ({ ...x, active: !b.inactiveServiceIds.includes(x.id) })),
+      ...(PANEL_EXTRAS[b.id] ?? { images: [], coverId: null }),
+      upcoming: d.appointments.filter((a) => a.branchId === b.id && a.date >= today && (a.status === 'confirmada' || a.status === 'cambio')).length,
+    }
+    panelBranches.set(b, out)
   }
+  return out
 }
 
-// Businesses with their branches, settings and subscription (RF-W05 to
-// RF-W09, RF-W25, RN-13).
+// A business with its branches, settings and subscription (RF-W05 to
+// RF-W09, RF-W25, RN-13), as it is now in the shared data.
 // minNoticeHours: how long before an appointment clients can still cancel
 // or reschedule in the app (RF-W08, 2 hours by default).
 // subscription.kind: 'prueba' (free first month) or 'pagada' (a paid plan).
 // endsOn is the last day covered; after it, without payment, it is overdue.
-export const businesses: Record<string, Business> = Object.fromEntries(
-  sharedBusinesses.map((b): [string, Business] => [
-    b.id,
-    {
-      id: b.id,
-      name: b.name,
-      minNoticeHours: 2,
-      branches: sharedBranches.filter((br) => br.businessId === b.id).map((br) => panelBranch(br.id)),
-      subscription: { kind: b.subscription.kind, planId: b.subscription.planId, endsOn: new Date(`${b.subscription.endsOn}T00:00`) },
-    },
-  ]),
-)
-
-// Empleados linked to each branch (RF-W10).
-export const employees: Employee[] = sharedEmployees
-  .filter((e) => e.businessId === 'los-compas')
-  .map(({ id, name, specialty, businessId, branchId, bookable }) => ({ id, name, specialty, businessId, branchId, bookable }))
-
-// Store products of each branch (RF-W19). Same catalog as the mobile app.
-export const products = sharedProducts.map((p) => ({ id: p.id, name: p.size ? `${p.name} ${p.size}` : p.name, price: p.price }))
-export const branchProducts: Record<string, string[]> = {
-  'los-compas-centro': ['pomada', 'aceite', 'shampoo', 'cera'],
-  'los-compas-norte': ['pomada', 'cera'],
+export function panelBusiness(id: string): Business | null {
+  const d = getData()
+  const b = d.businesses.find((x) => x.id === id)
+  if (!b) return null
+  return {
+    id: b.id,
+    name: b.name,
+    minNoticeHours: b.minNoticeHours,
+    branches: d.branches.filter((br) => br.businessId === b.id).map((br) => panelBranch(d, br)),
+    subscription: { kind: b.subscription.kind, planId: b.subscription.planId, endsOn: new Date(`${b.subscription.endsOn}T00:00`) },
+  }
 }
 
-// Requests waiting for the Jefe: to join a branch (RF-W10) or to migrate
-// from another business (RF-W12). Unanswered, they expire after 7 days (RN-11).
+// A request waiting for the Jefe: to join a branch (RF-W10) or to migrate
+// from another business (RF-W12). Unanswered, it expires after 7 days (RN-11).
+// The requests themselves are in the shared data.
 export interface JoinRequest { id: string; businessId: string; kind: 'ingreso' | 'migracion'; name: string; email: string; branchId: string; from?: string; sentOn: Date }
-export const pendingRequests: JoinRequest[] = [
-  { id: 'S-31', businessId: 'los-compas', kind: 'ingreso', name: 'Sofía Ramos', email: 'sofia.ramos@gmail.com', branchId: 'los-compas-centro', sentOn: new Date(2026, 10, 10) },
-  { id: 'S-32', businessId: 'los-compas', kind: 'migracion', name: 'Diego Armenta', email: 'diego.armenta@gmail.com', from: 'Barbería El Faro', branchId: 'los-compas-norte', sentOn: new Date(2026, 10, 6) },
-]
 
 // Demo accounts of the panel (RF-W04). Their password is in frontend/README.md.
 export const accounts: Session[] = sharedAccounts

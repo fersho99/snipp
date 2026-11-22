@@ -4,10 +4,12 @@
 // In production the subscription is renewed with a Stripe PaymentIntent
 // and confirmed by the webhook before the expiry date moves.
 import { useSyncExternalStore } from 'react'
-import { DEMO_TODAY, plans as seedPlans } from '../data/demo'
-import { addMonths } from '../theme'
+import { sessionAccount } from '@shared/auth'
+import * as billing from '@shared/billing'
+import { ApiError as SharedApiError, getData, subscribe as onDataChange } from '@shared/store'
+import type { DemoData } from '@shared/types'
 import { ApiError } from './auth'
-import { takeForcedError } from './panel'
+import { getDemoEstado, takeForcedError } from './panel'
 import type { Plan, Subscription } from '../types/domain'
 
 export interface Payment { id: string; on: Date; planId: string; amount: number; ref: string }
@@ -26,84 +28,77 @@ export interface PlatformBusiness {
 export interface SubscriptionsState { plans: Plan[]; businesses: PlatformBusiness[] }
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
-const d = (m: number, day: number, y = 2026) => new Date(y, m - 1, day)
+const day = (s: string) => new Date(`${s}T00:00`)
 
-function seedBusinesses(): PlatformBusiness[] {
-  return [
-    {
-      id: 'los-compas', name: 'Barbería Los Compas', owner: 'Martín Salazar', email: 'martin.salazar@loscompas.mx', branches: 2, joinedOn: d(8, 3), suspended: false,
-      subscription: { kind: 'pagada', planId: 'mensual', endsOn: d(12, 3) },
-      payments: [
-        { id: 'pay-3', on: d(11, 3), planId: 'mensual', amount: 499, ref: 'pi_3QGv1x2eZvKYlo2C1mKp8sRt' },
-        { id: 'pay-2', on: d(10, 3), planId: 'mensual', amount: 499, ref: 'pi_3Q5aLc2eZvKYlo2C0yUj4nVb' },
-        { id: 'pay-1', on: d(9, 3), planId: 'mensual', amount: 499, ref: 'pi_3PuQe82eZvKYlo2C1dWq2hZx' },
-      ],
-    },
-    {
-      id: 'estudio-marisol', name: 'Estudio Marisol', owner: 'Marisol Peña', email: 'marisol@estudiomarisol.mx', branches: 1, joinedOn: d(8, 12), suspended: false,
-      subscription: { kind: 'pagada', planId: 'anual', endsOn: d(3, 12, 2027) },
-      payments: [{ id: 'pay-m1', on: d(9, 12), planId: 'anual', amount: 4990, ref: 'pi_3PyZt12eZvKYlo2C0rJk7mQa' }],
-    },
-    {
-      id: 'navaja-fina', name: 'Navaja Fina', owner: 'Armando Ruiz', email: 'armando@navajafina.mx', branches: 1, joinedOn: d(10, 25), suspended: false,
-      subscription: { kind: 'prueba', planId: 'mensual', endsOn: d(11, 25) },
-      payments: [],
-    },
-    {
-      id: 'el-faro', name: 'Barbería El Faro', owner: 'Rogelio Tapia', email: 'jefe.vencido@elfaro.mx', branches: 1, joinedOn: d(9, 5), suspended: false,
-      subscription: { kind: 'pagada', planId: 'mensual', endsOn: d(11, 5) },
-      payments: [{ id: 'pay-f1', on: d(10, 5), planId: 'mensual', amount: 499, ref: 'pi_3Q6bWn2eZvKYlo2C1pLs9tUv' }],
-    },
-    {
-      id: 'unas-coral', name: 'Uñas Coral', owner: 'Karen Lugo', email: 'jefe.suspendido@unascoral.mx', branches: 1, joinedOn: d(9, 20), suspended: true,
-      subscription: { kind: 'pagada', planId: 'semestral', endsOn: d(3, 20, 2027) },
-      payments: [{ id: 'pay-c1', on: d(10, 20), planId: 'semestral', amount: 2694, ref: 'pi_3QBdKp2eZvKYlo2C0aTq5wYz' }],
-    },
-  ]
-}
-
-function seed(): SubscriptionsState {
-  return { plans: seedPlans.map((p) => ({ ...p, offered: true })), businesses: seedBusinesses() }
-}
-
-let state = seed()
-let applied = new Set<string>()
+// Subscriptions the panel loaded with a state forced from the screen index
+// (aviso, vencida...); they win over the shared data in this tab.
+let forced: Record<string, Subscription> = {}
+let sinPlanes = false
 const listeners = new Set<() => void>()
-const set = (fn: (s: SubscriptionsState) => SubscriptionsState) => {
-  state = fn(state)
-  listeners.forEach((l) => l())
-}
+const emit = () => listeners.forEach((l) => l())
 const subscribe = (l: () => void) => {
   listeners.add(l)
-  return () => listeners.delete(l)
+  const off = onDataChange(l)
+  return () => {
+    listeners.delete(l)
+    off()
+  }
 }
-export const useSubscriptionsStore = () => useSyncExternalStore(subscribe, () => state)
-export const getPlans = () => state.plans
+
+// RF-W27, RF-W28: plans and businesses as the Administrador sees them, from
+// the data shared with the client app.
+let cache: { data: DemoData; forced: typeof forced; sinPlanes: boolean; state: SubscriptionsState } | null = null
+function snapshot(): SubscriptionsState {
+  const data = getData()
+  if (cache && cache.data === data && cache.forced === forced && cache.sinPlanes === sinPlanes) return cache.state
+  const state: SubscriptionsState = {
+    plans: sinPlanes ? [] : data.plans.map((p) => ({ ...p })),
+    businesses: data.businesses.map((b): PlatformBusiness => {
+      const owner = data.accounts.find((a) => a.role === 'jefe' && a.businessId === b.id)
+      return {
+        id: b.id,
+        name: b.name,
+        owner: owner?.name ?? '',
+        email: owner?.email ?? '',
+        branches: data.branches.filter((br) => br.businessId === b.id).length,
+        joinedOn: day(b.joinedOn),
+        suspended: b.suspended,
+        subscription: forced[b.id] ?? { kind: b.subscription.kind, planId: b.subscription.planId, endsOn: day(b.subscription.endsOn) },
+        payments: data.payments.filter((p) => p.businessId === b.id).map((p) => ({ id: p.id, on: day(p.on), planId: p.planId, amount: p.amount, ref: p.ref })),
+      }
+    }),
+  }
+  cache = { data, forced, sinPlanes, state }
+  return state
+}
+export const useSubscriptionsStore = () => useSyncExternalStore(subscribe, snapshot, snapshot)
+export const getPlans = () => snapshot().plans
 
 // Screen index only. `forced` is the subscription the panel loaded for the
 // signed-in business with the forced state (aviso, vencida...).
 export function resetDemoSubscriptions(estado: string | null) {
-  state = seed()
-  applied = new Set()
-  if (estado === 'sin-planes') state = { ...state, plans: [] }
+  forced = {}
+  sinPlanes = estado === 'sin-planes'
+  emit()
 }
 
-// The signed-in business: from the list, or the one registered in this session.
-export function ensureBusiness(business: { id: string; name: string; branches?: unknown[]; subscription: Subscription } | null) {
-  if (!business || state.businesses.some((b) => b.id === business.id)) return
-  state = {
-    ...state,
-    businesses: [...state.businesses, { id: business.id, name: business.name, owner: '', email: '', branches: business.branches?.length ?? 0, joinedOn: DEMO_TODAY, suspended: false, subscription: business.subscription, payments: [] }],
-  }
-  listeners.forEach((l) => l())
-}
 // The panel may load a forced subscription state (screen index); keep it here.
 export function applyLoadedSubscription(businessId: string, subscription: Subscription) {
-  if (applied.has(businessId)) return
-  applied.add(businessId)
-  state = { ...state, businesses: state.businesses.map((b) => (b.id === businessId ? { ...b, subscription } : b)) }
-  listeners.forEach((l) => l())
+  if (getDemoEstado() === null || forced[businessId]) return
+  forced = { ...forced, [businessId]: subscription }
+  emit()
 }
+
+// The shared store answers with a code and a message; the panel shows it.
+function call<T>(fn: () => T): T {
+  try {
+    return fn()
+  } catch (err) {
+    if (err instanceof SharedApiError) throw new ApiError(err.code === 'not-found' ? 'invalid' : (err.code as 'invalid' | 'conflict' | 'forbidden'), err.message)
+    throw err
+  }
+}
+const actor = () => sessionAccount('panel')
 
 function failIfForced(codes: string[] = []) {
   const e = takeForcedError('error-guardar', ...(codes.includes('card') ? ['error-pago'] : []))
@@ -118,40 +113,27 @@ export interface PaymentResult { endsOn: Date; payment: Payment }
 export async function paySubscription(businessId: string, planId: string): Promise<PaymentResult> {
   await wait(1200)
   failIfForced(['card'])
-  let result: PaymentResult | null = null
-  set((s) => {
-    const plan = s.plans.find((p) => p.id === planId)
-    if (!plan) return s
-    return {
-      ...s,
-      businesses: s.businesses.map((b) => {
-        if (b.id !== businessId) return b
-        const from = b.subscription.endsOn < DEMO_TODAY ? DEMO_TODAY : b.subscription.endsOn
-        const endsOn = addMonths(from, plan.months)
-        const payment = { id: `pay-${Date.now()}`, on: DEMO_TODAY, planId, amount: plan.price, ref: `pi_3QK${Date.now().toString(36)}2eZvKYlo2C` }
-        result = { endsOn, payment }
-        return { ...b, subscription: { kind: 'pagada' as const, planId, endsOn }, payments: [payment, ...b.payments] }
-      }),
-    }
-  })
-  if (!result) throw new ApiError('server')
-  return result
+  const paid = call(() => billing.paySubscription(businessId, planId, actor()))
+  // Paying ends any state forced from the screen index.
+  if (forced[businessId]) {
+    const rest = { ...forced }
+    delete rest[businessId]
+    forced = rest
+    emit()
+  }
+  return { endsOn: day(paid.endsOn), payment: { id: paid.id, on: day(paid.on), planId: paid.planId, amount: paid.amount, ref: paid.ref } }
 }
 
 // RF-W27: a plan created here appears as an option when a Jefe registers.
 export async function savePlan(plan: Omit<Plan, 'id'> & { id?: string }) {
   await wait(600)
   failIfForced()
-  set((s) => {
-    if (plan.id) return { ...s, plans: s.plans.map((p) => (p.id === plan.id ? { ...plan, id: p.id } : p)) }
-    const id = plan.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-')
-    return { ...s, plans: [...s.plans, { ...plan, id: s.plans.some((p) => p.id === id) ? `${id}-${Date.now()}` : id }] }
-  })
+  call(() => billing.savePlan({ ...plan, offered: plan.offered ?? true }, actor()))
 }
 
 // RF-W28: a suspended business disappears from the app; its data is kept.
 export async function setSuspended(businessId: string, suspended: boolean) {
   await wait(700)
   failIfForced()
-  set((s) => ({ ...s, businesses: s.businesses.map((b) => (b.id === businessId ? { ...b, suspended } : b)) }))
+  call(() => billing.setSuspended(businessId, suspended, actor()))
 }

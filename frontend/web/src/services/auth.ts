@@ -10,7 +10,6 @@ import * as db from '@shared/store'
 import { ApiError as SharedApiError, getData } from '@shared/store'
 import type { Account, Appointment } from '@shared/types'
 import { checkPassword } from '@shared/validators'
-import { businesses } from '../data/demo'
 import type { Role, Session, StoredBusiness } from '../types/domain'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -95,7 +94,7 @@ function toSession(account: Account): Session {
   const overdueSeen = overdueSeenBy() === account.email
   if (cache?.account === account && cache.overdueSeen === overdueSeen) return cache.session
   const { email, name, phone, businessId, branchId } = account
-  const business = businessId && !businesses[businessId] ? registeredBusiness(businessId) : undefined
+  const business = businessId ? registeredBusiness(businessId) : undefined
   const session: Session = { email, name, phone, role: account.role as Role, businessId, ...(branchId ? { branchId } : {}), ...(business ? { business, planId: business.subscription.planId } : {}), overdueSeen }
   cache = { account, overdueSeen, session }
   return session
