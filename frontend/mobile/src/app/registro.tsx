@@ -7,7 +7,9 @@ import Button from '../components/Button';
 import TextField from '../components/TextField';
 import { OfflineState } from '../components/States';
 import useConnectivity from '../hooks/useConnectivity';
-import { client } from '../data/demo';
+import { ApiError } from '@shared/store';
+import { DEMO_CLIENT } from '../data/demo';
+import { signUp } from '../data/session';
 import { space } from '../theme/tokens';
 
 type InputRef = React.ComponentRef<typeof TextInput>;
@@ -21,9 +23,9 @@ export default function SignUp() {
   const prefilled = estado === 'correo-registrado' || estado === 'cargando';
 
   const [form, setForm] = useState({
-    name: prefilled ? client.name : '',
-    email: prefilled ? client.email : '',
-    phone: prefilled ? client.phone : '',
+    name: prefilled ? DEMO_CLIENT.name : '',
+    email: prefilled ? DEMO_CLIENT.email : '',
+    phone: prefilled ? DEMO_CLIENT.phone : '',
     password: prefilled ? 'compas2025' : '',
   });
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>(estado === 'correo-registrado' ? { email: 'taken' } : {});
@@ -51,13 +53,15 @@ export default function SignUp() {
     setErrors(e);
     if (Object.keys(e).length) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    if (form.email.trim().toLowerCase() === client.email) {
-      setErrors({ email: 'taken' });
-      return;
+    try {
+      await signUp(form);
+      router.replace('/inicio');
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'email-taken') setErrors({ email: 'taken' });
+      else throw err;
+    } finally {
+      setLoading(false);
     }
-    router.replace('/inicio');
   };
 
   const emailTaken = errors.email === 'taken';
