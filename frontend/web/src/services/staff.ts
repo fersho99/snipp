@@ -255,6 +255,7 @@ export async function inviteEmployee({ email, branchId, branchName, businessId, 
 export async function acceptRequest(requestId: string, schedule: WeekHours) {
   await wait(700)
   failIfForced()
+  const joining = getStaffStore().requests.find((x) => x.id === requestId)
   set((s) => {
     const r = s.requests.find((x) => x.id === requestId)
     if (!r) return s
@@ -269,6 +270,17 @@ export async function acceptRequest(requestId: string, schedule: WeekHours) {
       mine: s.mine[email] ? { ...s.mine, [email]: { ...s.mine[email], status: 'aceptada' } } : s.mine,
     }
   })
+  // The shared store checks the rules (RN-01, RF-W16) with the Empleados it
+  // has, so the new one is added there too: from now on the Jefe can give
+  // them appointments, and they can be booked with the services of the branch.
+  const added = Object.values(getStaffStore().staff).find((e) => e.email === joining?.email)
+  if (joining?.kind === 'ingreso' && added && !db.getData().employees.some((e) => e.id === added.id)) {
+    const serviceIds = db.getData().branches.find((b) => b.id === added.branchId)?.serviceIds ?? []
+    db.commit((d) => ({
+      ...d,
+      employees: [...d.employees, { id: added.id, name: added.name, specialty: added.specialty, email: added.email, businessId: added.businessId, branchId: added.branchId, bookable: true, schedule, serviceIds }],
+    }))
+  }
 }
 
 export async function rejectRequest(requestId: string) {
