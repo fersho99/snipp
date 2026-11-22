@@ -42,9 +42,16 @@ const PANEL_EXTRAS: Record<string, Pick<Branch, 'images' | 'coverId' | 'upcoming
 // A shared branch as the panel manages it (RF-W05 to RF-W09). Inactive
 // services are not offered in the app (RN-14). The photos uploaded in this
 // tab stay here: they are files of this browser and do not fit in storage.
-const panelBranches = new WeakMap<SharedBranch, Branch>()
+// Built again when any data change (a service price, a new booking), and
+// the same object while nothing changed.
+const panelBranches = new WeakMap<DemoData, Map<string, Branch>>()
 export function panelBranch(d: DemoData, b: SharedBranch): Branch {
-  let out = panelBranches.get(b)
+  let byId = panelBranches.get(d)
+  if (!byId) {
+    byId = new Map()
+    panelBranches.set(d, byId)
+  }
+  let out = byId.get(b.id)
   if (!out) {
     const today = iso(DEMO_TODAY)
     out = {
@@ -59,7 +66,7 @@ export function panelBranch(d: DemoData, b: SharedBranch): Branch {
       ...(PANEL_EXTRAS[b.id] ?? { images: [], coverId: null }),
       upcoming: d.appointments.filter((a) => a.branchId === b.id && a.date >= today && (a.status === 'confirmada' || a.status === 'cambio')).length,
     }
-    panelBranches.set(b, out)
+    byId.set(b.id, out)
   }
   return out
 }
