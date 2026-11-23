@@ -9,6 +9,7 @@ import { List, SignOut, X, type Icon } from '@phosphor-icons/react'
 import { Logo, Skeleton } from './ui'
 import SubscriptionNotice from './SubscriptionNotice'
 import PanelError from './PanelError'
+import ResetDemo from './ResetDemo'
 import { accounts, ROLE_LABEL } from '../data/demo'
 import { navFor } from '../data/nav'
 import { currentSession, devSignIn, type ApiError } from '../services/auth'
@@ -278,6 +279,7 @@ function Sidebar({ session, business, branches, activeBranch, onPickBranch, read
           <SignOut size={20} aria-hidden="true" />
           Cerrar sesión
         </button>
+        <ResetDemo className="-mx-3 px-3" />
       </div>
     </div>
   )

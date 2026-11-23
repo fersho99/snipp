@@ -1,8 +1,11 @@
 // Branch profiles as the client app sees them: photos, hours, services,
-// professionals and reviews. Built on top of the shared sample data.
+// professionals and reviews. Name, address, hours, services and staff come
+// from the data shared with the web panel (frontend/shared/seed.ts); the
+// photos, rating and reviews are added here.
+import * as shared from '@shared/seed';
 import { DEMO_TODAY, employees, services } from './demo';
 import { time } from '../theme/format';
-import type { Branch, DayHours, Employee, Service } from '../types/domain';
+import type { Branch, Employee, Service } from '../types/domain';
 
 const photo = {
   interior: require('../../assets/photos/barberia-interior.jpg'),
@@ -10,9 +13,6 @@ const photo = {
   unas: require('../../assets/photos/unas.jpg'),
   frasco: require('../../assets/photos/producto-frasco.jpg'),
 };
-
-// Hours per weekday, 0 = domingo. null = closed. [open, close] in 24 h.
-const MON_SAT_10_20: DayHours[] = [null, [10, 20], [10, 20], [10, 20], [10, 20], [10, 20], [10, 18]];
 
 // What the web panel controls and the app must respect (RF-W07, RF-W09,
 // RF-W12, RF-W26, RF-W28, RN-13, RN-14). All active in the demo; change a
@@ -27,17 +27,35 @@ const inactiveServices: Record<string, string[]> = {}; // { branchId: [serviceId
 export const employeeStatus: Record<string, 'activo' | 'migracion-pendiente'> = { luis: 'activo', ramon: 'activo', oscar: 'activo', karla: 'activo', fernanda: 'activo', itzel: 'activo' }; // or 'migracion-pendiente'
 
 const svc = (ids: string[]): Service[] => ids.map((id) => services.find((s) => s.id === id)).filter((s): s is Service => !!s);
-const staff = (ids: string[]): Employee[] => ids.map((id) => employees.find((e) => e.id === id)).filter((e): e is Employee => !!e);
+// Professionals clients can book at the branch; each Empleado belongs to one branch (RF-W10).
+const staff = (branchId: string): Employee[] =>
+  shared.employees.filter((e) => e.branchId === branchId && e.bookable).map((e) => employees.find((x) => x.id === e.id)).filter((e): e is Employee => !!e);
+
+type AppExtras = Pick<Branch, 'id' | 'rating' | 'reviewCount' | 'cover' | 'coverFile' | 'gallery' | 'galleryFiles' | 'reviews'>;
+
+// The shared branch plus what only the app shows. Hours become whole hours.
+function appBranch(extras: AppExtras): Branch {
+  const b = shared.branches.find((x) => x.id === extras.id);
+  if (!b) throw new Error(`Missing branch ${extras.id}`);
+  const hour = (hhmm: string) => Number(hhmm.split(':')[0]);
+  return {
+    ...extras,
+    businessId: b.businessId,
+    name: b.name,
+    kind: shared.businesses.find((x) => x.id === b.businessId)?.kind ?? '',
+    address: b.address,
+    neighborhood: b.neighborhood,
+    phone: b.phone,
+    description: b.description,
+    hours: b.hours.map((h) => (h ? [hour(h[0]), hour(h[1])] : null)),
+    services: svc(b.serviceIds),
+    staff: staff(b.id),
+  };
+}
 
 export const branches: Branch[] = [
-  {
+  appBranch({
     id: 'los-compas-centro',
-    businessId: 'los-compas',
-    name: 'Barbería Los Compas',
-    kind: 'Barbería',
-    address: 'Av. Obregón y Calle 5',
-    neighborhood: 'Col. Centro',
-    phone: '653 534 2210',
     rating: 4.7,
     reviewCount: 212,
     cover: photo.interior,
@@ -46,25 +64,14 @@ export const branches: Branch[] = [
       { source: photo.fade, alt: 'Barbero haciendo un fade con máquina en la nuca de un cliente' },
       { source: photo.frasco, alt: 'Frasco de pomada sobre una piedra' },
     ],
-    description:
-      'Barbería de barrio desde 2014. Fades, cortes clásicos y arreglo de barba con toalla caliente. Hay café mientras esperas y estacionamiento en la Calle 5.',
-    hours: MON_SAT_10_20,
-    services: svc(['corte-clasico', 'fade', 'barba', 'corte-barba']),
-    staff: staff(['luis', 'ramon']),
     reviews: [
       { id: 'r1', author: 'Jorge Méndez', stars: 5, date: '4 de noviembre', service: 'Fade con Luis Ortega', text: 'Llegué a las 5:30 y a las 5:32 ya estaba en la silla. Luis dejó el fade parejo y me explicó cómo peinarlo en la casa.' },
       { id: 'r2', author: 'Carlos Ríos', stars: 5, date: '1 de noviembre', service: 'Corte + barba con Ramón Cázares', text: 'Ramón trabaja la navaja con mucha calma. La barba me quedó definida sin irritación.' },
       { id: 'r3', author: 'Daniela Paz', stars: 3, date: '28 de octubre', service: 'Corte clásico con Ramón Cázares', text: 'Buen corte, pero esperé 15 minutos aunque tenía cita a las 12:00.' },
     ],
-  },
-  {
+  }),
+  appBranch({
     id: 'los-compas-norte',
-    businessId: 'los-compas',
-    name: 'Los Compas Norte',
-    kind: 'Barbería',
-    address: 'Av. Libertad y Calle 32',
-    neighborhood: 'Col. Burócrata',
-    phone: '653 536 1184',
     rating: 4.5,
     reviewCount: 86,
     cover: photo.fade,
@@ -72,75 +79,32 @@ export const branches: Branch[] = [
       { source: photo.fade, alt: 'Barbero haciendo un fade con máquina en la nuca de un cliente' },
       { source: photo.interior, alt: 'Dos sillones de barbero de piel frente al espejo largo' },
     ],
-    description: 'La segunda sucursal de Los Compas, con los mismos precios. Más tranquila entre semana antes de las 4:00 pm.',
-    hours: MON_SAT_10_20,
-    services: svc(['corte-clasico', 'fade', 'barba', 'corte-barba']),
-    staff: staff(['oscar']), // each Empleado belongs to one branch (RF-W10)
     reviews: [
       { id: 'r4', author: 'Iván Soto', stars: 5, date: '6 de noviembre', service: 'Fade con Óscar Félix', text: 'Sin espera y el corte quedó igual que en la del centro.' },
       { id: 'r5', author: 'Luz Gámez', stars: 4, date: '30 de octubre', service: 'Corte clásico con Óscar Félix', text: 'Le corté el pelo a mi hijo de 8 años. Mucha paciencia con él.' },
     ],
-  },
-  {
-    // Demo branch with products, so a fourth cart can be tried (RF-M09 limit).
-    id: 'los-compas-sur',
-    businessId: 'los-compas',
-    name: 'Los Compas Sur',
-    kind: 'Barbería',
-    address: 'Av. Sinaloa y Calle 40',
-    neighborhood: 'Col. Industrial',
-    phone: '653 537 2045',
-    rating: null,
-    reviewCount: 0,
-    cover: photo.interior,
-    gallery: [{ source: photo.interior, alt: 'Dos sillones de barbero de piel frente al espejo largo' }],
-    description: 'La tercera sucursal de Los Compas, con los mismos precios. Abrió este mes.',
-    hours: MON_SAT_10_20,
-    services: svc(['corte-clasico', 'fade', 'barba']),
-    staff: [],
-    reviews: [],
-  },
-  {
+  }),
+  appBranch({
     id: 'estudio-marisol',
-    businessId: 'estudio-marisol',
-    name: 'Estudio Marisol',
-    kind: 'Salón y uñas',
-    address: 'Calle 2 y Av. Madero',
-    neighborhood: 'Col. Centro',
-    phone: '653 534 0957',
     rating: 4.8,
     reviewCount: 143,
     cover: photo.unas,
     gallery: [{ source: photo.unas, alt: 'Manos con uñas recién arregladas sobre una mesa con esmaltes y lámpara' }],
-    description: 'Salón de color y uñas. Tintes, mechas y uñas acrílicas con cita. Para mechas, llega con el cabello sin lavar.',
-    hours: [null, [9, 19], [9, 19], [9, 19], [9, 19], [9, 19], [9, 15]],
-    services: svc(['tinte', 'mechas', 'unas']),
-    staff: staff(['karla', 'fernanda']),
     reviews: [
       { id: 'r6', author: 'Paola Robles', stars: 5, date: '7 de noviembre', service: 'Mechas con Karla Ruiz', text: 'Karla me hizo prueba de mechón antes de empezar. El tono quedó exacto al de la foto que le llevé.' },
       { id: 'r7', author: 'Mariana León', stars: 5, date: '3 de noviembre', service: 'Uñas acrílicas con Fernanda Lugo', text: 'Me duraron tres semanas sin levantarse.' },
     ],
-  },
-  {
+  }),
+  appBranch({
     id: 'navaja-fina',
-    businessId: 'navaja-fina',
-    name: 'Navaja Fina',
-    kind: 'Barbería clásica',
-    address: 'Blvd. Juárez',
-    neighborhood: 'Col. Comercial',
-    phone: '653 535 7702',
     rating: null,
     reviewCount: 0,
     cover: null,
     coverFile: 'navaja-fina-portada.jpg',
     gallery: [],
     galleryFiles: ['navaja-fina-portada.jpg', 'navaja-fina-sillones.jpg'],
-    description: 'Barbería clásica con afeitado a navaja y toalla caliente. Abrió en SNIPP este mes.',
-    hours: [null, null, [11, 21], [11, 21], [11, 21], [11, 21], [11, 21]],
-    services: svc(['corte-clasico', 'barba', 'corte-barba']),
-    staff: [],
     reviews: [],
-  },
+  }),
 ];
 
 // A branch shows in the app only if it is active and its business is not

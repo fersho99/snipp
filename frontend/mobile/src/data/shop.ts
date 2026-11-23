@@ -2,6 +2,7 @@
 // 3), orders and loyalty points. In-memory stores for the demo; in production
 // the carts are kept in the client's account (RN-18).
 import { useEffect, useSyncExternalStore } from 'react';
+import { stock as sharedStock } from '@shared/seed';
 import { businesses, products as baseProducts } from './demo';
 import { getBranch } from './catalog';
 import { notificationStore } from './notifications';
@@ -39,14 +40,8 @@ const details: Record<string, ProductDetails> = {
   },
 };
 
-// Stock per branch (pieces). Los Compas centro uses the master-prompt counts.
-const stockByBranch: Record<string, Record<string, number>> = {
-  'los-compas-centro': { pomada: 14, aceite: 6, shampoo: 0, cera: 22 },
-  'los-compas-norte': { pomada: 3, cera: 5 },
-  'los-compas-sur': { pomada: 6, cera: 4 },
-  'navaja-fina': { aceite: 4, pomada: 8 },
-  'estudio-marisol': {},
-};
+// Stock per branch (pieces), from the data shared with the web panel.
+const stockByBranch: Record<string, Record<string, number>> = JSON.parse(JSON.stringify(sharedStock));
 
 export function productsFor(branchId: string): Product[] {
   const stock = stockByBranch[branchId] ?? {};

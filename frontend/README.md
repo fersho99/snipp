@@ -42,6 +42,20 @@ En el índice de desarrollo, `/panel?como=jefe|empleado|sin-negocio|admin` abre 
 
 La estructura de carpetas de la web está en [`web/README.md`](web/README.md).
 
+## App y panel juntos (datos compartidos)
+
+La app y el panel leen la misma base de datos simulada, guardada en el `localStorage` del navegador (`shared/store.ts`, clave `snipp-demo`). Para que la compartan, la app se sirve dentro de la web en `/app`:
+
+```bash
+cd frontend/web
+npm run app        # exporta la app (Expo web) a web/public/app; repetir tras cambiar la app
+npm run dev        # app en http://localhost:3000/app, panel en http://localhost:3000/panel
+```
+
+Una cita reservada en `/app` aparece en la agenda del panel, y un cambio hecho en el panel aparece en la app; todo sobrevive a recargar. "Reiniciar datos de demo" (índice de desarrollo, menú del panel y Cuenta en la app) vuelve a los datos de ejemplo. La app en `localhost:8081` o en Android tiene su propia copia en memoria y no se cruza con la web hasta que exista la API.
+
+`frontend/shared/` tiene los tipos (`types.ts`), el único conjunto de datos de ejemplo (`seed.ts`: negocios, sucursales, servicios, Empleados, cliente, productos, bloqueos y citas), las fechas (`dates.ts`) y el almacén (`store.ts`, con versión de esquema: al cambiar la forma de los datos se sube `SCHEMA_VERSION`). Web y app lo importan como `@shared/...`.
+
 ## Estructura
 
 ```
@@ -49,7 +63,7 @@ mobile/src/
   app/          pantallas (una ruta por archivo, .tsx)
   components/   Txt, Button, TextField, Screen/BackButton, States (OfflineState, ErrorNote, Skeleton, PhotoPlaceholder)
   theme/        tokens.ts (paleta, espacios, tipografía), format.ts (dinero MXN, horas, fechas)
-  data/         datos de ejemplo (demo.ts compartido por todos los lotes) y almacenes en memoria
+  data/         lo que la app agrega a los datos de frontend/shared (fotos, reseñas) y almacenes
   types/        domain.ts: tipos del dominio (sucursal, cita, pedido, ...), los mismos que usará la API
   hooks/        useConnectivity (sin modo sin conexión: pantalla de reintento)
 ```

@@ -5,6 +5,7 @@ import Screen from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
 import ListRow from '../components/ListRow';
+import ResetDemo from '../components/ResetDemo';
 import { OfflineState, Skeleton } from '../components/States';
 import { TabBar } from '../components/Appointment';
 import useConnectivity from '../hooks/useConnectivity';
@@ -70,6 +71,7 @@ export default function Account() {
           </View>
 
           <Button variant="link" label="Cerrar sesión" onPress={() => router.replace('/entrar')} style={{ marginTop: space.xl }} />
+          <ResetDemo style={{ marginTop: space.l }} />
         </>
       )}
     </Screen>

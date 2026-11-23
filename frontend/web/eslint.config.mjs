@@ -18,6 +18,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Client app exported by `npm run app` (built from ../mobile).
+    "public/app/**",
   ]),
 ]);
 

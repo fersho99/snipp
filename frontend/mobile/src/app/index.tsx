@@ -3,6 +3,7 @@ import { Redirect, router } from 'expo-router';
 import Screen from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
+import ResetDemo from '../components/ResetDemo';
 import { space } from '../theme/tokens';
 
 // Development index: every screen and every state, for review against the
@@ -70,8 +71,8 @@ const SCREENS = [
     group: 'Tienda y pago',
     items: [
       { title: 'Tienda de Barbería Los Compas', path: '/tienda/los-compas-centro', states: [['Error al agregar', 'error'], ['Cargando', 'cargando'], ['Sin conexión', 'sin-conexion']] },
-      { title: 'Límite de 3 carritos (Los Compas Sur)', path: '/tienda/los-compas-sur?estado=limite', states: [] },
-      { title: 'Tienda sin productos (Estudio Marisol)', path: '/tienda/estudio-marisol', states: [] },
+      { title: 'Límite de 3 carritos (Estudio Marisol)', path: '/tienda/estudio-marisol?estado=limite', states: [] },
+      { title: 'Tienda sin productos (Estudio Marisol)', path: '/tienda/estudio-marisol?estado=sin-productos', states: [] },
       { title: 'Producto: Pomada mate', path: '/producto/pomada?sucursal=los-compas-centro', states: [['Error al agregar', 'error']] },
       { title: 'Producto agotado: Shampoo matizador', path: '/producto/shampoo?sucursal=los-compas-centro', states: [] },
       { title: 'Carritos: uno con Pomada y Aceite ($420)', path: '/carrito?demo=lleno', states: [['Pago rechazado', 'pago-rechazado'], ['Sin conexión', 'sin-conexion']] },
@@ -109,6 +110,7 @@ export default function ScreenIndex() {
       <Txt variant="bodySoft" style={{ marginTop: space.s }}>
         Lotes M1 a M6 de la app (RF-M01 a RF-M16), con sus estados. Toca una para abrirla.
       </Txt>
+      <ResetDemo style={{ marginTop: space.m }} />
       {SCREENS.map((g) => (
         <View key={g.group} style={{ marginTop: space.xxl }}>
           <Txt variant="heading">{g.group}</Txt>
