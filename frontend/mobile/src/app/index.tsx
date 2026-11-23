@@ -70,7 +70,7 @@ const SCREENS = [
   {
     group: 'Tienda y pago',
     items: [
-      { title: 'Tienda de Barbería Los Compas', path: '/tienda/los-compas-centro', states: [['Error al agregar', 'error'], ['Cargando', 'cargando'], ['Sin conexión', 'sin-conexion']] },
+      { title: 'Tienda de Los Compas Centro', path: '/tienda/los-compas-centro', states: [['Error al agregar', 'error'], ['Cargando', 'cargando'], ['Sin conexión', 'sin-conexion']] },
       { title: 'Límite de 3 carritos (Estudio Marisol)', path: '/tienda/estudio-marisol?estado=limite', states: [] },
       { title: 'Tienda sin productos (Estudio Marisol)', path: '/tienda/estudio-marisol?estado=sin-productos', states: [] },
       { title: 'Producto: Pomada mate', path: '/producto/pomada?sucursal=los-compas-centro', states: [['Error al agregar', 'error']] },

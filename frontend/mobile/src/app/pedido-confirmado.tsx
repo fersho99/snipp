@@ -5,6 +5,7 @@ import Screen from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
 import { openStatus, weekSchedule, branchOf } from '../data/catalog';
+import { getBusiness } from '../data/demo';
 import { getProduct, pointsEarned, productLabel, useOrders } from '../data/shop';
 import { money } from '../theme/format';
 import { color, font, radius, space, status as statusColor } from '../theme/tokens';
@@ -91,7 +92,7 @@ export default function OrderConfirmed() {
           <Txt variant="heading" style={{ flex: 1 }}>Total</Txt>
           <Txt variant="heading" numeric>{money(order.total)}</Txt>
         </View>
-        <Txt variant="small" numeric>Ganaste {pointsEarned(order.total)} puntos en este negocio.</Txt>
+        <Txt variant="small" numeric>Ganaste {pointsEarned(order.total)} puntos en {getBusiness(branch.businessId).name}.</Txt>
       </View>
     </Screen>
   );

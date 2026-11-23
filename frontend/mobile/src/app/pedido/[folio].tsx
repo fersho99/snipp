@@ -7,6 +7,7 @@ import { ErrorNote, ErrorScreen, OfflineState, Skeleton } from '../../components
 import { StatusLine } from '../../components/Appointment';
 import useConnectivity from '../../hooks/useConnectivity';
 import { openStatus, branchOf } from '../../data/catalog';
+import { getBusiness } from '../../data/demo';
 import { getProduct, orderStatusOf, pointsEarned, productLabel, useOrders } from '../../data/shop';
 import { money } from '../../theme/format';
 import { color, font, radius, space } from '../../theme/tokens';
@@ -121,7 +122,7 @@ export default function OrderDetail() {
         </View>
         <Txt variant="small" numeric>Pagado con tarjeta por Stripe. Referencia: {order.paymentRef}</Txt>
         {!cancelled && pointsEarned(order.total) ? (
-          <Txt variant="small" numeric>Con este pedido ganaste {pointsEarned(order.total)} puntos en {branch.name}.</Txt>
+          <Txt variant="small" numeric>Con este pedido ganaste {pointsEarned(order.total)} puntos en {getBusiness(branch.businessId).name}.</Txt>
         ) : null}
       </View>
 
