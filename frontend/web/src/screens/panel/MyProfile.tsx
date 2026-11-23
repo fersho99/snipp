@@ -205,11 +205,16 @@ function Migration({ me, email, store }: { me: StaffMember; email: string; store
                 Su Jefe no respondió en 7 días (venció el {longDate(expiresOn(req.sentOn))}). Puedes enviarla de nuevo o elegir otro negocio.
               </Note>
             </div>
+          ) : req?.kind === 'migracion' && req.status === 'rechazada' ? (
+            <div className="mt-4">
+              <StatusTag status={{ color: 'rojo', icon: 'cancelada', label: 'Rechazada' }} className="mb-2" />
+              <Note title={`${where(req)} no aceptó tu solicitud`}>Sigues trabajando aquí como siempre. Puedes enviar una solicitud a otro negocio.</Note>
+            </div>
           ) : null}
           <p className="mt-3 max-w-prose">
             Envía una solicitud al negocio al que te quieres cambiar. Si su Jefe la acepta, ya no se reservan nuevas citas contigo aquí y te cambias cuando termines tus citas. Si no responde en 7 días, la solicitud caduca.
           </p>
-          <RequestForm email={email} kind="migracion" excludeBusinessId={me.businessId} submitLabel="Solicitar migración" />
+          <RequestForm email={email} kind="migracion" excludeBusinessId={me.businessId} rejectedBy={req?.kind === 'migracion' && req.status === 'rechazada' ? req.businessName : undefined} submitLabel="Solicitar migración" />
         </>
       )}
     </section>
