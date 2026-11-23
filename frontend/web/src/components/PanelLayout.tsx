@@ -105,7 +105,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   // The subscription lives in its own store so paying it (RF-W25) updates
   // the notices at once.
   const loadedBusiness = data?.business ?? null
-  const liveSub = loadedBusiness ? subs.businesses.find((b) => b.id === loadedBusiness.id)?.subscription : null
+  const liveBusiness = loadedBusiness ? subs.businesses.find((b) => b.id === loadedBusiness.id) : null
+  const liveSub = liveBusiness?.subscription
   const business = loadedBusiness ? { ...loadedBusiness, subscription: liveSub ?? loadedBusiness.subscription } : null
   const sub = business ? subscriptionStatus(business.subscription) : null
 
@@ -199,7 +200,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </div>
         ) : (
           <>
-            {business ? <SubscriptionNotice role={session.role} business={business} status={sub} /> : null}
+            {business ? <SubscriptionNotice role={session.role} business={business} status={sub} suspended={liveBusiness?.suspended} /> : null}
             <PanelContext.Provider value={{ session, business, activeBranch, branches, setup }}>{children}</PanelContext.Provider>
           </>
         )}
