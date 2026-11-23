@@ -14,16 +14,38 @@ const APP = [
   '/app/puntos', '/app/notificaciones', '/app/reportes', '/app/calificar?cita=C-10431', '/app/cuenta', '/app/perfil',
 ]
 
+// Visible elements that go past the left or right edge of the screen. The
+// app (React Native Web) scrolls inside its own containers, which cut what
+// goes past them, so the width of the document alone never grows: each
+// element is measured instead. A row that scrolls sideways on purpose (a
+// container with overflow-x auto or scroll) is allowed.
+function outsideTheScreen() {
+  const width = window.innerWidth
+  const scrollsSideways = (e: Element | null): boolean => {
+    for (let p = e; p; p = p.parentElement) {
+      const { overflowX } = getComputedStyle(p)
+      if ((overflowX === 'auto' || overflowX === 'scroll') && p.scrollWidth > p.clientWidth) return true
+    }
+    return false
+  }
+  return [...document.querySelectorAll('body *')]
+    .filter((e) => {
+      const r = e.getBoundingClientRect()
+      const s = getComputedStyle(e)
+      return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.opacity !== '0' && (r.right > width + 1 || r.left < -1)
+    })
+    .filter((e) => !scrollsSideways(e.parentElement))
+    .slice(0, 5)
+    .map((e) => `<${e.tagName.toLowerCase()}> «${((e as HTMLElement).innerText || '').slice(0, 40)}»`)
+}
+
 async function check(page: Page, path: string, errors: string[], narrow: boolean) {
   const before = errors.length
   await open(page, path)
   await page.waitForLoadState('networkidle')
   await expect(page.locator('body'), path).not.toContainText(BROKEN)
   expect(errors.slice(before), `${path}: errores en consola`).toEqual([])
-  if (narrow) {
-    const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
-    expect(wide, `${path}: se sale de lado`).toBeLessThanOrEqual(0)
-  }
+  if (narrow) expect(await page.evaluate(outsideTheScreen), `${path}: se sale de lado`).toEqual([])
 }
 
 test('pantallas de la app @app', async ({ page }, info) => {

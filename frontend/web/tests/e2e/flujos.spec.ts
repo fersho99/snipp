@@ -125,6 +125,28 @@ test('reseña y reporte: la app los envía y el Jefe los ve y responde', async (
   await expect(app.getByText('En revisión').first()).toBeVisible()
 })
 
+test('reseña reportada: el Jefe la reporta, el Administrador la elimina y sale de la app', async ({ context }) => {
+  await twoTabs(context)
+  const text = /^Pésimo lugar, el barbero/
+  await open(app, '/app/sucursal/los-compas-centro')
+  await expect(app.getByText(text)).toBeVisible()
+
+  await open(panel, '/panel/resenas')
+  await clickIn(panel, 'Usuario 4821', /^Reportar al Administrador$/)
+  await panel.getByRole('button', { name: 'Enviar reporte' }).click()
+  await expect.poll(() => data(panel, (d) => d.reviews.find((r) => r.id === 'r6')?.reported?.state)).toBe('enviado')
+
+  await panelSignIn(panel, ADMIN)
+  await open(panel, '/panel/resenas-reportadas')
+  await clickIn(panel, 'Usuario 4821', /^Eliminar reseña$/)
+  await panel.getByRole('button', { name: 'Sí, eliminar' }).click()
+  await expect.poll(() => data(panel, (d) => d.reviews.find((r) => r.id === 'r6')?.reported?.state)).toBe('eliminada')
+
+  await open(app, '/app/sucursal/los-compas-centro')
+  await expect(app.getByText('Llegué a las 5:30', { exact: false }).first()).toBeVisible()
+  await expect(app.getByText(text)).toHaveCount(0)
+})
+
 test('solicitud: el Jefe acepta a Sofía y la app la ofrece para reservar', async ({ context }) => {
   await twoTabs(context)
   await open(panel, '/panel/empleados')

@@ -177,9 +177,10 @@ npx playwright show-report   # el reporte de la última corrida, con capturas de
     - una venta (existencias, puntos, pedido listo y aviso);
     - un reembolso;
     - una reseña y un reporte que el Jefe atiende;
+    - una reseña que el Jefe reporta y el Administrador elimina, y que sale de la app;
     - una solicitud aceptada;
     - un negocio suspendido y reactivado.
-  - `pantallas.spec.ts`: cada pantalla de la app y del panel abre sin la pantalla de error ni errores en la consola.
+  - `pantallas.spec.ts`: cada pantalla de la app y del panel abre sin la pantalla de error ni errores en la consola. En la tableta y el teléfono mide cada elemento visible, porque la app se desplaza dentro de sus propios contenedores y el ancho de la página no crece aunque algo se salga.
 - **Navegadores** (RNF-W03, RNF-M04):
   - Todas las pruebas corren en Chrome.
   - Las rutas y las pantallas también corren en Edge.
