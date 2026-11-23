@@ -6,7 +6,6 @@
 //   appointments, booked in the app or in the panel (RN-01).
 // - Today, only slots that have not started yet.
 import { fromIsoDateTime, iso, minutesOf } from '@shared/dates';
-import { employees as sharedEmployees, services as sharedServices } from '@shared/seed';
 import { getData } from '@shared/store';
 import { DEMO_TODAY } from './demo';
 import { longDate, time } from '../theme/format';
@@ -16,8 +15,10 @@ export interface Slot { start: number; employeeId: string }
 
 const SLOT_STEP = 30; // minutes between possible start times
 
-// Services each professional performs.
-export const staffServices: Record<string, string[]> = Object.fromEntries(sharedEmployees.map((e) => [e.id, e.serviceIds]));
+// Services each professional performs and their work schedule, as the panel
+// last saved them (RF-W10).
+const employeeOf = (id: string) => getData().employees.find((e) => e.id === id);
+const performs = (employeeId: string, serviceId: string) => !!employeeOf(employeeId)?.serviceIds.includes(serviceId);
 
 export const today = () => new Date(DEMO_TODAY.getFullYear(), DEMO_TODAY.getMonth(), DEMO_TODAY.getDate());
 
@@ -51,7 +52,7 @@ function blocksOn(employeeId: string, date: Date) {
 
 // Work hours of the professional that day, in minutes, or null on a day off.
 function workHours(employeeId: string, date: Date): [number, number] | null {
-  const h = sharedEmployees.find((e) => e.id === employeeId)?.schedule[date.getDay()];
+  const h = employeeOf(employeeId)?.schedule[date.getDay()];
   return h ? [minutesOf(h[0]), minutesOf(h[1])] : null;
 }
 
@@ -69,7 +70,7 @@ export function freeSlotsFor(branch: Branch, employeeId: string, date: Date, dur
   const day = iso(date);
   const booked = getData()
     .appointments.filter((a) => a.employeeId === employeeId && a.date === day && a.folio !== ignoreFolio && (a.status === 'confirmada' || a.status === 'cambio'))
-    .map((a) => [a.start, a.start + (sharedServices.find((s) => s.id === a.serviceId)?.minutes ?? 45)]);
+    .map((a) => [a.start, a.start + (getData().services.find((s) => s.id === a.serviceId)?.minutes ?? 45)]);
   const blocks = blocksOn(employeeId, date);
   const isToday = day === iso(today());
   const nowMin = DEMO_TODAY.getHours() * 60 + DEMO_TODAY.getMinutes();
@@ -87,12 +88,12 @@ export function freeSlotsFor(branch: Branch, employeeId: string, date: Date, dur
 
 // Professionals at this branch who perform the service.
 export function staffFor(branch: Branch, serviceId: string) {
-  return branch.staff.filter((e) => staffServices[e.id]?.includes(serviceId));
+  return branch.staff.filter((e) => performs(e.id, serviceId));
 }
 
 // Slots for the chosen professional (RF-M06); each slot carries who attends it.
 export function slotsFor(branch: Branch, employeeId: string | null | undefined, serviceId: string, date: Date, durationMinutes: number, ignoreFolio?: string): Slot[] {
-  const candidates = branch.staff.filter((e) => e.id === employeeId && staffServices[e.id]?.includes(serviceId));
+  const candidates = branch.staff.filter((e) => e.id === employeeId && performs(e.id, serviceId));
   const byStart = new Map<number, string>();
   candidates.forEach((e) => {
     freeSlotsFor(branch, e.id, date, durationMinutes, ignoreFolio).forEach((s) => {

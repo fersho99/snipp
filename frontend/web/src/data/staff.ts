@@ -2,7 +2,8 @@
 // the businesses an Empleado can ask to migrate to. Work schedules,
 // appointments and blocks come from the data shared with the client app
 // (frontend/shared/seed.ts). Today is Thursday 12 November 2026, 10:00 am.
-import { branches, businesses, employees, rng } from '@shared/seed'
+import { employees, rng } from '@shared/seed'
+import { getData } from '@shared/store'
 import type { DirectoryBusiness, HistoryEvent, StaffProfile } from '../types/domain'
 
 // Profile shown in the app and work schedule of each Empleado (RF-W10, RF-W11).
@@ -14,9 +15,13 @@ export const staffProfiles: Record<string, StaffProfile> = Object.fromEntries(
 // Other businesses on SNIPP, for "Solicitar migración" and for an Empleado
 // without a business who asks to join one (RF-W10, RF-W12). A suspended
 // business does not take requests (RF-W28).
-export const directory: DirectoryBusiness[] = businesses
-  .filter((b) => !b.suspended)
-  .map((b) => ({ id: b.id, name: b.name, branches: branches.filter((br) => br.businessId === b.id).map((br) => ({ id: br.id, name: br.name })) }))
+export function directory(): DirectoryBusiness[] {
+  const d = getData()
+  return d.businesses
+    .filter((b) => !b.suspended)
+    .map((b) => ({ id: b.id, name: b.name, branches: d.branches.filter((br) => br.businessId === b.id && br.active).map((br) => ({ id: br.id, name: br.name })) }))
+    .filter((b) => b.branches.length)
+}
 
 // Appointment history per Empleado (RF-W17): each confirmation,
 // cancellation and reschedule, with the date and who did it. Generated the

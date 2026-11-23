@@ -6,25 +6,46 @@
 // and the project runs 02/11/2026 to 19/03/2027). The booking calendar ends
 // two months later, on 12 January 2027 (RN-02).
 import { DEMO_TODAY } from '@shared/dates';
-import * as shared from '@shared/seed';
+import { getData, subscribe } from '@shared/store';
+import type { DemoData } from '@shared/types';
 import type { Business, Client, Employee, Service } from '../types/domain';
 
 export { DEMO_TODAY };
 
-export const businesses: Business[] = shared.businesses.map((b) => ({
-  id: b.id,
-  name: b.name,
-  kind: b.kind,
-  branches: shared.branches
-    .filter((br) => br.businessId === b.id)
-    .map(({ id, name, address, neighborhood, phone }) => ({ id, name, address, neighborhood, phone })),
-}));
+// A list read from the shared data and refreshed in place whenever the data
+// change, here or in the panel (another tab). Screens read it as a plain
+// array; what the Jefe registers shows up the next time they render.
+export function liveList<T>(build: (d: DemoData) => T[]): T[] {
+  const list: T[] = [];
+  let last: DemoData | null = null;
+  const refresh = () => {
+    const d = getData();
+    if (d === last) return;
+    last = d;
+    list.splice(0, list.length, ...build(d));
+  };
+  refresh();
+  subscribe(refresh);
+  return list;
+}
 
-export const employees: Employee[] = shared.employees.map(({ id, name, specialty, businessId }) => ({ id, name, specialty, businessId }));
+export const businesses: Business[] = liveList((d) =>
+  d.businesses.map((b) => ({
+    id: b.id,
+    name: b.name,
+    kind: b.kind,
+    branches: d.branches
+      .filter((br) => br.businessId === b.id)
+      .map(({ id, name, address, neighborhood, phone }) => ({ id, name, address, neighborhood, phone })),
+  })),
+);
 
-export const services: Service[] = shared.services.map(({ id, name, minutes, price }) => ({ id, name, minutes, price }));
+// RF-W11: clients see the name the Empleado chose for their profile.
+export const employees: Employee[] = liveList((d) => d.employees.map(({ id, name, displayName, specialty, businessId }) => ({ id, name: displayName || name, specialty, businessId })));
 
-export const products = shared.products.map(({ id, name, size, price }) => ({ id, name, size, price }));
+export const services: Service[] = liveList((d) => d.services.map(({ id, name, minutes, price }) => ({ id, name, minutes, price })));
+
+export const products = liveList((d) => d.products.map(({ id, name, size, price }) => ({ id, name, size, price })));
 
 // Andrea, the client of the sample data. The screen index fills the forms
 // with her data to show some states.

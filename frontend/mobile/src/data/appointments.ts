@@ -7,7 +7,7 @@ import { sessionAccount } from '@shared/auth';
 import { CANCEL_HOURS } from '@shared/rules';
 import type { Appointment as SharedAppointment, DemoData } from '@shared/types';
 import { DEMO_TODAY, client, employees, services } from './demo';
-import { addReview, getBranch } from './catalog';
+import { getBranch } from './catalog';
 import { fromIso, minutesLabel } from './availability';
 import { longDate } from '../theme/format';
 import type { Appointment, Report, ReportReason, StatusText } from '../types/domain';
@@ -129,9 +129,12 @@ export function describe(a: Pick<Appointment, 'serviceId' | 'employeeId' | 'bran
 }
 
 // Can the client still cancel / reschedule from the app?
-export function changeWindow(a: Pick<Appointment, 'date' | 'start'>, now = DEMO_TODAY) {
+export function changeWindow(a: Pick<Appointment, 'date' | 'start'> & { branchId?: string }, now = DEMO_TODAY) {
   const start = startDate(a);
-  const deadline = new Date(start.getTime() - CANCEL_HOURS * 3600 * 1000);
+  // RF-W08: each business sets how long before; 2 hours by default.
+  const businessId = db.getData().branches.find((b) => b.id === a.branchId)?.businessId;
+  const hours = db.getData().businesses.find((b) => b.id === businessId)?.minNoticeHours ?? CANCEL_HOURS;
+  const deadline = new Date(start.getTime() - hours * 3600 * 1000);
   return {
     allowed: now < deadline,
     deadline,
@@ -180,19 +183,10 @@ export function checkReport(folio: string, report: { reason: string; text: strin
   appointmentStore.check(folio, { report: { sentOn: TODAY_LABEL, state: 'enviado', reason: report.reason, text: report.text.trim() } });
 }
 
-// RF-M12: the review is published on the business page and counts in its average.
+// RF-M12: the shared store publishes the review on the business page and in
+// the Jefe's panel, and it counts in the average.
 export function submitReview(folio: string, { stars, text }: { stars: number; text: string }) {
-  const a = found(snapshot().find((x) => x.folio === folio), folio);
-  const d = describe(a);
   appointmentStore.update(folio, { review: { stars, text: text.trim() } });
-  return addReview(a.branchId, {
-    id: `r-${folio}`,
-    author: client.name,
-    stars,
-    date: TODAY_LABEL,
-    service: `${d.service.name} con ${d.employee.name}`,
-    text: text.trim(),
-  });
 }
 
 // RF-M13: reasons listed in the SRS.

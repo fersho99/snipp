@@ -1,8 +1,14 @@
 // Demo implementation of the Jefe's dashboard (RF-W22) and its notices
 // (RF-W14, RF-W10, RF-W12). In production the API adds up the records of
-// the database for the chosen branch and period; here the records are
-// generated once, the same every time, so any period gives consistent sums.
-import { branchProducts, DEMO_TODAY, employees, products } from '../data/demo'
+// the database for the chosen branch and period. Here the sales are the
+// orders of the shared data plus three months of sales history
+// (shared/history.ts); appointments and ratings from 9 November on are the
+// shared ones, and the earlier ones are generated the same every time, so a
+// sale or an attended appointment of the demo shows up in the sums at once.
+import { appointmentStart, fromIso, fromIsoDateTime } from '@shared/dates'
+import { isPublished } from '@shared/feedback'
+import { getData } from '@shared/store'
+import { DEMO_TODAY } from '../data/demo'
 import { getReportsStore } from './reports'
 import { getStaffStore } from './staff'
 import { ApiError } from './auth'
@@ -13,7 +19,6 @@ interface DayRecord {
   date: Date
   appointments: { employeeId: string; branchId: string; status: AppointmentStatus }[]
   reviews: { employeeId: string; branchId: string; stars: number }[]
-  orders: { branchId: string; items: { productId: string; qty: number; price: number }[]; cancelled: boolean }[]
 }
 export interface Rating { average: number | null; count: number }
 export interface AppointmentCounts { total: number; attended: number; cancelled: number; noShow: number; staffNoShow: number }
@@ -30,7 +35,9 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 // Records start the day the business joined SNIPP in this demo.
 export const RECORDS_START = new Date(2026, 7, 3)
-const YESTERDAY = new Date(DEMO_TODAY.getFullYear(), DEMO_TODAY.getMonth(), DEMO_TODAY.getDate() - 1)
+// From this day on, appointments and reviews are the ones in the shared data.
+const SHARED_FROM = new Date(2026, 10, 9)
+const employees = () => getData().employees.filter((e) => e.status !== 'baja')
 
 // Small seeded generator: same seed, same numbers.
 function rng(seedText: string) {
@@ -55,10 +62,11 @@ const key = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
 // One entry per day: appointments and reviews per employee, orders per branch.
 // Branches open Monday to Saturday; Sunday has no records.
 const days: DayRecord[] = []
-for (let d = new Date(RECORDS_START); d <= YESTERDAY; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+const generatedStaff = getData().employees.filter((e) => e.businessId === 'los-compas' && e.bookable)
+for (let d = new Date(RECORDS_START); d < SHARED_FROM; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
   if (d.getDay() === 0) continue
-  const day: DayRecord = { date: d, appointments: [], reviews: [], orders: [] }
-  for (const e of employees.filter((x) => x.bookable)) {
+  const day: DayRecord = { date: d, appointments: [], reviews: [] }
+  for (const e of generatedStaff) {
     const r = rng(`${key(d)}-${e.id}`)
     const count = 3 + Math.floor(r() * 5) + (d.getDay() === 6 ? 3 : 0)
     for (let i = 0; i < count; i++) {
@@ -69,38 +77,32 @@ for (let d = new Date(RECORDS_START); d <= YESTERDAY; d = new Date(d.getFullYear
       }
     }
   }
-  for (const [branchId, ids] of Object.entries(branchProducts)) {
-    const r = rng(`${key(d)}-${branchId}-orders`)
-    const count = pick(r, [[0, 35], [1, 35], [2, 20], [3, 10]])
-    for (let i = 0; i < count; i++) {
-      const items: DayRecord['orders'][number]['items'] = []
-      const lines = r() < 0.75 ? 1 : 2
-      for (let j = 0; j < lines; j++) {
-        const productId = ids[Math.floor(r() * ids.length)]
-        const p = products.find((x) => x.id === productId)
-        if (!p) continue
-        items.push({ productId: p.id, qty: r() < 0.85 ? 1 : 2, price: p.price })
-      }
-      // RN-06: a paid order that is cancelled is refunded; it does not count as a sale.
-      day.orders.push({ branchId, items, cancelled: r() < 0.05 })
-    }
-  }
   days.push(day)
 }
 
 const inRange = (d: Date, from: Date, to: Date) => d >= from && d <= to
 const average = (list: { stars: number }[]) => (list.length ? Math.round((list.reduce((a, x) => a + x.stars, 0) / list.length) * 10) / 10 : null)
 
-function summarize(branchId: string, from: Date, to: Date): DashboardData {
+function summarize(branchId: string, from: Date, until: Date): DashboardData {
+  // The period includes its whole last day (today's sales too).
+  const to = new Date(until.getFullYear(), until.getMonth(), until.getDate(), 23, 59, 59)
+  const data = getData()
   const span = days.filter((d) => inRange(d.date, from, to))
-  const appts = span.flatMap((d) => d.appointments).filter((a) => a.branchId === branchId)
-  const reviews = span.flatMap((d) => d.reviews).filter((x) => x.branchId === branchId)
-  const orders = span.flatMap((d) => d.orders).filter((o) => o.branchId === branchId)
-  const paid = orders.filter((o) => !o.cancelled)
+  // Appointments that already happened (before now) and reviews, from the shared data.
+  const shared = data.appointments.filter((a) => a.branchId === branchId && appointmentStart(a) >= SHARED_FROM && appointmentStart(a) < DEMO_TODAY && inRange(appointmentStart(a), from, to))
+  const sharedReviews = data.reviews.filter((r) => r.branchId === branchId && isPublished(r) && r.employeeId && fromIso(r.on) >= SHARED_FROM && inRange(fromIso(r.on), from, to))
+  const appts = [...span.flatMap((d) => d.appointments).filter((a) => a.branchId === branchId), ...shared.map((a) => ({ employeeId: a.employeeId, branchId: a.branchId, status: a.status }))]
+  const reviews = [...span.flatMap((d) => d.reviews).filter((x) => x.branchId === branchId), ...sharedReviews.map((r) => ({ employeeId: r.employeeId as string, branchId: r.branchId, stars: r.stars }))]
+  // Sales: the history of each day plus the orders paid in the demo. A
+  // cancelled order is refunded and does not count (RN-06).
+  const history = data.salesHistory.filter((x) => x.branchId === branchId && inRange(fromIso(x.date), from, to))
+  const orders = data.orders.filter((o) => o.branchId === branchId && inRange(fromIsoDateTime(o.timeline[0][1]), from, to))
+  const paid = orders.filter((o) => o.status !== 'cancelado')
   const count = (list: { status: AppointmentStatus }[], status: AppointmentStatus) => list.filter((a) => a.status === status).length
+  const soldItems = [...history.flatMap((x) => x.items), ...paid.flatMap((o) => o.items)]
 
   const byProduct: Record<string, { qty: number; amount: number }> = {}
-  for (const it of paid.flatMap((o) => o.items)) {
+  for (const it of soldItems) {
     byProduct[it.productId] ??= { qty: 0, amount: 0 }
     byProduct[it.productId].qty += it.qty
     byProduct[it.productId].amount += it.qty * it.price
@@ -115,16 +117,20 @@ function summarize(branchId: string, from: Date, to: Date): DashboardData {
       staffNoShow: count(appts, 'empleado-no-se-presento'),
     },
     sales: {
-      amount: paid.reduce((a, o) => a + o.items.reduce((s, it) => s + it.qty * it.price, 0), 0),
-      orders: paid.length,
-      refunded: orders.length - paid.length,
+      amount: soldItems.reduce((a, it) => a + it.qty * it.price, 0) - paid.reduce((a, o) => a + o.discount, 0),
+      orders: paid.length + history.reduce((a, x) => a + x.orders, 0),
+      refunded: orders.length - paid.length + history.reduce((a, x) => a + x.refunded, 0),
     },
     topProducts: Object.entries(byProduct)
-      .map(([id, v]) => ({ id, name: products.find((p) => p.id === id)?.name ?? id, ...v }))
+      .map(([id, v]) => {
+        const p = data.products.find((x) => x.id === id)
+        return { id, name: p ? (p.size ? `${p.name} ${p.size}` : p.name) : id, ...v }
+      })
       .sort((a, b) => b.qty - a.qty || b.amount - a.amount),
     rating: { average: average(reviews), count: reviews.length },
-    employees: employees
+    employees: employees()
       .filter((e) => e.branchId === branchId)
+      .map(({ id, name, specialty, businessId, branchId: b, bookable }) => ({ id, name, specialty, businessId, branchId: b, bookable }))
       .map((e) => {
         const mine = appts.filter((a) => a.employeeId === e.id)
         const myReviews = reviews.filter((x) => x.employeeId === e.id)
@@ -161,4 +167,4 @@ export function pendingFor(businessId: string) {
   }
 }
 
-export const employeeName = (id: string) => employees.find((e) => e.id === id)?.name ?? ''
+export const employeeName = (id: string) => getData().employees.find((e) => e.id === id)?.name ?? ''

@@ -1,11 +1,14 @@
 // Branch profiles as the client app sees them: photos, hours, services,
-// professionals and reviews. Name, address, hours, services and staff come
-// from the data shared with the web panel (frontend/shared/seed.ts); the
-// photos, rating and reviews are added here.
-import * as shared from '@shared/seed';
+// professionals and reviews. Everything but the photos comes from the data
+// shared with the web panel (frontend/shared/store.ts), so a branch, a
+// service or an Empleado the Jefe registers shows up here, and one the Jefe
+// deactivates goes away (RF-W05 to RF-W10, RN-14).
+import { dayMonth } from '@shared/effects';
+import { isPublished } from '@shared/feedback';
 import { businessVisible } from '@shared/rules';
 import { getData } from '@shared/store';
-import { DEMO_TODAY, employees, services } from './demo';
+import type { Branch as SharedBranch, DemoData } from '@shared/types';
+import { DEMO_TODAY, employees, liveList, services } from './demo';
 import { time } from '../theme/format';
 import type { Branch, Employee, Service } from '../types/domain';
 
@@ -16,42 +19,14 @@ const photo = {
   frasco: require('../../assets/photos/producto-frasco.jpg'),
 };
 
-// What the web panel controls and the app must respect (RF-W07, RF-W09,
-// RF-W12, RF-W26, RF-W28, RN-13, RN-14). All active in the demo; change a
-// flag to see the item disappear from the app.
-const inactiveBranches: string[] = []; // branch ids deactivated by their Jefe
-const inactiveServices: Record<string, string[]> = {}; // { branchId: [serviceId] }
-export const employeeStatus: Record<string, 'activo' | 'migracion-pendiente'> = { luis: 'activo', ramon: 'activo', oscar: 'activo', karla: 'activo', fernanda: 'activo', itzel: 'activo' }; // or 'migracion-pendiente'
-
 const svc = (ids: string[]): Service[] => ids.map((id) => services.find((s) => s.id === id)).filter((s): s is Service => !!s);
-// Professionals clients can book at the branch; each Empleado belongs to one branch (RF-W10).
-const staff = (branchId: string): Employee[] =>
-  shared.employees.filter((e) => e.branchId === branchId && e.bookable).map((e) => employees.find((x) => x.id === e.id)).filter((e): e is Employee => !!e);
 
-type AppExtras = Pick<Branch, 'id' | 'rating' | 'reviewCount' | 'cover' | 'coverFile' | 'gallery' | 'galleryFiles' | 'reviews'>;
-
-// The shared branch plus what only the app shows. Hours become whole hours.
-function appBranch(extras: AppExtras): Branch {
-  const b = shared.branches.find((x) => x.id === extras.id);
-  if (!b) throw new Error(`Missing branch ${extras.id}`);
-  const hour = (hhmm: string) => Number(hhmm.split(':')[0]);
-  return {
-    ...extras,
-    businessId: b.businessId,
-    name: b.name,
-    kind: shared.businesses.find((x) => x.id === b.businessId)?.kind ?? '',
-    address: b.address,
-    neighborhood: b.neighborhood,
-    phone: b.phone,
-    description: b.description,
-    hours: b.hours.map((h) => (h ? [hour(h[0]), hour(h[1])] : null)),
-    services: svc(b.serviceIds),
-    staff: staff(b.id),
-  };
-}
-
-export const branches: Branch[] = [
-  appBranch({
+// Photos and the rating before the demo of each sample branch. A branch
+// registered in the panel has no photos in the app yet (they are files of
+// that browser) and starts without rating.
+type AppExtras = Pick<Branch, 'id' | 'rating' | 'reviewCount' | 'cover' | 'coverFile' | 'gallery' | 'galleryFiles'>;
+const EXTRAS: AppExtras[] = [
+  {
     id: 'los-compas-centro',
     rating: 4.7,
     reviewCount: 212,
@@ -61,13 +36,8 @@ export const branches: Branch[] = [
       { source: photo.fade, alt: 'Barbero haciendo un fade con máquina en la nuca de un cliente' },
       { source: photo.frasco, alt: 'Frasco de pomada sobre una piedra' },
     ],
-    reviews: [
-      { id: 'r1', author: 'Jorge Méndez', stars: 5, date: '4 de noviembre', service: 'Fade con Luis Ortega', text: 'Llegué a las 5:30 y a las 5:32 ya estaba en la silla. Luis dejó el fade parejo y me explicó cómo peinarlo en la casa.' },
-      { id: 'r2', author: 'Carlos Ríos', stars: 5, date: '1 de noviembre', service: 'Corte + barba con Ramón Cázares', text: 'Ramón trabaja la navaja con mucha calma. La barba me quedó definida sin irritación.' },
-      { id: 'r3', author: 'Daniela Paz', stars: 3, date: '28 de octubre', service: 'Corte clásico con Ramón Cázares', text: 'Buen corte, pero esperé 15 minutos aunque tenía cita a las 12:00.' },
-    ],
-  }),
-  appBranch({
+  },
+  {
     id: 'los-compas-norte',
     rating: 4.5,
     reviewCount: 86,
@@ -76,23 +46,15 @@ export const branches: Branch[] = [
       { source: photo.fade, alt: 'Barbero haciendo un fade con máquina en la nuca de un cliente' },
       { source: photo.interior, alt: 'Dos sillones de barbero de piel frente al espejo largo' },
     ],
-    reviews: [
-      { id: 'r4', author: 'Iván Soto', stars: 5, date: '6 de noviembre', service: 'Fade con Óscar Félix', text: 'Sin espera y el corte quedó igual que en la del centro.' },
-      { id: 'r5', author: 'Luz Gámez', stars: 4, date: '30 de octubre', service: 'Corte clásico con Óscar Félix', text: 'Le corté el pelo a mi hijo de 8 años. Mucha paciencia con él.' },
-    ],
-  }),
-  appBranch({
+  },
+  {
     id: 'estudio-marisol',
     rating: 4.8,
     reviewCount: 143,
     cover: photo.unas,
     gallery: [{ source: photo.unas, alt: 'Manos con uñas recién arregladas sobre una mesa con esmaltes y lámpara' }],
-    reviews: [
-      { id: 'r6', author: 'Paola Robles', stars: 5, date: '7 de noviembre', service: 'Mechas con Karla Ruiz', text: 'Karla me hizo prueba de mechón antes de empezar. El tono quedó exacto al de la foto que le llevé.' },
-      { id: 'r7', author: 'Mariana León', stars: 5, date: '3 de noviembre', service: 'Uñas acrílicas con Fernanda Lugo', text: 'Me duraron tres semanas sin levantarse.' },
-    ],
-  }),
-  appBranch({
+  },
+  {
     id: 'navaja-fina',
     rating: null,
     reviewCount: 0,
@@ -100,20 +62,70 @@ export const branches: Branch[] = [
     coverFile: 'navaja-fina-portada.jpg',
     gallery: [],
     galleryFiles: ['navaja-fina-portada.jpg', 'navaja-fina-sillones.jpg'],
-    reviews: [],
-  }),
+  },
 ];
 
-// RN-13: a branch shows in the app only if it is active and its business,
-// in the shared store, is not suspended and its subscription or trial has
-// not run out (the same rule the store uses to reject a booking).
+const hour = (hhmm: string) => Number(hhmm.split(':')[0]);
+const reviewDate = (on: string) => dayMonth(on);
+
+// The shared branch plus the photos. Reviews come from the shared data: one
+// removed by the Administrador leaves the list and the average (RF-W28), a
+// new one from the app joins them (RF-M12).
+function appBranch(d: DemoData, b: SharedBranch): Branch {
+  const extras = EXTRAS.find((x) => x.id === b.id);
+  const published = d.reviews.filter((r) => r.branchId === b.id && isPublished(r));
+  const fresh = published.filter((r) => r.id.startsWith('rv-'));
+  const removed = d.reviews.filter((r) => r.branchId === b.id && !isPublished(r) && !r.id.startsWith('rv-'));
+  const sum = (list: { stars: number }[]) => list.reduce((x, r) => x + r.stars, 0);
+  let rating: number | null;
+  let reviewCount: number;
+  if (extras?.rating != null) {
+    reviewCount = extras.reviewCount + fresh.length - removed.length;
+    rating = reviewCount ? Math.round(((extras.rating * extras.reviewCount + sum(fresh) - sum(removed)) / reviewCount) * 10) / 10 : null;
+  } else {
+    reviewCount = published.length;
+    rating = reviewCount ? Math.round((sum(published) / reviewCount) * 10) / 10 : null;
+  }
+  return {
+    cover: null,
+    gallery: [],
+    ...extras,
+    id: b.id,
+    rating,
+    reviewCount,
+    businessId: b.businessId,
+    name: b.name,
+    kind: d.businesses.find((x) => x.id === b.businessId)?.kind ?? '',
+    address: b.address,
+    neighborhood: b.neighborhood,
+    phone: b.phone,
+    description: b.description,
+    hours: b.hours.map((h) => (h ? [hour(h[0]), hour(h[1])] : null)),
+    // RN-14: inactive services are not offered.
+    services: svc(b.serviceIds.filter((id) => !b.inactiveServiceIds.includes(id))),
+    // Professionals clients can book: bookable and not leaving (RF-W10, RF-W12).
+    staff: d.employees
+      .filter((e) => e.branchId === b.id && e.bookable && e.status === 'activo')
+      .map((e) => employees.find((x) => x.id === e.id))
+      .filter((e): e is Employee => !!e),
+    reviews: [...published].sort((x, y) => y.on.localeCompare(x.on)).map((r) => ({ id: r.id, author: r.author, stars: r.stars, date: reviewDate(r.on), service: r.service, text: r.text })),
+  };
+}
+
+export const branches: Branch[] = liveList((d) => d.branches.map((b) => appBranch(d, b)));
+
+// RN-13, RF-W09: a branch shows in the app only if the Jefe has it active,
+// it offers something, and its business is not suspended and its
+// subscription or trial has not run out (the same rule the store uses to
+// reject a booking).
 export function isVisible(branch: Branch) {
-  return !inactiveBranches.includes(branch.id) && businessVisible(getData().businesses.find((b) => b.id === branch.businessId), DEMO_TODAY);
+  const shared = getData().branches.find((b) => b.id === branch.id);
+  return !!shared?.active && branch.services.length > 0 && businessVisible(getData().businesses.find((b) => b.id === branch.businessId), DEMO_TODAY);
 }
 
 // Services and professionals the client can book right now.
-export const activeServices = (branch: Branch) => branch.services.filter((s) => !(inactiveServices[branch.id] ?? []).includes(s.id));
-export const bookableStaff = (branch: Branch) => branch.staff.filter((e) => employeeStatus[e.id] === 'activo');
+export const activeServices = (branch: Branch) => branch.services;
+export const bookableStaff = (branch: Branch) => branch.staff;
 
 export const visibleBranches = () => branches.filter(isVisible);
 
@@ -123,17 +135,6 @@ export function branchOf(id: string): Branch {
   const b = getBranch(id);
   if (!b) throw new Error(`Missing branch ${id}`);
   return b;
-}
-
-// RF-M12: a new review goes first in the list and updates the average.
-export function addReview(branchId: string, review: Branch['reviews'][number]) {
-  const b = getBranch(branchId);
-  if (!b) return { rating: null, reviewCount: 0 };
-  const total = (b.rating ?? 0) * b.reviewCount + review.stars;
-  b.reviewCount += 1;
-  b.rating = Math.round((total / b.reviewCount) * 10) / 10;
-  b.reviews = [review, ...b.reviews];
-  return { rating: b.rating, reviewCount: b.reviewCount };
 }
 
 export const priceFrom = (branch: Branch) => Math.min(...activeServices(branch).map((s) => s.price));

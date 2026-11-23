@@ -136,7 +136,7 @@ const where = (req: MyRequest) => (req.branchName === req.businessName ? req.bus
 
 // Business + branch pickers shared by "join" and "migrate".
 function RequestForm({ email, kind, excludeBusinessId, submitLabel }: { email: string; kind: 'ingreso' | 'migracion'; excludeBusinessId?: string | null; submitLabel: string }) {
-  const options = directory.filter((b) => b.id !== excludeBusinessId)
+  const options = directory().filter((b) => b.id !== excludeBusinessId)
   const [businessId, setBusinessId] = useState(options[0].id)
   const business = options.find((b) => b.id === businessId)
   const [branchId, setBranchId] = useState(business?.branches[0]?.id ?? '')
@@ -257,6 +257,11 @@ function Join({ email, store }: { email: string; store: StaffState }) {
         </div>
       ) : (
         <>
+          {req?.status === 'rechazada' ? (
+            <div className="mt-4">
+              <Note title={`${where(req)} no aceptó tu solicitud`}>Puedes enviar una solicitud a otro negocio o a otra sucursal.</Note>
+            </div>
+          ) : null}
           <p className="mt-3 max-w-prose">Pide unirte a la sucursal donde trabajas. Su Jefe acepta tu solicitud y te asigna tu horario. También te puede invitar por correo.</p>
           <RequestForm email={email} kind="ingreso" submitLabel="Enviar solicitud" />
         </>

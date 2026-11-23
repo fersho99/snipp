@@ -65,7 +65,42 @@ npm run dev        # app en http://localhost:3000/app, panel en http://localhost
 
 Una cita reservada en `/app` aparece en la agenda del panel, y un cambio hecho en el panel aparece en la app; todo sobrevive a recargar. "Reiniciar datos de demo" (índice de desarrollo, menú del panel y Cuenta en la app) vuelve a los datos de ejemplo. La app en `localhost:8081` o en Android tiene su propia copia en memoria y no se cruza con la web hasta que exista la API.
 
-`frontend/shared/` tiene los tipos (`types.ts`), el único conjunto de datos de ejemplo (`seed.ts`: negocios, sucursales, servicios, Empleados, cliente, productos, bloqueos y citas), las fechas (`dates.ts`) y el almacén (`store.ts`, con versión de esquema: al cambiar la forma de los datos se sube `SCHEMA_VERSION`). Web y app lo importan como `@shared/...`.
+`frontend/shared/` tiene:
+
+- `types.ts`: los tipos.
+- `seed.ts`: el único conjunto de datos de ejemplo (negocios, planes, sucursales, servicios, Empleados, cuentas, productos, existencias, bloqueos, citas, solicitudes, pedidos, puntos, notificaciones, reseñas y reportes). `history.ts` agrega 3 meses de ventas para el dashboard.
+- `dates.ts`: las fechas.
+- `store.ts`: el almacén, con versión de esquema. Al cambiar la forma de los datos se sube `SCHEMA_VERSION` y los datos guardados se cambian por los de ejemplo.
+- Las operaciones con forma de API, que revisan quién las pide:
+  - `catalog.ts`: sucursales, servicios, productos, existencias, Empleados, solicitudes e invitaciones.
+  - `shop.ts`: carritos, pago, pedidos, reembolsos y lealtad.
+  - `feedback.ts`: reportes y reseñas reportadas.
+  - `billing.ts`: planes, pagos de suscripción y suspensión.
+  - `notifications.ts`: avisos al cliente.
+  - `effects.ts`: lo que cada cambio trae consigo (el aviso al cliente, los puntos, la reseña publicada).
+
+Web y app lo importan como `@shared/...`.
+
+### Historia completa en dos pestañas
+
+Con `npm run dev`, abre la app en una pestaña (`/app`, Andrea) y el panel en otra (`/entrar`, Martín). Lo que se hace en un lado aparece en el otro, sin recargar a mano:
+
+1. **Cita.** Andrea reserva en la app y la cita aparece en la agenda del Jefe y del Empleado. Si el panel la cancela, la cambia de hora o de Empleado, o la marca, Andrea la ve así en "Mis citas" y le llega el aviso. Una cita cambiada queda en "Cambio sin respuesta" hasta que Andrea acepta, reagenda o cancela.
+2. **Altas.**
+   - Lo que el Jefe registra aparece en la app: una sucursal, un servicio, un producto, o un Empleado que acepta (por solicitud o por invitación).
+   - Lo que el Jefe desactiva desaparece de la app.
+   - Si rechaza una solicitud, el Empleado la ve como no aceptada y puede enviar otra.
+3. **Venta.**
+   - Andrea paga un carrito y el pedido aparece en "Pedidos" de la sucursal.
+   - Al pagar bajan las existencias, el dashboard suma la venta y Andrea gana puntos en ese negocio.
+   - Cuando el panel marca el pedido como listo, a Andrea le llega el aviso. Si lo cancela, se reembolsa: regresan las piezas y los puntos, y Andrea lo ve como "Cancelado · reembolsado".
+4. **Reseñas y reportes.**
+   - La reseña de Andrea aparece en la página de la sucursal y en "Reseñas" del Jefe.
+   - Su reporte aparece en "Reportes", y el estado que pone el Jefe le llega a la app.
+   - El Jefe reporta una reseña al Administrador. Si el Administrador la elimina, sale de la app y del promedio.
+5. **Suscripción.** Un negocio vencido o suspendido no aparece en la app. Al pagar (Jefe) o al activarlo (Administrador), vuelve a aparecer.
+
+Las fotos que se suben en el panel solo se ven en esa pestaña, porque son archivos del navegador y no caben en `localStorage`. Si el Jefe cambia un servicio o un producto que comparten varias sucursales (por ejemplo, el precio del Fade en Centro), esa sucursal recibe su propia copia y las demás quedan igual.
 
 ## Validaciones y seguridad
 
