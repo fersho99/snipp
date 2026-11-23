@@ -5,8 +5,8 @@ import type { PlatformBusiness } from '../../services/subscriptions'
 import type { Review, ReviewDecision, ReviewReport } from '../../services/reports'
 type ReportedReview = Review & { reported: ReviewReport }
 import { useState } from 'react'
-import { Flag, PauseCircle, Plus, Star } from '@phosphor-icons/react'
-import { Button, Checkbox, Dialog, Note, TextField } from '../../components/ui'
+import { Flag, Plus, Star } from '@phosphor-icons/react'
+import { Button, Dialog, Note, TextField } from '../../components/ui'
 import { StatusTag, type Status } from '../../components/status'
 import useAction from '@/lib/useAction'
 import { subscriptionStatus } from '../../services/panel'
@@ -20,7 +20,7 @@ const radio = (on: boolean) => `min-h-10 rounded-[8px] px-3.5 text-[15px] ${on ?
 
 // ---------------------------------------------------------------- Planes
 // RF-W27: name, price and duration. A plan created here is an option when a
-// Jefe registers; one that is no longer offered stays for whoever has it.
+// Jefe registers, and it cannot be retired: the panel has no option for it.
 export function Plans() {
   const { plans } = useSubscriptionsStore()
   const [editing, setEditing] = useState<Plan | 'nuevo' | null>(null)
@@ -30,7 +30,7 @@ export function Plans() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-[28px] font-bold leading-tight">Planes</h1>
-          <p className="mt-1 max-w-prose text-ink-soft">Los planes que se ofrecen se pueden elegir al registrar un negocio y al pagar la suscripción.</p>
+          <p className="mt-1 max-w-prose text-ink-soft">Cada plan se puede elegir al registrar un negocio y al pagar la suscripción. Un plan creado no se puede retirar.</p>
         </div>
         <Button className="self-start sm:self-auto" onClick={() => { setEditing('nuevo'); setNotice(null) }}>
           <Plus size={18} weight="bold" aria-hidden="true" />
@@ -49,7 +49,6 @@ export function Plans() {
                 <div>
                   <p className="font-semibold">{p.name}</p>
                   <p className="tabular text-[15px]">{money(p.price)} por {duration(p.months)}</p>
-                  {!p.offered ? <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold"><PauseCircle size={16} weight="fill" aria-hidden="true" />Ya no se ofrece</p> : null}
                 </div>
                 <button type="button" onClick={() => { setEditing(p); setNotice(null) }} className="min-h-11 font-medium underline underline-offset-4">Editar</button>
               </li>
@@ -68,7 +67,7 @@ export function Plans() {
 
 const PLAN_NAME_MAX = 40
 function PlanForm({ plan, onCancel, onDone }: { plan?: Plan; onCancel: () => void; onDone: (text: string) => void }) {
-  const [form, setForm] = useState({ name: plan?.name ?? '', price: plan ? String(plan.price) : '', months: plan ? String(plan.months) : '', offered: plan?.offered ?? true })
+  const [form, setForm] = useState({ name: plan?.name ?? '', price: plan ? String(plan.price) : '', months: plan ? String(plan.months) : '' })
   const [errors, setErrors] = useState<Record<string, string | null | undefined>>({})
   const saving = useAction(plan
     ? { busy: 'Guardando...', done: 'Plan guardado', failed: 'No se pudo guardar' }
@@ -86,7 +85,7 @@ function PlanForm({ plan, onCancel, onDone }: { plan?: Plan; onCancel: () => voi
     setErrors(next)
     if (Object.keys(next).length) return
     const name = form.name.trim()
-    saving.run(() => savePlan({ ...(plan ?? {}), name, price, months, offered: form.offered }), {
+    saving.run(() => savePlan({ id: plan?.id, name, price, months }), {
       onDone: () => onDone(plan ? `Guardaste el plan ${name}.` : `Creaste el plan ${name}. Ya aparece al registrar un negocio.`),
     })
   }
@@ -98,7 +97,6 @@ function PlanForm({ plan, onCancel, onDone }: { plan?: Plan; onCancel: () => voi
         <TextField label="Precio" prefix="$" inputMode="decimal" maxLength={LIMITS.price + 1} value={form.price} onChange={set('price')} error={errors.price} />
         <TextField label="Duración en meses" inputMode="numeric" maxLength={2} value={form.months} onChange={set('months')} error={errors.months} />
       </div>
-      <Checkbox label="Se ofrece" hint="Si lo desmarcas, ya no se puede elegir al registrarse ni al pagar; quien ya lo tiene lo conserva hasta que venza." checked={form.offered} onChange={(e) => setForm((f) => ({ ...f, offered: e.target.checked }))} />
       {plan ? <p className="text-sm text-ink-soft">Un cambio de precio aplica a los próximos pagos, no a los que ya se hicieron.</p> : null}
       <div className="flex gap-3">
         <Button type="submit" {...saving.button}>{plan ? 'Guardar plan' : 'Crear plan'}</Button>

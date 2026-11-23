@@ -30,10 +30,13 @@ export function paySubscription(businessId: string, planId: string, actor: Accou
 }
 
 // RF-W27: a new plan appears when a Jefe registers or pays.
-export function savePlan(plan: Omit<Plan, 'id'> & { id?: string }, actor: Account | null) {
+// RF-W27: a plan can be created and edited (name, price and duration) but
+// never retired, so it is always offered.
+export function savePlan(input: Pick<Plan, 'name' | 'price' | 'months'> & { id?: string }, actor: Account | null) {
   requireAdmin(actor)
+  const plan = { name: input.name, price: input.price, months: input.months, offered: true }
   commit((d) => {
-    if (plan.id && d.plans.some((p) => p.id === plan.id)) return { ...d, plans: d.plans.map((p) => (p.id === plan.id ? { ...p, ...plan, id: p.id } : p)) }
+    if (input.id && d.plans.some((p) => p.id === input.id)) return { ...d, plans: d.plans.map((p) => (p.id === input.id ? { ...p, ...plan } : p)) }
     const base = plan.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-')
     const id = d.plans.some((p) => p.id === base) ? `${base}-${Date.now()}` : base
     return { ...d, plans: [...d.plans, { ...plan, id }] }

@@ -125,10 +125,11 @@ export async function paySubscription(businessId: string, planId: string): Promi
 }
 
 // RF-W27: a plan created here appears as an option when a Jefe registers.
-export async function savePlan(plan: Omit<Plan, 'id'> & { id?: string }) {
+// A plan cannot be retired, so there is nothing to send about it.
+export async function savePlan(plan: Pick<Plan, 'name' | 'price' | 'months'> & { id?: string }) {
   await wait(600)
   failIfForced()
-  call(() => billing.savePlan({ ...plan, offered: plan.offered ?? true }, actor()))
+  call(() => billing.savePlan(plan, actor()))
 }
 
 // RF-W28: a suspended business disappears from the app; its data is kept.

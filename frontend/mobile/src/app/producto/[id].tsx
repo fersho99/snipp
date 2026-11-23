@@ -7,6 +7,7 @@ import { ErrorScreen, OfflineState } from '../../components/States';
 import { AddToCartButton, CartBar, CartLimitSheet, ProductPhoto, QtyStepper } from '../../components/Shop';
 import useConnectivity from '../../hooks/useConnectivity';
 import { getBranch, branches } from '../../data/catalog';
+import { getBusiness } from '../../data/demo';
 import { cartSummary, getProduct, pointsEarned, stockStatus, useCarts } from '../../data/shop';
 import type { CartSummary } from '../../data/shop';
 import { money } from '../../theme/format';
@@ -66,7 +67,7 @@ export default function ProductDetail() {
       {product.size ? <Txt variant="bodySoft">{product.size}</Txt> : null}
       <View style={styles.priceRow}>
         <Txt variant="title" numeric>{money(product.price)}</Txt>
-        <Txt variant="small" numeric>Ganas {pointsEarned(product.price)} puntos en {branch.name.replace(' Norte', '')}</Txt>
+        <Txt variant="small" numeric>Ganas {pointsEarned(product.price)} puntos en {getBusiness(branch.businessId).name}</Txt>
       </View>
 
       {out ? (

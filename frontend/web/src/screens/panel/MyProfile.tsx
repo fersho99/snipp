@@ -11,7 +11,7 @@ import useAction from '@/lib/useAction'
 import { imageProblem, MAX_IMAGE_MB } from '../../services/branches'
 import { acceptInvitation, expiresOn, lastAppointmentOf, saveProfile, sendRequest, useStaffStore } from '../../services/staff'
 import { longDate, timeOfDay } from '../../theme'
-import { NOTICE, NOTICE_ICON } from '../../components/status'
+import { NOTICE, NOTICE_ICON, StatusTag } from '../../components/status'
 import { LIMITS, checkLabel, checkName } from '@shared/validators'
 
 // Mi perfil, for the Empleado (RF-W11): own photo, visible name and
@@ -135,9 +135,11 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
 const where = (req: MyRequest) => (req.branchName === req.businessName ? req.businessName : `${req.businessName}, sucursal ${req.branchName}`)
 
 // Business + branch pickers shared by "join" and "migrate".
-function RequestForm({ email, kind, excludeBusinessId, submitLabel }: { email: string; kind: 'ingreso' | 'migracion'; excludeBusinessId?: string | null; submitLabel: string }) {
+// `rejectedBy`: the business that did not accept the last request, so the
+// form starts on another one (RF-W10); it can still be chosen again.
+function RequestForm({ email, kind, excludeBusinessId, rejectedBy, submitLabel }: { email: string; kind: 'ingreso' | 'migracion'; excludeBusinessId?: string | null; rejectedBy?: string; submitLabel: string }) {
   const options = directory().filter((b) => b.id !== excludeBusinessId)
-  const [businessId, setBusinessId] = useState(options[0].id)
+  const [businessId, setBusinessId] = useState((options.find((b) => b.name !== rejectedBy) ?? options[0]).id)
   const business = options.find((b) => b.id === businessId)
   const [branchId, setBranchId] = useState(business?.branches[0]?.id ?? '')
   const sending = useAction({ busy: 'Enviando...', done: 'Solicitud enviada', failed: 'No se pudo enviar' })
@@ -203,11 +205,16 @@ function Migration({ me, email, store }: { me: StaffMember; email: string; store
                 Su Jefe no respondió en 7 días (venció el {longDate(expiresOn(req.sentOn))}). Puedes enviarla de nuevo o elegir otro negocio.
               </Note>
             </div>
+          ) : req?.kind === 'migracion' && req.status === 'rechazada' ? (
+            <div className="mt-4">
+              <StatusTag status={{ color: 'rojo', icon: 'cancelada', label: 'Rechazada' }} className="mb-2" />
+              <Note title={`${where(req)} no aceptó tu solicitud`}>Sigues trabajando aquí como siempre. Puedes enviar una solicitud a otro negocio.</Note>
+            </div>
           ) : null}
           <p className="mt-3 max-w-prose">
             Envía una solicitud al negocio al que te quieres cambiar. Si su Jefe la acepta, ya no se reservan nuevas citas contigo aquí y te cambias cuando termines tus citas. Si no responde en 7 días, la solicitud caduca.
           </p>
-          <RequestForm email={email} kind="migracion" excludeBusinessId={me.businessId} submitLabel="Solicitar migración" />
+          <RequestForm email={email} kind="migracion" excludeBusinessId={me.businessId} rejectedBy={req?.kind === 'migracion' && req.status === 'rechazada' ? req.businessName : undefined} submitLabel="Solicitar migración" />
         </>
       )}
     </section>
@@ -259,11 +266,12 @@ function Join({ email, store }: { email: string; store: StaffState }) {
         <>
           {req?.status === 'rechazada' ? (
             <div className="mt-4">
+              <StatusTag status={{ color: 'rojo', icon: 'cancelada', label: 'Rechazada' }} className="mb-2" />
               <Note title={`${where(req)} no aceptó tu solicitud`}>Puedes enviar una solicitud a otro negocio o a otra sucursal.</Note>
             </div>
           ) : null}
           <p className="mt-3 max-w-prose">Pide unirte a la sucursal donde trabajas. Su Jefe acepta tu solicitud y te asigna tu horario. También te puede invitar por correo.</p>
-          <RequestForm email={email} kind="ingreso" submitLabel="Enviar solicitud" />
+          <RequestForm email={email} kind="ingreso" rejectedBy={req?.status === 'rechazada' ? req.businessName : undefined} submitLabel="Enviar solicitud" />
         </>
       )}
     </section>
