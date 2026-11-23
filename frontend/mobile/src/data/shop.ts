@@ -77,7 +77,7 @@ const DAY = 24 * HOUR;
 const cartStore = createStore<Cart[]>([]);
 // status: pagado | listo | entregado | cancelado (RF-M11, RF-W20). The branch
 // changes it on the web and the app shows it in "Mis pedidos".
-const orderStore = createStore<Order[]>([
+const SAMPLE_ORDERS: Order[] = [
   {
     folio: 'P-2279', branchId: 'los-compas-centro', items: [{ productId: 'aceite', qty: 1, price: 190 }], total: 190, pointsUsed: 0,
     status: 'listo', paymentRef: 'pi_3QIx4m2eZvKYlo2C0qW8dRtz', placedOn: 'martes 10 de noviembre',
@@ -93,7 +93,8 @@ const orderStore = createStore<Order[]>([
     status: 'cancelado', paymentRef: 'pi_3QDzRt2eZvKYlo2C0mN7wLsP', refund: { amount: 230, note: 'La sucursal se quedó sin pomada.' },
     timeline: [['pagado', 'sábado 24 de octubre, 10:30 am'], ['cancelado', 'sábado 24 de octubre, 11:05 am']],
   },
-]);
+];
+const orderStore = createStore<Order[]>(SAMPLE_ORDERS);
 
 // Open carts, oldest first. Every screen that shows them also empties the
 // ones that expired (the API does it in production).
@@ -131,14 +132,15 @@ export function orderStatusOf(order: Order): StatusText {
 // RF-M15, RN-09: points are earned per business (attended appointments and
 // purchases) and can only be spent on products of that same business.
 // Every movement is kept so the client can see where the balance comes from.
-const ledgerStore = createStore<PointsMovement[]>([
+const SAMPLE_LEDGER: PointsMovement[] = [
   { id: 'm6', businessId: 'los-compas', points: 19, label: 'Compra, pedido P-2279', date: 'martes 10 de noviembre', route: '/pedido/P-2279' },
   { id: 'm5', businessId: 'los-compas', points: 13, label: 'Compra, pedido P-2264', date: 'lunes 2 de noviembre', route: '/pedido/P-2264' },
   { id: 'm4', businessId: 'los-compas', points: -73, label: 'Canjeaste en el pedido P-2264', date: 'lunes 2 de noviembre', route: '/pedido/P-2264' },
   { id: 'm3', businessId: 'los-compas', points: 22, label: 'Fade, cita C-10431 atendida', date: 'sábado 31 de octubre', route: '/cita/C-10431' },
   { id: 'm2', businessId: 'los-compas', points: 18, label: 'Corte clásico, cita C-10402 atendida', date: 'sábado 17 de octubre', route: '/cita/C-10402' },
   { id: 'm1', businessId: 'los-compas', points: 28, label: 'Corte + barba, cita C-10318 atendida', date: 'sábado 12 de septiembre', route: '/cita/C-10318' },
-]);
+];
+const ledgerStore = createStore<PointsMovement[]>(SAMPLE_LEDGER);
 
 export function usePointsLedger() {
   return useSyncExternalStore(ledgerStore.subscribe, ledgerStore.get, ledgerStore.get);
@@ -336,3 +338,12 @@ export function createOrder(summary: CartSummary, payment: Extract<PaymentResult
 }
 
 export const getOrder = (folio: string | undefined) => orderStore.get().find((o) => o.folio === folio);
+
+// Orders, points and carts belong to the signed-in client. The sample ones
+// are Andrea's; any other client starts without history. Called by
+// data/session.ts when the client changes.
+export function loadClientShop(withSamples: boolean) {
+  orderStore.set(withSamples ? SAMPLE_ORDERS : []);
+  ledgerStore.set(withSamples ? SAMPLE_LEDGER : []);
+  cartStore.set([]);
+}

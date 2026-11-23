@@ -26,11 +26,18 @@ export const services: Service[] = shared.services.map(({ id, name, minutes, pri
 
 export const products = shared.products.map(({ id, name, size, price }) => ({ id, name, size, price }));
 
-export const client: Client = {
-  ...shared.clients[0],
-  photo: null, // no photo uploaded yet
-  // Loyalty points live in data/shop.ts (movements per business, RF-M15).
-};
+// Andrea, the client of the sample data. The screen index fills the forms
+// with her data to show some states.
+export const DEMO_CLIENT: Client = { firstName: 'Andrea', name: 'Andrea Valenzuela', email: 'andrea.valenzuela@gmail.com', phone: '653 118 4420', photo: null };
+
+// The signed-in client. data/session.ts keeps it up to date; screens only
+// open with a session, so it is never read while signed out.
+// Loyalty points live in data/shop.ts (movements per business, RF-M15).
+export const client: Client = { ...DEMO_CLIENT };
+export function setClient(account: { name: string; email: string; phone: string } | null) {
+  const c = account ?? DEMO_CLIENT;
+  Object.assign(client, { firstName: c.name.split(' ')[0], name: c.name, email: c.email, phone: c.phone, photo: null });
+}
 
 // Lookups by id. The demo data always points to existing records, so a
 // missing one is a bug and fails loudly instead of showing empty text.

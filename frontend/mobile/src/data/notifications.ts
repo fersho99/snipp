@@ -9,7 +9,7 @@ import type { AppNotification } from '../types/domain';
 //       cancelacion | reagendada | pedido-listo | carrito-por-vaciar |
 //       carrito-vaciado (RN-18: one day before a cart expires and when it does)
 // day: hoy | ayer | antes (how the list groups them)
-let state: AppNotification[] = [
+const SAMPLES: AppNotification[] = [
   {
     id: 'n8', kind: 'cambio', day: 'hoy', when: '9:12 am', read: false, route: '/cambio/C-10490',
     title: 'Barbería Los Compas cambió tu cita del martes 24',
@@ -57,9 +57,17 @@ let state: AppNotification[] = [
   },
 ];
 
+let state = SAMPLES;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 let nextId = 10;
+
+// The sample notifications are Andrea's; any other client starts with none.
+// Called by data/session.ts when the client changes.
+export function loadClientNotifications(withSamples: boolean) {
+  state = withSamples ? SAMPLES : [];
+  emit();
+}
 
 export const notificationStore = {
   subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); },

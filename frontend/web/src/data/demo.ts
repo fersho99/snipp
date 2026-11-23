@@ -3,7 +3,7 @@
 // (frontend/shared/seed.ts); here only what the panel adds to them.
 // "Today" is Thursday 12 November 2026.
 import { DEMO_TODAY } from '@shared/dates'
-import { branches as sharedBranches, businesses as sharedBusinesses, employees as sharedEmployees, products as sharedProducts, services as sharedServices } from '@shared/seed'
+import { accounts as sharedAccounts, branches as sharedBranches, businesses as sharedBusinesses, employees as sharedEmployees, products as sharedProducts, services as sharedServices } from '@shared/seed'
 import type { Branch, Business, Employee, Plan, Role, Session } from '../types/domain'
 
 export { DEMO_TODAY }
@@ -64,16 +64,18 @@ function panelBranch(id: string): Branch {
 // or reschedule in the app (RF-W08, 2 hours by default).
 // subscription.kind: 'prueba' (free first month) or 'pagada' (a paid plan).
 // endsOn is the last day covered; after it, without payment, it is overdue.
-const losCompas = sharedBusinesses.find((b) => b.id === 'los-compas')
-export const businesses: Record<string, Business> = {
-  'los-compas': {
-    id: 'los-compas',
-    name: losCompas?.name ?? '',
-    minNoticeHours: 2,
-    branches: sharedBranches.filter((b) => b.businessId === 'los-compas').map((b) => panelBranch(b.id)),
-    subscription: { kind: 'pagada', planId: 'mensual', endsOn: new Date(2026, 11, 3) },
-  },
-}
+export const businesses: Record<string, Business> = Object.fromEntries(
+  sharedBusinesses.map((b): [string, Business] => [
+    b.id,
+    {
+      id: b.id,
+      name: b.name,
+      minNoticeHours: 2,
+      branches: sharedBranches.filter((br) => br.businessId === b.id).map((br) => panelBranch(br.id)),
+      subscription: { kind: b.subscription.kind, planId: b.subscription.planId, endsOn: new Date(`${b.subscription.endsOn}T00:00`) },
+    },
+  ]),
+)
 
 // Empleados linked to each branch (RF-W10).
 export const employees: Employee[] = sharedEmployees
@@ -95,13 +97,9 @@ export const pendingRequests: JoinRequest[] = [
   { id: 'S-32', businessId: 'los-compas', kind: 'migracion', name: 'Diego Armenta', email: 'diego.armenta@gmail.com', from: 'Barbería El Faro', branchId: 'los-compas-norte', sentOn: new Date(2026, 10, 6) },
 ]
 
-// Demo accounts. The password for all of them is in frontend/README.md.
-export const DEMO_PASSWORD = 'snipp2026'
-export const accounts: Session[] = [
-  { email: 'admin@snipp.mx', role: 'admin', name: 'Daniela Ibarra', businessId: null },
-  { email: 'martin.salazar@loscompas.mx', role: 'jefe', name: 'Martín Salazar', businessId: 'los-compas' },
-  { email: 'luis.ortega@gmail.com', role: 'empleado', name: 'Luis Ortega', businessId: 'los-compas', branchId: 'los-compas-centro' },
-  { email: 'sofia.ramos@gmail.com', role: 'empleado', name: 'Sofía Ramos', businessId: null },
-]
+// Demo accounts of the panel (RF-W04). Their password is in frontend/README.md.
+export const accounts: Session[] = sharedAccounts
+  .filter((a) => a.role !== 'cliente')
+  .map(({ email, name, role, businessId, branchId }) => ({ email, name, role: role as Role, businessId, ...(branchId ? { branchId } : {}) }))
 
 export const ROLE_LABEL: Record<Role, string> = { admin: 'Administrador de SNIPP', jefe: 'Jefe', empleado: 'Empleado' }

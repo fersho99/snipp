@@ -9,10 +9,9 @@ import Button from '../components/Button';
 import TextField from '../components/TextField';
 import { ErrorNote, OfflineState } from '../components/States';
 import useConnectivity from '../hooks/useConnectivity';
-import { client } from '../data/demo';
+import { DEMO_CLIENT } from '../data/demo';
+import { signIn } from '../data/session';
 import { space } from '../theme/tokens';
-
-const DEMO_PASSWORD = 'compas2025';
 
 // Login. Real photo of the shop on the top half, the form below it.
 // States: ?estado=credenciales | sin-conexion | cargando
@@ -21,7 +20,7 @@ export default function SignIn() {
   const { height } = useWindowDimensions();
   const { online, failure, retry, retrying } = useConnectivity(estado);
 
-  const [email, setEmail] = useState(estado === 'credenciales' || estado === 'cargando' ? client.email : '');
+  const [email, setEmail] = useState(estado === 'credenciales' || estado === 'cargando' ? DEMO_CLIENT.email : '');
   const [password, setPassword] = useState(estado === 'credenciales' || estado === 'cargando' ? 'compas2024' : '');
   const [loading, setLoading] = useState(estado === 'cargando');
   const [invalid, setInvalid] = useState(estado === 'credenciales');
@@ -40,12 +39,14 @@ export default function SignIn() {
     if (Object.keys(errors).length) return;
 
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setLoading(false);
-    if (email.trim().toLowerCase() === client.email && password === DEMO_PASSWORD) {
+    try {
+      await signIn(email, password);
       router.replace('/inicio');
-    } else {
+    } catch {
+      // Wrong email or password: the same message for both (RF-M01).
       setInvalid(true);
+    } finally {
+      setLoading(false);
     }
   };
 
