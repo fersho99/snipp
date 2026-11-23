@@ -30,8 +30,14 @@ export function ErrorScreen({ kind, title, detail, onRetry, retrying, tabs, home
   kind: ScreenFailure; title?: string; detail?: string; onRetry: () => void; retrying?: boolean; tabs?: boolean; home?: string;
 }) {
   const insets = useSafeAreaInsets();
-  // When the error happened, on the device clock (not the demo date).
-  const [at] = useState(() => new Date());
+  // When the error happened, on the device clock (not the demo date). It is
+  // taken again when the case changes ("Cargando" becomes "Esto tardó
+  // demasiado" after 15 s) and when a retry fails again.
+  const [mark, setMark] = useState(() => ({ kind, retrying, at: new Date() }));
+  if (mark.kind !== kind || mark.retrying !== retrying) {
+    setMark({ kind, retrying, at: mark.kind !== kind || (mark.retrying && !retrying) ? new Date() : mark.at });
+  }
+  const at = mark.at;
   const bottom = tabs ? <TabBar /> : null;
   if (kind === 'esperando') {
     return (
