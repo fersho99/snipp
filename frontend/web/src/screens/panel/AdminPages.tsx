@@ -30,7 +30,7 @@ export function Plans() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-[28px] font-bold leading-tight">Planes</h1>
-          <p className="mt-1 max-w-prose text-ink-soft">Los planes que se ofrecen se pueden elegir al registrar un negocio y al pagar la suscripción.</p>
+          <p className="mt-1 max-w-prose text-ink-soft">Cada plan se puede elegir al registrar un negocio y al pagar la suscripción. Un plan creado no se puede retirar.</p>
         </div>
         <Button className="self-start sm:self-auto" onClick={() => { setEditing('nuevo'); setNotice(null) }}>
           <Plus size={18} weight="bold" aria-hidden="true" />
