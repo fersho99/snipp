@@ -8,6 +8,7 @@ import { useSyncExternalStore } from 'react'
 import { DEMO_TODAY } from '../data/demo'
 import { ApiError } from './auth'
 import { takeForcedError } from './panel'
+import { LIMITS, checkText } from '@shared/validators'
 
 export type ReportReason = 'trato' | 'puntualidad' | 'higiene' | 'calidad' | 'otro'
 export type ReportState = 'enviado' | 'en revision' | 'atendido'
@@ -153,6 +154,8 @@ export async function setReportState(id: string, next: ReportState) {
 export async function addNote(id: string, author: string, text: string) {
   await wait(500)
   failIfForced()
+  const problem = checkText(String(text ?? ''), LIMITS.note, 'Escribe la nota.')
+  if (problem) throw new ApiError('invalid', problem)
   set((s) => ({ ...s, reports: s.reports.map((r) => (r.id === id ? { ...r, notes: [...r.notes, { id: `n-${Date.now()}`, on: DEMO_TODAY, author, text }] } : r)) }))
 }
 
@@ -168,5 +171,9 @@ export async function decideReview(id: string, decision: ReviewDecision) {
 export async function reportReview(id: string, reason: string, detail: string) {
   await wait(700)
   failIfForced()
+  const problem = checkText(String(reason ?? ''), LIMITS.reason, 'Elige el motivo.') ?? checkText(String(detail ?? ''), LIMITS.reason)
+  if (problem) throw new ApiError('invalid', problem)
+  // A review goes to the Administrador once.
+  if (state.reviews.find((r) => r.id === id)?.reported) throw new ApiError('conflict', 'Ya reportaste esta reseña.')
   set((s) => ({ ...s, reviews: s.reviews.map((r) => (r.id === id ? { ...r, reported: { reason, detail, on: DEMO_TODAY, state: 'enviado' as const } } : r)) }))
 }

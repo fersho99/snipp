@@ -16,6 +16,7 @@ import useAction from '@/lib/useAction'
 import { acceptRequest, expiresOn, inviteEmployee, rejectRequest, useStaffStore } from '../../services/staff'
 import { isEmail, longDate } from '../../theme'
 import EmployeeDetail from './EmployeeDetail'
+import { LIMITS } from '@shared/validators'
 
 // Empleados (RF-W10 to RF-W13, RF-W17). `sub` = 'detalle' opens one Empleado.
 export default function Employees({ sub }: { sub?: string }) {
@@ -151,7 +152,7 @@ function Invite({ business, branches }: { business: Business; branches: Branch[]
       {open ? (
         <form onSubmit={submit} noValidate className="flex max-w-2xl flex-col gap-5 rounded-control border border-divider bg-raised p-5">
           <p className="font-semibold">Invitar Empleado por correo</p>
-          <TextField label="Correo del Empleado" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null) }} error={error} hint="Si todavía no tiene cuenta en SNIPP, el correo le explica cómo crearla." autoFocus />
+          <TextField label="Correo del Empleado" type="email" maxLength={LIMITS.email} value={email} onChange={(e) => { setEmail(e.target.value); setError(null) }} error={error} hint="Si todavía no tiene cuenta en SNIPP, el correo le explica cómo crearla." autoFocus />
           <div className="flex flex-col gap-2">
             <label htmlFor="invite-branch" className="text-[15px] font-medium">Sucursal</label>
             <select id="invite-branch" value={branchId} onChange={(e) => setBranchId(e.target.value)} className="min-h-12 rounded-control border-2 border-divider bg-sunken px-3 text-base outline-none focus:border-ink-soft">

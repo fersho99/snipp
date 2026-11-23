@@ -9,6 +9,7 @@
 //   about 1.5 s and goes back to normal, and a red notice says the cause and
 //   what to do, with "Reintentar".
 import { useEffect, useRef, useState } from 'react';
+import { ApiError } from '@shared/store';
 import { toast, toastError } from '../data/toast';
 
 export type Outcome =
@@ -35,8 +36,11 @@ export default function useAction(labels: { busy: string; done: string; failed: 
     let out: Outcome;
     try {
       out = await task();
-    } catch {
-      out = { ok: false, reason: NETWORK_REASON };
+    } catch (err) {
+      // The shared store rejected it because a rule was broken (RN-01,
+      // RN-03, RN-08...): its message says why, and retrying would not help.
+      const rule = err instanceof ApiError && ['invalid', 'conflict', 'forbidden', 'not-found'].includes(err.code);
+      out = rule ? { ok: false, reason: (err as ApiError).message, retry: false } : { ok: false, reason: NETWORK_REASON };
     }
     if (!mounted.current) { running.current = false; return; }
     if (out.ok) {

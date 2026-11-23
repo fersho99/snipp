@@ -16,6 +16,7 @@ import { markChanged, useChanged } from '@/lib/flash'
 import { advanceOrder, cancelOrder, CLIENT_ORDER_STATE, NEXT, ORDER_STATE, orderTotal, useShopStore } from '../../services/shop'
 import { useStaffStore } from '../../services/staff'
 import { longDate, money, timeOfDay } from '../../theme'
+import { LIMITS } from '@shared/validators'
 
 const ACTION: Partial<Record<OrderStatus, string>> = { listo: 'Marcar listo para recoger', entregado: 'Marcar entregado' }
 
@@ -201,7 +202,7 @@ function CancelDialog({ order, onClose, onDone }: { order: Order; onClose: () =>
       actions={<><Button variant="secondary" onClick={onClose} disabled={refunding.busy}>No</Button><Button {...refunding.button} onClick={submit}>Sí, cancelar y reembolsar</Button></>}
     >
       <p>Stripe le devuelve {money(orderTotal(order))} a {order.client} en la misma tarjeta. Las piezas regresan a las existencias de la sucursal. No se puede deshacer.</p>
-      <TextArea label="Motivo" rows={2} value={reason} onChange={(e) => { setReason(e.target.value); setError(null) }} error={error} hint="Por ejemplo: La sucursal se quedó sin pomada." />
+      <TextArea label="Motivo" rows={2} maxLength={LIMITS.reason} value={reason} onChange={(e) => { setReason(e.target.value); setError(null) }} error={error} hint="Por ejemplo: La sucursal se quedó sin pomada." />
     </Dialog>
   )
 }

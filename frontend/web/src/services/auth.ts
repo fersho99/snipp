@@ -6,27 +6,62 @@
 // HTTPS (RNF-G02). `estado` lets the screen index force a state
 // (credenciales, correo-registrado, ...).
 import * as auth from '@shared/auth'
+import * as db from '@shared/store'
 import { ApiError as SharedApiError, getData } from '@shared/store'
-import type { Account } from '@shared/types'
+import type { Account, Appointment } from '@shared/types'
+import { checkPassword } from '@shared/validators'
 import { businesses } from '../data/demo'
 import type { Role, Session, StoredBusiness } from '../types/domain'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-// offline | server | credentials | email-taken | token | card | stripe
-export type ApiErrorCode = 'offline' | 'server' | 'credentials' | 'email-taken' | 'token' | 'card' | 'stripe'
+// Development only: the store API in the browser console, to check that a
+// rule broken without the screens is rejected too (Fase 3). Each call acts
+// as the account signed in to the app or the panel, like a token would.
+//   await snippApi.book({ branchId: 'los-compas-norte', employeeId: 'oscar', serviceId: 'fade', date: '2026-11-13', start: 600 })
+//   await snippApi.panelChange('C-10520', { employeeId: 'ramon' })
+if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+  const appActor = () => auth.sessionAccount('app')
+  const panelActor = () => auth.sessionAccount('panel')
+  Object.assign(window, {
+    snippApi: {
+      data: () => db.getData(),
+      book: (input: db.NewAppointment) => db.bookAppointment(input, appActor()),
+      clientChange: (folio: string, patch: Partial<Appointment>) => db.updateAppointment(folio, patch, appActor()),
+      panelChange: async (folio: string, patch: Partial<Appointment>) => {
+        const before = db.getData().appointments.find((a) => a.folio === folio)
+        if (!before) throw new SharedApiError('not-found', `No existe la cita ${folio}`)
+        db.savePanelChanges([{ ...before, ...patch, folio }], null, panelActor())
+        return db.getData().appointments.find((a) => a.folio === folio)
+      },
+      signUpClient: auth.signUpClient,
+    },
+  })
+}
+
+// offline | server | credentials | email-taken | token | card | stripe, and
+// 'invalid' | 'conflict' | 'forbidden' when a rule or a field check of the
+// shared store rejected the request (its message says why).
+export type ApiErrorCode = 'offline' | 'server' | 'credentials' | 'email-taken' | 'token' | 'card' | 'stripe' | 'invalid' | 'conflict' | 'forbidden'
 export class ApiError extends Error {
   code: ApiErrorCode
-  constructor(code: ApiErrorCode) {
-    super(code)
+  constructor(code: ApiErrorCode, message: string = code) {
+    super(message)
     this.code = code
   }
 }
 // The shared store answers with the same codes.
+const PASSED = ['credentials', 'email-taken', 'offline', 'invalid', 'conflict', 'forbidden']
 function rethrow(err: unknown): never {
-  if (err instanceof SharedApiError && (err.code === 'credentials' || err.code === 'email-taken' || err.code === 'offline')) throw new ApiError(err.code)
+  if (err instanceof SharedApiError && PASSED.includes(err.code)) throw new ApiError(err.code as ApiErrorCode, err.message)
   if (err instanceof SharedApiError) throw new ApiError('server')
   throw err
+}
+
+// Message of a rejected rule or field check, or null for any other error.
+export function ruleMessage(err: unknown) {
+  const code = typeof err === 'object' && err !== null && 'code' in err ? (err as { code: unknown }).code : null
+  return (code === 'invalid' || code === 'conflict' || code === 'forbidden' || code === 'not-found') && err instanceof Error ? err.message : null
 }
 
 // A business registered in the panel is not in the sample data: the panel
@@ -141,12 +176,16 @@ export async function resetPassword(token: string | null, password: string, esta
   await wait(800)
   fail(estado)
   if (estado === 'enlace-vencido' || !token) throw new ApiError('token')
+  const invalid = checkPassword(String(password ?? ''))
+  if (invalid) throw new ApiError('invalid', invalid)
   return true
 }
 
 // Message for the errors every form can get.
 export function networkMessage(err: unknown) {
   const code = typeof err === 'object' && err !== null && 'code' in err ? (err as { code: unknown }).code : null
+  const rule = ruleMessage(err)
+  if (rule) return { title: 'Revisa los datos', body: rule }
   if (code === 'offline') return { title: 'No hay conexión a internet', body: 'SNIPP necesita internet. Revisa tu conexión y vuelve a intentar; lo que escribiste sigue aquí.' }
   return { title: 'No pudimos completar la operación', body: 'Hubo un problema con el servidor. Intenta de nuevo en un momento; lo que escribiste sigue aquí.' }
 }

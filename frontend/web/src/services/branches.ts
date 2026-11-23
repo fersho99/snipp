@@ -8,6 +8,7 @@ import { businesses } from '../data/demo'
 import { ApiError } from './auth'
 import { takeForcedError } from './panel'
 import type { Branch, BusinessSetup, Service, StoredBusiness } from '../types/domain'
+import { IMAGE_TYPES, LIMITS, MAX_IMAGE_BYTES, checkHours, checkLabel, checkPhone, checkPrice, checkText } from '@shared/validators'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const listeners = new Set<() => void>()
@@ -50,9 +51,9 @@ function failIfForced() {
 }
 
 // RNF-W05: JPG or PNG up to 5 MB. Returns an error message or null.
-export const MAX_IMAGE_MB = 5
+export const MAX_IMAGE_MB = MAX_IMAGE_BYTES / 1024 / 1024
 export function imageProblem(file: File) {
-  if (!['image/jpeg', 'image/png'].includes(file.type)) return `«${file.name}» no es JPG ni PNG. Sube la foto en uno de esos formatos.`
+  if (!IMAGE_TYPES.includes(file.type)) return `«${file.name}» no es JPG ni PNG. Sube la foto en uno de esos formatos.`
   if (file.size > MAX_IMAGE_MB * 1024 * 1024) return `«${file.name}» pesa ${(file.size / 1024 / 1024).toFixed(1)} MB; el máximo es ${MAX_IMAGE_MB} MB.`
   return null
 }
@@ -61,9 +62,26 @@ let nextId = 1
 const slug = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 
 export type BranchForm = Pick<Branch, 'name' | 'address' | 'phone' | 'description' | 'hours' | 'images' | 'coverId'>
+// The same checks as the forms, again here: a request sent without the
+// screen is rejected too (RF-W05, RF-W06).
+function check(...messages: (string | null)[]) {
+  const first = messages.find(Boolean)
+  if (first) throw new ApiError('invalid', first)
+}
+function checkBranch(data: Partial<BranchForm>) {
+  check(
+    data.name === undefined ? null : checkLabel(String(data.name), LIMITS.branchName, 'Escribe el nombre de la sucursal.'),
+    data.address === undefined ? null : checkText(String(data.address), LIMITS.address, 'Escribe la dirección.'),
+    data.phone === undefined ? null : checkPhone(String(data.phone)),
+    data.description === undefined ? null : checkText(String(data.description), LIMITS.description),
+    ...(data.hours ?? []).map((h) => (h ? checkHours(h[0], h[1]) : null)),
+  )
+}
+
 export async function createBranch(businessId: string, data: BranchForm) {
   await wait(700)
   failIfForced()
+  checkBranch(data)
   const branch: Branch = { ...data, id: `${slug(data.name)}-${Date.now()}`, active: true, upcoming: 0, services: [] }
   update(businessId, (s) => ({ ...s, branches: [...s.branches, branch] }))
   return branch
@@ -72,6 +90,7 @@ export async function createBranch(businessId: string, data: BranchForm) {
 export async function saveBranch(businessId: string, branchId: string, data: Partial<Branch>) {
   await wait(700)
   failIfForced()
+  checkBranch(data)
   update(businessId, (s) => ({ ...s, branches: s.branches.map((b) => (b.id === branchId ? { ...b, ...data } : b)) }))
 }
 
@@ -85,6 +104,12 @@ export async function setBranchActive(businessId: string, branchId: string, acti
 export async function saveService(businessId: string, branchId: string, service: Omit<Service, 'id'> & { id?: string }): Promise<Service> {
   await wait(600)
   failIfForced()
+  check(
+    checkLabel(String(service.name ?? ''), LIMITS.serviceName, 'Escribe el nombre del servicio.'),
+    checkText(String(service.description ?? ''), LIMITS.description),
+    Number.isInteger(service.minutes) && service.minutes >= 5 && service.minutes <= 480 ? null : 'La duración va de 5 a 480 minutos, en número entero.',
+    checkPrice(service.price),
+  )
   const saved: Service = { ...service, id: service.id ?? `svc-${nextId++}` }
   update(businessId, (s) => ({
     ...s,

@@ -142,6 +142,7 @@ export default function AppointmentDetail() {
         onClose={() => setSheet(false)}
         d={d}
         fail={estado === 'error'}
+        check={() => appointmentStore.check(appt.folio, { status: 'cancelada-cliente' })}
         onConfirm={() => {
           appointmentStore.update(appt.folio, { status: 'cancelada-cliente' });
           notificationStore.push({
@@ -202,7 +203,7 @@ function PastActions({ appt }: { appt: Appointment }) {
   );
 }
 
-function CancelSheet({ visible, onClose, onConfirm, d, fail }: { visible: boolean; onClose: () => void; onConfirm: () => void; d: Described; fail: boolean }) {
+function CancelSheet({ visible, onClose, check, onConfirm, d, fail }: { visible: boolean; onClose: () => void; check: () => void; onConfirm: () => void; d: Described; fail: boolean }) {
   const insets = useSafeAreaInsets();
   const cancelling = useAction({ busy: 'Cancelando...', done: 'Cita cancelada', failed: 'No se pudo cancelar' });
   const failNext = useRef(fail);
@@ -212,6 +213,8 @@ function CancelSheet({ visible, onClose, onConfirm, d, fail }: { visible: boolea
       failNext.current = false;
       return { ok: false, reason: 'No pudimos cancelar tu cita. Revisa tu internet e inténtalo de nuevo; tu cita sigue en pie.' };
     }
+    // The store checks RN-03 again; if it rejects, the error is shown and nothing changes.
+    check();
     return { ok: true, message: `Listo: cancelaste tu cita del ${d.dateLabel.split(' de ')[0]}`, detail: ['No hay ningún cargo.'], next: onConfirm };
   });
   const close = () => { if (!cancelling.busy) onClose(); };

@@ -6,6 +6,7 @@ import { EnvelopeSimple } from '@phosphor-icons/react'
 import AuthLayout from '../components/AuthLayout'
 import { Button, Note, TextField, TextLink } from '../components/ui'
 import { ApiError, networkMessage, requestReset } from '../services/auth'
+import { LIMITS } from '@shared/validators'
 import { isEmail } from '../theme'
 
 // Recover password (RF-W03): the email gets a link to set a new password.
@@ -70,6 +71,7 @@ export default function Recover() {
           label="Correo"
           type="email"
           autoComplete="email"
+          maxLength={LIMITS.email}
           value={email}
           onChange={(e) => { setEmail(e.target.value); setError(null) }}
           error={error}

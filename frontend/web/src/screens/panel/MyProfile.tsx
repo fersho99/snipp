@@ -12,6 +12,7 @@ import { imageProblem, MAX_IMAGE_MB } from '../../services/branches'
 import { acceptInvitation, expiresOn, lastAppointmentOf, saveProfile, sendRequest, useStaffStore } from '../../services/staff'
 import { longDate, timeOfDay } from '../../theme'
 import { NOTICE, NOTICE_ICON } from '../../components/status'
+import { LIMITS, checkLabel, checkName } from '@shared/validators'
 
 // Mi perfil, for the Empleado (RF-W11): own photo, visible name and
 // specialties, which the app shows when a client picks a professional.
@@ -54,6 +55,10 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
   const addSpecialty = () => {
     const v = newSpecialty.trim()
     if (!v) return
+    const problem = checkLabel(v, LIMITS.specialty, '')
+    setErrors((x) => ({ ...x, specialty: problem }))
+    if (problem) return
+    if (form.specialties.length >= 10) return setErrors((x) => ({ ...x, specialty: 'Puedes tener hasta 10 especialidades.' }))
     if (!form.specialties.some((x) => x.toLowerCase() === v.toLowerCase())) change({ specialties: [...form.specialties, v] })
     setNewSpecialty('')
   }
@@ -61,7 +66,8 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const next: Record<string, string> = {}
-    if (!form.displayName.trim()) next.displayName = 'Escribe el nombre que verán los clientes.'
+    const name = checkName(form.displayName, 'Escribe el nombre que verán los clientes.')
+    if (name) next.displayName = name
     setErrors(next)
     if (Object.keys(next).length) return
     saving.run(() => saveProfile(email, { ...form, displayName: form.displayName.trim() }), { onDone: () => setSaved(true) })
@@ -85,7 +91,7 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
       </div>
       {errors.photo ? <FieldError className="mt-3">{errors.photo}</FieldError> : null}
 
-      <TextField className="mt-8 max-w-md" label="Nombre visible" value={form.displayName} onChange={(e) => change({ displayName: e.target.value })} error={errors.displayName} hint="Como te conocen los clientes, por ejemplo «Luis Ortega» o «Güero Ortega»." />
+      <TextField className="mt-8 max-w-md" label="Nombre visible" maxLength={LIMITS.name} value={form.displayName} onChange={(e) => change({ displayName: e.target.value })} error={errors.displayName} hint="Como te conocen los clientes, por ejemplo «Luis Ortega» o «Güero Ortega»." />
 
       <div className="mt-8">
         <p className="text-[15px] font-medium">Especialidades</p>
@@ -107,8 +113,10 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
           <TextField
             className="flex-1"
             label="Agregar especialidad"
+            maxLength={LIMITS.specialty}
             value={newSpecialty}
-            onChange={(e) => setNewSpecialty(e.target.value)}
+            error={errors.specialty}
+            onChange={(e) => { setNewSpecialty(e.target.value); setErrors((x) => ({ ...x, specialty: undefined })) }}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSpecialty() } }}
             placeholder="Por ejemplo: Fades"
           />

@@ -15,6 +15,7 @@ import useAction from '@/lib/useAction'
 import { addNote, CLIENT_STATE, REPORT_REASONS, REPORT_STATE, setReportState, useReportsStore } from '../../services/reports'
 import { useStaffStore } from '../../services/staff'
 import { longDate, timeOfDay } from '../../theme'
+import { LIMITS } from '@shared/validators'
 
 // SRS v1.2, 4.2.2 "Reportes": amber «En revisión», green «Atendido». New
 // reports are counted in red in the menu, so their label is red too.
@@ -225,7 +226,7 @@ function Notes({ report, author }: { report: ClientReport; author: string }) {
         <p className="mt-4 text-ink-soft">Todavía no hay notas.</p>
       )}
       <form onSubmit={submit} noValidate className="mt-5 flex flex-col gap-3">
-        <TextArea label="Nueva nota" rows={3} value={text} onChange={(e) => { setText(e.target.value); setError(null) }} error={error} hint="Por ejemplo: qué dijo el Empleado y qué se acordó." />
+        <TextArea label="Nueva nota" rows={3} maxLength={LIMITS.note} value={text} onChange={(e) => { setText(e.target.value); setError(null) }} error={error} hint="Por ejemplo: qué dijo el Empleado y qué se acordó." />
         <Button type="submit" variant="secondary" {...saving.button} className="self-start">Guardar nota</Button>
       </form>
     </section>

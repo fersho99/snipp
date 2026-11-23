@@ -8,6 +8,7 @@ import TextField from '../components/TextField';
 import { OfflineState } from '../components/States';
 import useConnectivity from '../hooks/useConnectivity';
 import { space } from '../theme/tokens';
+import { LIMITS, isEmail } from '@shared/validators';
 
 // Password recovery, step 1: ask for the email.
 // We never reveal whether an account exists for that email.
@@ -22,7 +23,7 @@ export default function ForgotPassword() {
   if (!online) return <OfflineState kind={failure} home="/entrar" onRetry={retry} retrying={retrying} />;
 
   const submit = async () => {
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+    if (!isEmail(email)) {
       setError('Ese correo no parece válido. Revisa que tenga @ y dominio.');
       return;
     }
@@ -44,6 +45,7 @@ export default function ForgotPassword() {
       <View style={{ marginTop: space.xxl }}>
         <TextField
           label="Correo"
+          maxLength={LIMITS.email}
           value={email}
           onChangeText={(v) => { setEmail(v); setError(undefined); }}
           error={error}

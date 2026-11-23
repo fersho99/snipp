@@ -5,8 +5,9 @@
 //
 // The functions at the end have the shape of the real API (async, errors with
 // a `code`), so connecting the API later only changes their implementation.
+import { bookingProblem, clientChangeProblem, panelChangeProblem, type Problem } from './rules'
 import { seedData } from './seed'
-import type { Appointment, DemoData } from './types'
+import type { Account, Appointment, Block, DemoData } from './types'
 
 const KEY = 'snipp-demo'
 // Raise it whenever the shape of DemoData or the sample data changes: saved
@@ -109,6 +110,12 @@ export function nextFolio(d: DemoData) {
   return `C-${max + 1}`
 }
 
+// A broken rule (shared/rules.ts) is answered like the API would: an error
+// with its code and the message the screen shows.
+function fail(p: Problem | null) {
+  if (p) throw new ApiError(p.code, p.message)
+}
+
 export async function listAppointments(filter: { clientEmail?: string; branchId?: string; employeeId?: string } = {}): Promise<Appointment[]> {
   await wait(150)
   return getData().appointments.filter(
@@ -116,29 +123,62 @@ export async function listAppointments(filter: { clientEmail?: string; branchId?
   )
 }
 
-export type NewAppointment = Pick<Appointment, 'branchId' | 'employeeId' | 'serviceId' | 'date' | 'start' | 'clientName' | 'clientEmail'>
-export async function bookAppointment(input: NewAppointment): Promise<Appointment> {
+// `actor` is the signed-in account. In production the API takes it from the
+// session token, never from what the screen sends.
+export type NewAppointment = Pick<Appointment, 'branchId' | 'employeeId' | 'serviceId' | 'date' | 'start'>
+export async function bookAppointment(input: NewAppointment, actor: Account | null): Promise<Appointment> {
   await wait(300)
-  return insertAppointment(input)
+  return insertAppointment(input, actor)
 }
 
-export async function updateAppointment(folio: string, patch: Partial<Omit<Appointment, 'folio'>>): Promise<Appointment> {
+export async function updateAppointment(folio: string, patch: Partial<Omit<Appointment, 'folio'>>, actor: Account | null): Promise<Appointment> {
   await wait(300)
-  return patchAppointment(folio, patch)
+  return patchAppointment(folio, patch, actor)
 }
 
 // Synchronous versions for the screens that still change the data right
 // away. They will go once every screen awaits the API functions above.
-export function insertAppointment(input: NewAppointment): Appointment {
-  const created: Appointment = { ...input, folio: nextFolio(getData()), status: 'confirmada' }
+
+// RF-M06: the client books for themselves; their name and email come from
+// the account, not from the request.
+export function insertAppointment(input: NewAppointment, actor: Account | null): Appointment {
+  const slot: NewAppointment = { branchId: input.branchId, employeeId: input.employeeId, serviceId: input.serviceId, date: input.date, start: input.start }
+  fail(bookingProblem(getData(), slot, actor))
+  const account = actor as Account
+  const created: Appointment = { ...slot, clientName: account.name, clientEmail: account.email, folio: nextFolio(getData()), status: 'confirmada' }
   commit((d) => ({ ...d, appointments: [...d.appointments, created] }))
   return created
 }
 
-export function patchAppointment(folio: string, patch: Partial<Omit<Appointment, 'folio'>>): Appointment {
-  const found = getData().appointments.find((a) => a.folio === folio)
-  if (!found) throw new ApiError('not-found', `No existe la cita ${folio}`)
+// A change the client makes in the app: cancel, reschedule, answer a change,
+// review or report (RF-M07, RF-M08, RF-M12, RF-M13).
+export function patchAppointment(folio: string, patch: Partial<Omit<Appointment, 'folio'>>, actor: Account | null): Appointment {
+  const found = checkAppointmentPatch(folio, patch, actor)
   const next = { ...found, ...patch }
   commit((d) => ({ ...d, appointments: d.appointments.map((a) => (a.folio === folio ? next : a)) }))
   return next
+}
+
+// Only checks the change, without saving it: a screen that saves after its
+// success message asks first, so a broken rule is shown as an error instead.
+export function checkAppointmentPatch(folio: string, patch: Partial<Omit<Appointment, 'folio'>>, actor: Account | null): Appointment {
+  const found = getData().appointments.find((a) => a.folio === folio)
+  if (!found) throw new ApiError('not-found', `No existe la cita ${folio}`)
+  fail(clientChangeProblem(getData(), found, patch, actor))
+  return found
+}
+
+// Changes made in the panel (RF-W15 to RF-W18): the appointments that
+// changed, checked one by one, and the blocks when they changed. Nothing is
+// saved if one of them breaks a rule.
+export function savePanelChanges(changed: Appointment[], blocks: Block[] | null, actor: Account | null) {
+  const d = getData()
+  const byFolio = new Map(changed.map((a) => [a.folio, a]))
+  for (const next of changed) {
+    const before = d.appointments.find((a) => a.folio === next.folio)
+    if (!before) throw new ApiError('not-found', `No existe la cita ${next.folio}`)
+    fail(panelChangeProblem({ ...d, appointments: d.appointments.map((a) => byFolio.get(a.folio) ?? a) }, before, next, actor))
+  }
+  if (blocks && (!actor || actor.role === 'admin' || actor.role === 'cliente')) throw new ApiError('forbidden', 'Tu cuenta no bloquea horarios.')
+  commit((x) => ({ ...x, appointments: x.appointments.map((a) => byFolio.get(a.folio) ?? a), blocks: blocks ?? x.blocks }))
 }

@@ -3,6 +3,8 @@
 // the carts are kept in the client's account (RN-18).
 import { useEffect, useSyncExternalStore } from 'react';
 import { stock as sharedStock } from '@shared/seed';
+import { MAX_CARTS as SHARED_MAX_CARTS, cartProblem, paymentProblem, pointsProblem, quantityProblem, type Problem } from '@shared/rules';
+import { ApiError } from '@shared/store';
 import { businesses, products as baseProducts } from './demo';
 import { getBranch } from './catalog';
 import { notificationStore } from './notifications';
@@ -68,7 +70,12 @@ function createStore<T>(initial: T) {
 }
 
 // RF-M09, RN-06: one cart per branch, at most 3 open at a time.
-export const MAX_CARTS = 3;
+export const MAX_CARTS = SHARED_MAX_CARTS;
+// The rules live in shared/rules.ts; here they are applied to the carts
+// until they move to the shared store (phase 4).
+function fail(p: Problem | null) {
+  if (p) throw new ApiError(p.code, p.message);
+}
 // RN-18: a cart without changes for 7 days is emptied.
 export const CART_DAYS = 7;
 const HOUR = 60 * 60 * 1000;
@@ -176,9 +183,10 @@ export const cart = {
   add(branchId: string, productId: string, qty = 1): 'added' | 'limit' | 'out-of-stock' {
     const list = cartStore.get();
     const current = list.find((c) => c.branchId === branchId);
-    if (!current && list.length >= MAX_CARTS) return 'limit';
+    if (cartProblem(list.map((c) => c.branchId), branchId)) return 'limit';
     const product = getProduct(branchId, productId);
     if (!product || product.stock <= 0) return 'out-of-stock';
+    if (!Number.isInteger(qty) || qty < 1) return 'added';
     const existing = current?.items.find((i) => i.productId === productId);
     const nextQty = Math.min(product.stock, (existing?.qty ?? 0) + qty);
     updateCart(branchId, (c) => ({
@@ -190,7 +198,11 @@ export const cart = {
     }));
     return 'added';
   },
+  // RN-07: whole pieces, never more than the branch has.
   setQty(branchId: string, productId: string, qty: number) {
+    const product = getProduct(branchId, productId);
+    if (!product) return;
+    if (quantityProblem(qty, product.stock)) qty = Math.max(0, Math.min(Math.floor(qty) || 0, product.stock));
     updateCart(branchId, (c) => {
       const items = c?.items ?? [];
       return {
@@ -301,9 +313,22 @@ export function seedDemoCarts(kind: 'uno' | 'tres') {
   ]);
 }
 
+// Checked before charging: stock (RN-07) and points of this business only,
+// never more than the balance or the purchase (RN-09). Throws an ApiError.
+export function checkOrder(summary: CartSummary) {
+  if (!summary.count) throw new ApiError('invalid', 'Tu carrito no tiene productos disponibles.');
+  summary.lines.forEach((l) => fail(quantityProblem(l.billedQty, getProduct(summary.branch.id, l.productId)?.stock ?? 0)));
+  fail(pointsProblem(summary.discount / PESOS_PER_POINT_SPENT, pointsAt(summary.branch.businessId), summary.subtotal));
+}
+
 let nextFolio = 2291;
 // RF-M10: pays one cart. Only that cart goes away; the others stay the same.
+// RN-20: the same payment never makes two orders; it gives the one it made.
 export function createOrder(summary: CartSummary, payment: Extract<PaymentResult, { status: 'paid' }>) {
+  const orders = orderStore.get();
+  if (paymentProblem(orders.map((o) => o.paymentRef), payment.reference)?.code === 'conflict') {
+    return orders.find((o) => o.paymentRef === payment.reference)?.folio ?? '';
+  }
   const folio = `P-${nextFolio}`;
   nextFolio += 1;
   const billed = summary.lines.filter((l) => l.billedQty > 0);

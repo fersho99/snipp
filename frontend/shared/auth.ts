@@ -8,6 +8,7 @@ import { hashPassword } from './seed'
 import { sha256 } from './sha256'
 import { ApiError, commit, getData } from './store'
 import type { Account, Role } from './types'
+import { LIMITS, checkEmail, checkLabel, checkName, checkPassword, checkPhone, collect, phoneDigits } from './validators'
 
 export type Platform = 'app' | 'panel'
 export const SESSION_HOURS = 8
@@ -86,6 +87,8 @@ const normalized = (email: string) => email.trim().toLowerCase()
 
 export async function signIn(platform: Platform, email: string, password: string): Promise<Account> {
   await wait(600)
+  // Over-long values are not even compared (LIMITS, RNF-G05).
+  if (String(email).length > LIMITS.email || String(password).length > LIMITS.password) throw new ApiError('credentials')
   const account = getData().accounts.find((a) => a.email === normalized(email))
   // The same answer for a wrong email or a wrong password, so nobody can
   // find out which emails have an account.
@@ -117,11 +120,26 @@ interface SignUp {
   password: string
 }
 
+// The same checks as the form, again here: a request sent without the
+// screen (for example from the browser console) is rejected too.
+function checkSignUp(form: SignUp, extra: Record<string, string | null> = {}) {
+  const errors = collect({
+    name: checkName(String(form.name ?? '')),
+    email: checkEmail(String(form.email ?? '')),
+    // The Empleado's sign-up does not ask for a phone (RF-W02).
+    phone: form.phone ? checkPhone(String(form.phone)) : null,
+    password: checkPassword(String(form.password ?? '')),
+    ...extra,
+  })
+  const first = Object.values(errors)[0]
+  if (first) throw new ApiError('invalid', first)
+}
+
 function createAccount(platform: Platform, role: Role, form: SignUp, businessId: string | null) {
   const email = normalized(form.email)
   if (getData().accounts.some((a) => a.email === email)) throw new ApiError('email-taken')
   const salt = newSalt()
-  const account: Account = { email, role, name: form.name.trim(), phone: form.phone.trim(), businessId, branchId: null, salt, passwordHash: hashPassword(salt, form.password) }
+  const account: Account = { email, role, name: form.name.trim(), phone: phoneDigits(form.phone ?? ''), businessId, branchId: null, salt, passwordHash: hashPassword(salt, form.password) }
   commit((d) => ({ ...d, accounts: [...d.accounts, account] }))
   start(platform, email)
   return account
@@ -130,12 +148,14 @@ function createAccount(platform: Platform, role: Role, form: SignUp, businessId:
 // RF-M01: a client account for the app.
 export async function signUpClient(form: SignUp) {
   await wait(800)
+  checkSignUp(form, { phone: checkPhone(String(form.phone ?? '')) })
   return createAccount('app', 'cliente', form, null)
 }
 
 // RF-W02: an Empleado without a business; they ask to join one later.
 export async function signUpEmployee(form: SignUp) {
   await wait(800)
+  checkSignUp(form)
   return createAccount('panel', 'empleado', form, null)
 }
 
@@ -143,7 +163,9 @@ export async function signUpEmployee(form: SignUp) {
 // month on the plan they chose and no branches yet (RN-13, RF-W05).
 export async function signUpBoss(form: SignUp & { businessName: string; planId: string }) {
   await wait(800)
+  checkSignUp(form, { phone: checkPhone(String(form.phone ?? '')), businessName: checkLabel(String(form.businessName ?? ''), LIMITS.businessName, 'Escribe el nombre de tu negocio.') })
   if (getData().accounts.some((a) => a.email === normalized(form.email))) throw new ApiError('email-taken')
+  if (!/^[a-z0-9-]{1,40}$/.test(String(form.planId))) throw new ApiError('invalid', 'Elige un plan.')
   const businessId = `negocio-${Date.now()}`
   const endsOn = new Date(DEMO_TODAY.getFullYear(), DEMO_TODAY.getMonth() + 1, DEMO_TODAY.getDate())
   commit((d) => ({

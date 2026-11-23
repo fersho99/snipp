@@ -3,6 +3,8 @@
 // from the data shared with the web panel (frontend/shared/seed.ts); the
 // photos, rating and reviews are added here.
 import * as shared from '@shared/seed';
+import { businessVisible } from '@shared/rules';
+import { getData } from '@shared/store';
 import { DEMO_TODAY, employees, services } from './demo';
 import { time } from '../theme/format';
 import type { Branch, Employee, Service } from '../types/domain';
@@ -17,11 +19,6 @@ const photo = {
 // What the web panel controls and the app must respect (RF-W07, RF-W09,
 // RF-W12, RF-W26, RF-W28, RN-13, RN-14). All active in the demo; change a
 // flag to see the item disappear from the app.
-export const businessStatus: Record<string, { subscription: 'activa' | 'prueba' | 'vencida'; suspended: boolean }> = {
-  'los-compas': { subscription: 'activa', suspended: false },
-  'estudio-marisol': { subscription: 'activa', suspended: false },
-  'navaja-fina': { subscription: 'prueba', suspended: false },
-};
 const inactiveBranches: string[] = []; // branch ids deactivated by their Jefe
 const inactiveServices: Record<string, string[]> = {}; // { branchId: [serviceId] }
 export const employeeStatus: Record<string, 'activo' | 'migracion-pendiente'> = { luis: 'activo', ramon: 'activo', oscar: 'activo', karla: 'activo', fernanda: 'activo', itzel: 'activo' }; // or 'migracion-pendiente'
@@ -107,11 +104,11 @@ export const branches: Branch[] = [
   }),
 ];
 
-// A branch shows in the app only if it is active and its business is not
-// suspended and has a paid subscription or trial.
+// RN-13: a branch shows in the app only if it is active and its business,
+// in the shared store, is not suspended and its subscription or trial has
+// not run out (the same rule the store uses to reject a booking).
 export function isVisible(branch: Branch) {
-  const biz = businessStatus[branch.businessId];
-  return !inactiveBranches.includes(branch.id) && biz && !biz.suspended && biz.subscription !== 'vencida';
+  return !inactiveBranches.includes(branch.id) && businessVisible(getData().businesses.find((b) => b.id === branch.businessId), DEMO_TODAY);
 }
 
 // Services and professionals the client can book right now.

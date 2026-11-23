@@ -32,14 +32,15 @@ function Form({ business, rules }: { business: Business; rules: LoyaltyRules }) 
   const [saved, setSaved] = useState(false)
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => { setForm((f) => ({ ...f, [k]: e.target.value })); setErrors((x) => ({ ...x, [k]: undefined })); setSaved(false) }
   const num = (v: string) => Number(String(v).replace(/[$,\s]/g, ''))
-  const ok = (v: string) => Number.isFinite(num(v)) && num(v) > 0
+  // RF-W24: whole pesos from 1 to 1,000, the same check the store runs again.
+  const ok = (v: string) => /^\d{1,4}$/.test(String(v).replace(/[$,\s]/g, '')) && num(v) >= 1 && num(v) <= 1000
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const next: Record<string, string> = {}
-    if (!ok(form.appt)) next.appt = 'Escribe un monto en pesos mayor que cero.'
-    if (!ok(form.buy)) next.buy = 'Escribe un monto en pesos mayor que cero.'
-    if (!ok(form.redeem)) next.redeem = 'Escribe un monto en pesos mayor que cero.'
+    if (!ok(form.appt)) next.appt = 'Escribe pesos enteros, de 1 a 1,000.'
+    if (!ok(form.buy)) next.buy = 'Escribe pesos enteros, de 1 a 1,000.'
+    if (!ok(form.redeem)) next.redeem = 'Escribe pesos enteros, de 1 a 1,000.'
     setErrors(next)
     if (Object.keys(next).length) return
     saving.run(() => saveLoyalty(business.id, { pesosPerPointAppointments: num(form.appt), pesosPerPointPurchases: num(form.buy), pesosPerPointRedeemed: num(form.redeem) }), { onDone: () => setSaved(true) })
@@ -58,13 +59,13 @@ function Form({ business, rules }: { business: Business; rules: LoyaltyRules }) 
       <form onSubmit={submit} noValidate className="mt-8 flex flex-col">
         <h2 className="text-lg font-semibold">Cómo se ganan</h2>
         <div className="mt-4 grid gap-5 sm:grid-cols-2">
-          <TextField label="Citas atendidas: 1 punto por cada" prefix="$" inputMode="decimal" value={form.appt} onChange={set('appt')} error={errors.appt} hint={appt != null ? `Un Corte + barba de $280 da ${appt} ${appt === 1 ? 'punto' : 'puntos'}.` : undefined} />
-          <TextField label="Compras en la tienda: 1 punto por cada" prefix="$" inputMode="decimal" value={form.buy} onChange={set('buy')} error={errors.buy} hint={buy != null ? `Una Pomada mate de $230 da ${buy} ${buy === 1 ? 'punto' : 'puntos'}.` : undefined} />
+          <TextField label="Citas atendidas: 1 punto por cada" prefix="$" inputMode="numeric" maxLength={5} value={form.appt} onChange={set('appt')} error={errors.appt} hint={appt != null ? `Un Corte + barba de $280 da ${appt} ${appt === 1 ? 'punto' : 'puntos'}.` : undefined} />
+          <TextField label="Compras en la tienda: 1 punto por cada" prefix="$" inputMode="numeric" maxLength={5} value={form.buy} onChange={set('buy')} error={errors.buy} hint={buy != null ? `Una Pomada mate de $230 da ${buy} ${buy === 1 ? 'punto' : 'puntos'}.` : undefined} />
         </div>
 
         <h2 className="mt-10 text-lg font-semibold">Cómo se canjean</h2>
         <div className="mt-4 grid gap-5 sm:grid-cols-2">
-          <TextField label="Cada punto vale" prefix="$" inputMode="decimal" value={form.redeem} onChange={set('redeem')} error={errors.redeem} hint={worth != null ? `50 puntos = ${money(worth)} de descuento en productos de tu tienda.` : undefined} />
+          <TextField label="Cada punto vale" prefix="$" inputMode="numeric" maxLength={5} value={form.redeem} onChange={set('redeem')} error={errors.redeem} hint={worth != null ? `50 puntos = ${money(worth)} de descuento en productos de tu tienda.` : undefined} />
         </div>
         <p className="mt-3 text-sm text-ink-soft">Los puntos no sirven para pagar citas: las citas se pagan en la sucursal.</p>
 

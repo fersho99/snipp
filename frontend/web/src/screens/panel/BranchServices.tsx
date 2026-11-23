@@ -10,6 +10,7 @@ import useAction from '@/lib/useAction'
 import { saveService } from '../../services/branches'
 import { money } from '../../theme'
 import { StatusTag } from '../../components/status'
+import { LIMITS, checkLabel, checkPrice, checkText, collect, parseAmount } from '@shared/validators'
 
 const NEW: ServiceDraft = { name: '', description: '', minutes: '', price: '', active: true }
 
@@ -108,11 +109,14 @@ function ServiceForm({ businessId, branchId, service, onCancel, onSaved }: { bus
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const next: Record<string, string> = {}
-    const minutes = Number(form.minutes)
-    const price = Number(form.price.replace(/[$,\s]/g, ''))
-    if (!form.name.trim()) next.name = 'Escribe el nombre del servicio, por ejemplo "Fade".'
-    if (!Number.isInteger(minutes) || minutes <= 0) next.minutes = 'Escribe cuántos minutos dura, en número entero.'
-    if (!Number.isFinite(price) || price <= 0) next.price = 'Escribe el precio en pesos, mayor que cero.'
+    const minutes = /^\d{1,3}$/.test(form.minutes.trim()) ? Number(form.minutes) : NaN
+    const price = parseAmount(form.price.replace(/[$\s]/g, ''))
+    Object.assign(next, collect({
+      name: checkLabel(form.name, LIMITS.serviceName, 'Escribe el nombre del servicio, por ejemplo "Fade".'),
+      description: checkText(form.description, LIMITS.description),
+      price: checkPrice(form.price.replace(/[$\s]/g, '')),
+    }))
+    if (!Number.isInteger(minutes) || minutes < 5 || minutes > 480) next.minutes = 'Escribe cuántos minutos dura, de 5 a 480.'
     setErrors(next)
     if (Object.keys(next).length) return
     saving.run(() => saveService(businessId, branchId, { ...('id' in service ? { id: service.id } : {}), name: form.name.trim(), description: form.description.trim(), minutes, price, active: form.active }), { onDone: onSaved })
@@ -121,11 +125,11 @@ function ServiceForm({ businessId, branchId, service, onCancel, onSaved }: { bus
   return (
     <form onSubmit={submit} noValidate className="my-6 flex max-w-2xl flex-col gap-5 rounded-control border border-divider bg-raised p-5">
       <p className="font-semibold">{'id' in service ? `Editar ${service.name}` : 'Servicio nuevo'}</p>
-      <TextField label="Nombre" value={form.name} onChange={set('name')} error={errors.name} autoFocus />
-      <TextArea label="Descripción" rows={3} value={form.description} onChange={set('description')} hint="Qué incluye, para que el cliente sepa qué está reservando." />
+      <TextField label="Nombre" maxLength={LIMITS.serviceName} value={form.name} onChange={set('name')} error={errors.name} autoFocus />
+      <TextArea label="Descripción" rows={3} maxLength={LIMITS.description} value={form.description} onChange={set('description')} error={errors.description} hint="Qué incluye, para que el cliente sepa qué está reservando." />
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField label="Duración" inputMode="numeric" value={form.minutes} onChange={set('minutes')} error={errors.minutes} hint="En minutos. La app aparta este tiempo en la agenda." />
-        <TextField label="Precio" prefix="$" inputMode="decimal" value={form.price} onChange={set('price')} error={errors.price} hint="Se paga en la sucursal." />
+        <TextField label="Duración" inputMode="numeric" maxLength={3} value={form.minutes} onChange={set('minutes')} error={errors.minutes} hint="En minutos. La app aparta este tiempo en la agenda." />
+        <TextField label="Precio" prefix="$" inputMode="decimal" maxLength={LIMITS.price + 1} value={form.price} onChange={set('price')} error={errors.price} hint="Se paga en la sucursal." />
       </div>
       <Checkbox label="Activo" hint="Si lo desmarcas, deja de ofrecerse en la app; las citas ya agendadas se respetan." checked={form.active} onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))} />
       <div className="flex gap-3">

@@ -7,6 +7,7 @@ import { MagnifyingGlassIcon, StarIcon, XIcon } from 'phosphor-react-native';
 import Txt from './Txt';
 import { PhotoPlaceholder } from './States';
 import { color, font, radius, space, touch } from '../theme/tokens';
+import { LIMITS } from '@shared/validators';
 
 // Search box: sunken fill, magnifier inside, clear button once there is text.
 type SearchFieldProps = { value: string; onChangeText: (v: string) => void; onSubmit?: (v: string) => void; label?: string; placeholder?: string; autoFocus?: boolean };
@@ -24,6 +25,7 @@ export const SearchField = forwardRef<React.ComponentRef<typeof TextInput>, Sear
         placeholder={placeholder}
         placeholderTextColor={color.inkSoft}
         returnKeyType="search"
+        maxLength={LIMITS.search}
         autoCorrect={false}
         autoFocus={autoFocus}
         selectionColor={color.ink}

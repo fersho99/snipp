@@ -13,6 +13,7 @@ import { subscriptionStatus } from '../../services/panel'
 import { decideReview, useReportsStore } from '../../services/reports'
 import { savePlan, setSuspended, useSubscriptionsStore } from '../../services/subscriptions'
 import { longDate, money } from '../../theme'
+import { LIMITS, checkLabel, checkPrice, collect, parseAmount } from '@shared/validators'
 
 const duration = (m: number) => (m === 1 ? '1 mes' : `${m} meses`)
 const radio = (on: boolean) => `min-h-10 rounded-[8px] px-3.5 text-[15px] ${on ? 'bg-raised font-semibold shadow-[0_1px_2px_rgb(0_0_0/0.08)]' : 'text-ink-soft hover:text-ink'}`
@@ -65,6 +66,7 @@ export function Plans() {
   )
 }
 
+const PLAN_NAME_MAX = 40
 function PlanForm({ plan, onCancel, onDone }: { plan?: Plan; onCancel: () => void; onDone: (text: string) => void }) {
   const [form, setForm] = useState({ name: plan?.name ?? '', price: plan ? String(plan.price) : '', months: plan ? String(plan.months) : '', offered: plan?.offered ?? true })
   const [errors, setErrors] = useState<Record<string, string | null | undefined>>({})
@@ -74,12 +76,13 @@ function PlanForm({ plan, onCancel, onDone }: { plan?: Plan; onCancel: () => voi
   const set = (k: 'name' | 'price' | 'months') => (e: React.ChangeEvent<HTMLInputElement>) => { setForm((f) => ({ ...f, [k]: e.target.value })); setErrors((x) => ({ ...x, [k]: undefined })) }
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const price = Number(form.price.replace(/[$,\s]/g, ''))
-    const months = Number(form.months)
-    const next: Record<string, string> = {}
-    if (!form.name.trim()) next.name = 'Escribe el nombre del plan, por ejemplo "Trimestral".'
-    if (!Number.isFinite(price) || price <= 0) next.price = 'Escribe el precio en pesos, mayor que cero.'
-    if (!Number.isInteger(months) || months <= 0) next.months = 'Escribe la duración en meses, en número entero.'
+    const price = parseAmount(form.price.replace(/[$\s]/g, ''))
+    const months = /^\d{1,2}$/.test(form.months.trim()) ? Number(form.months) : NaN
+    const next: Record<string, string> = collect({
+      name: checkLabel(form.name, PLAN_NAME_MAX, 'Escribe el nombre del plan, por ejemplo "Trimestral".'),
+      price: checkPrice(form.price.replace(/[$\s]/g, '')),
+    })
+    if (!Number.isInteger(months) || months <= 0 || months > 36) next.months = 'Escribe la duración en meses, de 1 a 36.'
     setErrors(next)
     if (Object.keys(next).length) return
     const name = form.name.trim()
@@ -90,10 +93,10 @@ function PlanForm({ plan, onCancel, onDone }: { plan?: Plan; onCancel: () => voi
   return (
     <form onSubmit={submit} noValidate className="my-6 flex flex-col gap-5 rounded-control border border-divider bg-raised p-5">
       <p className="font-semibold">{plan ? `Editar plan ${plan.name}` : 'Plan nuevo'}</p>
-      <TextField label="Nombre" value={form.name} onChange={set('name')} error={errors.name} autoFocus />
+      <TextField label="Nombre" maxLength={PLAN_NAME_MAX} value={form.name} onChange={set('name')} error={errors.name} autoFocus />
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField label="Precio" prefix="$" inputMode="decimal" value={form.price} onChange={set('price')} error={errors.price} />
-        <TextField label="Duración en meses" inputMode="numeric" value={form.months} onChange={set('months')} error={errors.months} />
+        <TextField label="Precio" prefix="$" inputMode="decimal" maxLength={LIMITS.price + 1} value={form.price} onChange={set('price')} error={errors.price} />
+        <TextField label="Duración en meses" inputMode="numeric" maxLength={2} value={form.months} onChange={set('months')} error={errors.months} />
       </div>
       <Checkbox label="Se ofrece" hint="Si lo desmarcas, ya no se puede elegir al registrarse ni al pagar; quien ya lo tiene lo conserva hasta que venza." checked={form.offered} onChange={(e) => setForm((f) => ({ ...f, offered: e.target.checked }))} />
       {plan ? <p className="text-sm text-ink-soft">Un cambio de precio aplica a los próximos pagos, no a los que ya se hicieron.</p> : null}

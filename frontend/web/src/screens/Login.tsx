@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import AuthLayout from '../components/AuthLayout'
 import { Button, Note, TextField, TextLink } from '../components/ui'
 import { ApiError, login, networkMessage, type ApiErrorCode } from '../services/auth'
+import { LIMITS } from '@shared/validators'
 import { isEmail } from '../theme'
 
 // Sign in (RF-W03): Administrador, Jefe and Empleado share this screen; the
@@ -50,6 +51,7 @@ export default function Login() {
           label="Correo"
           type="email"
           autoComplete="email"
+          maxLength={LIMITS.email}
           value={email}
           onChange={(e) => { setEmail(e.target.value); setErrors((x) => ({ ...x, email: undefined })) }}
           error={errors.email}
@@ -59,6 +61,7 @@ export default function Login() {
             label="Contraseña"
             secure
             autoComplete="current-password"
+            maxLength={LIMITS.password}
             value={password}
             onChange={(e) => { setPassword(e.target.value); setErrors((x) => ({ ...x, password: undefined })) }}
             error={errors.password}

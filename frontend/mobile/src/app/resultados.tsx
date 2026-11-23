@@ -8,6 +8,7 @@ import { OfflineState, Skeleton } from '../components/States';
 import { Cover, RatingLine, SearchField } from '../components/Branch';
 import useConnectivity from '../hooks/useConnectivity';
 import { openStatus, visibleBranches, priceFrom, searchBranches, serviceFromQuery } from '../data/catalog';
+import { LIMITS } from '@shared/validators';
 import { services } from '../data/demo';
 import { minutes, money } from '../theme/format';
 import { color, font, space, touch } from '../theme/tokens';
@@ -20,11 +21,13 @@ const THUMB = 104;
 export default function Results() {
   const params = useLocalSearchParams<{ q?: string; servicio?: string; estado?: string }>();
   const { online, failure, retry, retrying } = useConnectivity(params.estado);
-  const initialService = serviceFromQuery(params.q);
+  // The text can come in the link too: it gets the same limit as the field.
+  const q = (params.q ?? '').slice(0, LIMITS.search);
+  const initialService = serviceFromQuery(q);
 
-  const [input, setInput] = useState(params.q ?? '');
+  const [input, setInput] = useState(q);
   // If the query is a service name, it becomes the filter instead of free text.
-  const [query, setQuery] = useState(initialService ? '' : params.q ?? '');
+  const [query, setQuery] = useState(initialService ? '' : q);
   const [serviceId, setServiceId] = useState(params.servicio ?? initialService?.id ?? null);
 
   const results = useMemo(

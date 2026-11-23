@@ -12,6 +12,7 @@ import useConnectivity from '../hooks/useConnectivity';
 import { DEMO_CLIENT } from '../data/demo';
 import { signIn } from '../data/session';
 import { space } from '../theme/tokens';
+import { LIMITS, isEmail } from '@shared/validators';
 
 // Login. Real photo of the shop on the top half, the form below it.
 // States: ?estado=credenciales | sin-conexion | cargando
@@ -32,7 +33,7 @@ export default function SignIn() {
   const submit = async () => {
     const errors: Record<string, string> = {};
     if (!email.trim()) errors.email = 'Escribe tu correo.';
-    else if (!/^\S+@\S+\.\S+$/.test(email.trim())) errors.email = 'Ese correo no parece válido. Revisa que tenga @ y dominio.';
+    else if (!isEmail(email)) errors.email = 'Ese correo no parece válido. Revisa que tenga @ y dominio.';
     if (!password) errors.password = 'Escribe tu contraseña.';
     setFieldErrors(errors);
     setInvalid(false);
@@ -73,6 +74,7 @@ export default function SignIn() {
         <View style={styles.form}>
           <TextField
             label="Correo"
+            maxLength={LIMITS.email}
             value={email}
             onChangeText={(v) => { setEmail(v); setInvalid(false); }}
             error={fieldErrors.email}
@@ -87,6 +89,7 @@ export default function SignIn() {
             <TextField
               ref={passwordRef}
               label="Contraseña"
+              maxLength={LIMITS.password}
               value={password}
               onChangeText={(v) => { setPassword(v); setInvalid(false); }}
               error={fieldErrors.password}

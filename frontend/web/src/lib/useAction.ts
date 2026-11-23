@@ -21,6 +21,8 @@ export type ActionButton = { loading: boolean; busyLabel: string; result: { tone
 // Cause and what to do for the errors the services throw (ApiError codes).
 export function failureMessage(err: unknown) {
   const code = typeof err === 'object' && err !== null && 'code' in err ? (err as { code: unknown }).code : null
+  // A rule of the shared store was broken (RN-01, RF-W18...): its message says why.
+  if ((code === 'invalid' || code === 'conflict' || code === 'forbidden' || code === 'not-found') && err instanceof Error) return err.message
   if (code === 'offline') return 'No hay conexión a internet. Revisa tu conexión y vuelve a intentar; lo que escribiste sigue aquí.'
   if (code === 'card') return 'La tarjeta fue rechazada. Prueba con otra tarjeta o revisa con tu banco; no se cobró nada.'
   if (code === 'stripe') return 'Stripe no respondió. No se cobró nada; vuelve a intentar en un momento.'

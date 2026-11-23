@@ -14,6 +14,7 @@ import useAction from '@/lib/useAction'
 import { createBranch, imageProblem, MAX_IMAGE_MB, saveBranch, setBranchActive } from '../../services/branches'
 import BranchServices from './BranchServices'
 import { NOTICE, NOTICE_ICON } from '../../components/status'
+import { LIMITS, checkLabel, checkPhone, checkText, collect } from '@shared/validators'
 
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
@@ -150,9 +151,12 @@ function BranchFormView({ businessId, branch }: { businessId: string; branch?: B
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const next: Record<string, string> = {}
-    if (!form.name.trim()) next.name = 'Escribe el nombre con el que los clientes conocen la sucursal.'
-    if (!form.address.trim()) next.address = 'Escribe la calle, el número o el cruce y la colonia.'
-    if (form.phone.replace(/\D/g, '').length !== 10) next.phone = 'El teléfono debe tener 10 dígitos, sin el +52.'
+    Object.assign(next, collect({
+      name: checkLabel(form.name, LIMITS.branchName, 'Escribe el nombre con el que los clientes conocen la sucursal.'),
+      address: checkText(form.address, LIMITS.address, 'Escribe la calle, el número o el cruce y la colonia.'),
+      phone: checkPhone(form.phone),
+      description: checkText(form.description, LIMITS.description),
+    }))
     const badDay = form.hours.findIndex((h) => h && (!h[0] || !h[1] || toMinutes(h[1]) <= toMinutes(h[0])))
     if (badDay >= 0) next.hours = `Revisa el ${DAYS[badDay].toLowerCase()}: la hora de cierre debe ser después de la de apertura.`
     else if (form.hours.every((h) => !h)) next.hours = 'Marca al menos un día abierto; sin horario no se pueden reservar citas.'
@@ -174,10 +178,10 @@ function BranchFormView({ businessId, branch }: { businessId: string; branch?: B
     <form onSubmit={submit} noValidate className="mt-8 flex flex-col">
       <h2 className="text-lg font-semibold">Datos</h2>
       <div className="mt-4 grid max-w-2xl gap-5">
-        <TextField label="Nombre de la sucursal" value={form.name} onChange={set('name')} error={errors.name} hint="Así aparece en la búsqueda de la app." />
-        <TextField label="Dirección" value={form.address} onChange={set('address')} error={errors.address} hint="Calle y número o cruce, y colonia." />
-        <TextField label="Teléfono" prefix="+52" type="tel" value={form.phone} onChange={set('phone')} error={errors.phone} />
-        <TextArea label="Descripción" value={form.description} onChange={set('description')} hint="Qué hace especial a esta sucursal: estacionamiento, especialidades, ambiente." />
+        <TextField label="Nombre de la sucursal" maxLength={LIMITS.branchName} value={form.name} onChange={set('name')} error={errors.name} hint="Así aparece en la búsqueda de la app." />
+        <TextField label="Dirección" maxLength={LIMITS.address} value={form.address} onChange={set('address')} error={errors.address} hint="Calle y número o cruce, y colonia." />
+        <TextField label="Teléfono" prefix="+52" type="tel" inputMode="numeric" maxLength={12} value={form.phone} onChange={set('phone')} error={errors.phone} />
+        <TextArea label="Descripción" maxLength={LIMITS.description} value={form.description} onChange={set('description')} error={errors.description} hint="Qué hace especial a esta sucursal: estacionamiento, especialidades, ambiente." />
       </div>
 
       <h2 className="mt-12 text-lg font-semibold">Horario</h2>

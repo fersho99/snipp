@@ -51,6 +51,9 @@ const TextField = forwardRef<React.ComponentRef<typeof TextInput>, TextFieldProp
           onBlur={() => setFocused(false)}
           style={[styles.input, inputProps.multiline && styles.multiInput]}
           textAlignVertical={inputProps.multiline ? 'top' : undefined}
+          // Every field has a length limit (Fase 3); a screen passes its own
+          // maxLength from shared/validators.ts LIMITS, otherwise these apply.
+          maxLength={inputProps.multiline ? 500 : 120}
           {...inputProps}
         />
         {secure ? (
