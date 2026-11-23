@@ -1,6 +1,30 @@
 # SNIPP: plantillas de frontend
 
-> **Fuente de verdad: SRS v1.1 (13/11/2026).** El plan está en [`../PLAN-ACTUALIZACION-SRS.md`](../PLAN-ACTUALIZACION-SRS.md). Las fases 1 (identidad SNIPP en escala de grises) y 2 (quitar extras y corregir reglas en M1–M5) ya están aplicadas; ver "Actualización al SRS v1.1" al final. Las secciones de lotes de abajo describen cómo se construyeron; donde contradigan al SRS, gana el SRS y la sección final.
+> **Fuente de verdad: SRS v1.2 (18/11/2026).** El plan y la matriz de trazabilidad están en [`../PLAN-ACTUALIZACION-SRS.md`](../PLAN-ACTUALIZACION-SRS.md). Las secciones de lotes de abajo describen cómo se construyeron; donde contradigan al SRS, gana el SRS.
+
+## Para empezar (todo junto)
+
+```bash
+cd frontend/mobile && npm install
+cd ../web && npm install
+npm run app        # exporta la app a web/public/app
+npm run dev        # app en http://localhost:3000/app, panel en http://localhost:3000/entrar
+```
+
+Cuentas de prueba:
+
+| Correo | Contraseña | Dónde | Caso |
+| --- | --- | --- | --- |
+| `andrea.valenzuela@gmail.com` | `compas2025` | App | Cliente con citas, pedidos y puntos |
+| `cliente.nuevo@gmail.com` | `compas2025` | App | Cliente sin historial |
+| `admin@snipp.mx` | `snipp2026` | Panel | Administrador |
+| `martin.salazar@loscompas.mx` | `snipp2026` | Panel | Jefe de Barbería Los Compas (al corriente) |
+| `jefe.vencido@elfaro.mx` | `snipp2026` | Panel | Jefe con la suscripción vencida |
+| `jefe.suspendido@unascoral.mx` | `snipp2026` | Panel | Jefe de un negocio suspendido |
+| `luis.ortega@gmail.com`, `oscar.felix@gmail.com` | `snipp2026` | Panel | Empleados |
+| `sofia.ramos@gmail.com` | `snipp2026` | Panel | Empleada sin negocio |
+
+La app solo acepta clientes y el panel solo Jefes, Empleados y Administrador. "Reiniciar datos de demo" vuelve a los datos de ejemplo. Las pruebas están en "Pruebas", más abajo.
 
 - `mobile/`: app de clientes, Expo SDK 58 + React Native + Expo Router, en TypeScript estricto (migrado de JavaScript el 17/11/2026 sin cambiar pantallas, textos ni reglas).
 - `web/`: panel para Jefe, Empleado y Administrador: Next.js 16 (App Router) + TypeScript estricto + Tailwind CSS 4. Lotes W1 a W9 hechos; migrado de Vite + JavaScript el 17/11/2026 sin cambiar pantallas, textos ni reglas.
@@ -89,7 +113,7 @@ Con `npm run dev`, abre la app en una pestaña (`/app`, Andrea) y el panel en ot
 2. **Altas.**
    - Lo que el Jefe registra aparece en la app: una sucursal, un servicio, un producto, o un Empleado que acepta (por solicitud o por invitación).
    - Lo que el Jefe desactiva desaparece de la app.
-   - Si rechaza una solicitud, el Empleado la ve como no aceptada y puede enviar otra.
+   - Si rechaza una solicitud de ingreso o de migración, el Empleado la ve como «Rechazada» y puede enviar otra a otro negocio.
 3. **Venta.**
    - Andrea paga un carrito y el pedido aparece en "Pedidos" de la sucursal.
    - Al pagar bajan las existencias, el dashboard suma la venta y Andrea gana puntos en ese negocio.
@@ -109,7 +133,7 @@ Las fotos que se suben en el panel solo se ven en esa pestaña, porque son archi
   - Citas: sin encimarse con otra cita ni con un bloqueo (RN-01), hasta 2 meses (RN-02), cancelar o reagendar hasta 2 horas antes (RN-03), una reseña por cita atendida (RN-08), un reporte por cita atendida o con "Empleado no se presentó" (RN-15).
   - No se reserva en un negocio vencido o suspendido, y no aparece en la app (RN-13).
   - Un Empleado solo cambia sus propias citas y no las pasa a otro; el Jefe, las de su negocio (RF-W16 a RF-W18). El cliente solo cambia las suyas, y solo los datos permitidos.
-  - Tienda (en `mobile/src/data/shop.ts` hasta que los pedidos pasen al almacén en la Fase 4): 3 carritos (RN-06), cantidades enteras sin pasar de las existencias (RN-07, RN-18), puntos solo del mismo negocio y sin pasar del saldo ni del total (RN-09), y un mismo pago no crea dos pedidos (RN-20).
+  - Tienda (`shared/shop.ts`): 3 carritos (RN-06), cantidades enteras sin pasar de las existencias (RN-07, RN-18), puntos solo del mismo negocio y sin pasar del saldo ni del total (RN-09), y un mismo pago no crea dos pedidos (RN-20).
 - **Prueba desde la consola** (solo con `npm run dev`): en la pestaña del panel, `snippApi` llama al almacén como la cuenta con sesión en la app o en el panel. Por ejemplo, con Andrea en `/app` y Óscar en el panel:
 
   ```js
@@ -129,6 +153,39 @@ El frontend solo ayuda a capturar bien: cualquiera puede saltarse la pantalla o 
 4. **Autorizar por rol y por negocio** con la cuenta del token, nunca con lo que mande la pantalla: el cliente solo sus citas y pedidos, el Empleado solo sus citas, el Jefe solo su negocio, el Administrador solo planes, negocios y reseñas reportadas.
 5. **Revisar las reglas de negocio** de `shared/rules.ts` dentro de una transacción (por ejemplo, RN-01 con un bloqueo o una restricción única para que dos reservas al mismo tiempo no pasen), e idempotencia en pagos y reembolsos (RN-20).
 6. **Escapar al mostrar** en correos y notificaciones, y mandar la CSP con nonce para quitar `'unsafe-inline'`.
+
+## Pruebas
+
+```bash
+cd frontend/web
+npm test           # pruebas unitarias (Vitest), menos de 1 segundo
+npm run test:e2e   # de punta a punta (Playwright): exporta la app, compila la web y la prueba en el puerto 3100
+npx playwright show-report   # el reporte de la última corrida, con capturas de lo que falló
+```
+
+- **Unitarias** (`web/tests/unit`):
+  - `validators.test.ts`: cada validador de `shared/validators.ts` con valores buenos, malos y en el límite.
+  - `rules.test.ts`: las reglas de `shared/rules.ts` con los datos de ejemplo. Cubre:
+    - reservas (RN-01, RN-02, RN-13, RN-14);
+    - cambios del cliente (RN-03, RF-W08) y del panel (RF-W16 a RF-W18);
+    - reseñas y reportes (RN-08, RN-15);
+    - tienda (RN-06, RN-07, RN-09, RN-20).
+- **De punta a punta** (`web/tests/e2e`), con la app y el panel en dos pestañas del mismo navegador:
+  - `rutas.spec.ts`: rutas protegidas sin sesión, cuentas de la plataforma equivocada, secciones de otro rol (RF-W04) y sesión vencida a las 8 horas (RNF-G03).
+  - `flujos.spec.ts`: estas historias:
+    - una cita reservada en la app que el panel cancela;
+    - una venta (existencias, puntos, pedido listo y aviso);
+    - un reembolso;
+    - una reseña y un reporte que el Jefe atiende;
+    - una reseña que el Jefe reporta y el Administrador elimina, y que sale de la app;
+    - una solicitud aceptada;
+    - un negocio suspendido y reactivado.
+  - `pantallas.spec.ts`: cada pantalla de la app y del panel abre sin la pantalla de error ni errores en la consola. En la tableta y el teléfono mide cada elemento visible, porque la app se desplaza dentro de sus propios contenedores y el ancho de la página no crece aunque algo se salga.
+- **Navegadores** (RNF-W03, RNF-M04):
+  - Todas las pruebas corren en Chrome.
+  - Las rutas y las pantallas también corren en Edge.
+  - Las pantallas del panel también corren en una tableta de 820 px, y las de la app en un teléfono de 360 px. En los dos, nada debe salirse de lado.
+  - Usan el Chrome y el Edge instalados en la computadora (`channel`). Firefox se revisa a mano. Para agregarlo: `npx playwright install firefox` y un proyecto `firefox` en `playwright.config.ts`.
 
 ## Estructura
 
