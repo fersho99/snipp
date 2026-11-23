@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "app": "npm --prefix ../mobile run export:web"
+    "app": "npm --prefix ../mobile run export:web",
+    "test": "vitest run",
+    "test:e2e": "npm run app && npm run build && playwright test"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
