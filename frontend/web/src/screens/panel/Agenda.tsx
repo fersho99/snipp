@@ -203,11 +203,26 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
 
   return (
     <div>
+      {/* The columns share the whole width (at least 224 px each, with a
+          scroll when they do not fit). The names go in their own row so a
+          long one wraps and every header keeps the same height. */}
       <div className="overflow-x-auto rounded-control border border-divider bg-raised">
-        <div className="flex min-w-max pb-3">
+        <div className="pb-3" style={{ minWidth: 64 + people.length * 224 }}>
+          <div className="flex border-b border-divider">
+            <div className="sticky left-0 z-10 w-16 shrink-0 bg-raised" />
+            {people.map((e) => {
+              const work = e.schedule[day.getDay()]
+              return (
+                <div key={e.id} className="flex min-h-12 min-w-56 flex-1 basis-0 flex-col justify-center border-l border-divider px-3 py-1.5">
+                  <p className="break-words text-sm font-semibold leading-tight">{nameOf(e.id)}</p>
+                  <p className="text-xs text-ink-soft">{work ? `${work[0]} a ${work[1]}` : 'Descansa'}{e.status === 'migracion-pendiente' ? ' · migración pendiente' : ''}</p>
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex">
           {/* time column */}
           <div className="sticky left-0 z-10 w-16 shrink-0 bg-raised">
-            <div className="h-12 border-b border-divider" />
             <div className="relative" style={{ height }}>
               {marks.map((m) => (
                 <span key={m} className="tabular absolute right-2 -translate-y-1/2 text-xs text-ink-soft" style={{ top: ((m - open) / 60) * HOUR_PX }}>
@@ -222,11 +237,7 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
             const myBlocks = blocks.filter((b) => b.employeeId === e.id && b.from < addDays(day, 1) && b.to > day)
             const work = e.schedule[day.getDay()]
             return (
-              <div key={e.id} className="w-56 shrink-0 border-l border-divider">
-                <div className="flex h-12 flex-col justify-center border-b border-divider px-3">
-                  <p className="truncate text-sm font-semibold">{nameOf(e.id)}</p>
-                  <p className="truncate text-xs text-ink-soft">{work ? `${work[0]} a ${work[1]}` : 'Descansa'}{e.status === 'migracion-pendiente' ? ' · migración pendiente' : ''}</p>
-                </div>
+              <div key={e.id} className="min-w-56 flex-1 basis-0 border-l border-divider">
                 <div className="relative" style={{ height }}>
                   {marks.map((m) => <div key={m} className="absolute inset-x-0 border-t border-divider/70" style={{ top: ((m - open) / 60) * HOUR_PX }} />)}
                   {/* Outside the Empleado's work hours */}
@@ -275,6 +286,7 @@ function DayGrid({ day, branch, people, appts, blocks, nameOf, onOpen }: ViewPro
               </div>
             )
           })}
+          </div>
         </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-ink-soft">
