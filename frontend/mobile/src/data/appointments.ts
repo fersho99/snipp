@@ -1,9 +1,14 @@
-// Andrea's appointments plus a tiny in-memory store, so cancelling,
-// rescheduling or accepting a change shows up on every screen of the demo.
+// The client's appointments, read from the database shared with the web
+// panel (frontend/shared/store.ts): a booking made here shows up in the
+// agenda of the branch, and a change made there shows up here.
 import { useSyncExternalStore } from 'react';
+import * as db from '@shared/store';
+import { sessionAccount } from '@shared/auth';
+import { CANCEL_HOURS } from '@shared/rules';
+import type { Appointment as SharedAppointment, DemoData } from '@shared/types';
 import { DEMO_TODAY, client, employees, services } from './demo';
-import { addReview, getBranch } from './catalog';
-import { fromIso, minutesLabel, setBookedProvider } from './availability';
+import { getBranch } from './catalog';
+import { fromIso, minutesLabel } from './availability';
 import { longDate } from '../theme/format';
 import type { Appointment, Report, ReportReason, StatusText } from '../types/domain';
 
@@ -13,65 +18,82 @@ function found<T>(value: T | undefined, what: string): T {
   return value;
 }
 
-export const CANCEL_HOURS = 2; // branch setting, default 2 hours
+// RN-03: branch setting, default 2 hours (shared/rules.ts).
+export { CANCEL_HOURS };
 
-// status: confirmada | cambio | cancelada-negocio | cancelada-cliente |
-//         atendida | no-asistio | empleado-no-se-presento
-const initial: Appointment[] = [
-  { folio: 'C-10482', serviceId: 'fade', employeeId: 'luis', branchId: 'los-compas-centro', date: '2026-11-19', start: 17 * 60 + 30, status: 'confirmada' },
-  {
-    folio: 'C-10486', serviceId: 'corte-clasico', employeeId: 'oscar', branchId: 'los-compas-norte', date: '2026-11-21', start: 12 * 60, status: 'cancelada-negocio',
-    businessNote: 'Óscar no va a estar en la sucursal ese día. Disculpa el cambio.', changedAt: 'ayer a las 7:40 pm',
-  },
-  {
-    folio: 'C-10490', serviceId: 'corte-clasico', employeeId: 'luis', branchId: 'los-compas-centro', date: '2026-11-24', start: 18 * 60, status: 'cambio',
-    change: { employeeId: 'ramon', date: null, start: null, note: 'Luis no va a estar esa tarde. Ramón te atiende con el mismo corte.', at: 'hoy a las 9:12 am' },
-  },
-  { folio: 'C-10497', serviceId: 'unas', employeeId: 'fernanda', branchId: 'estudio-marisol', date: '2026-11-28', start: 11 * 60, status: 'confirmada' },
+// A shared record as the app shows it. During a change the business proposed
+// (RF-M08) the app shows what the client booked and the change apart.
+const appAppointments = new WeakMap<SharedAppointment, Appointment>();
+function toApp(a: SharedAppointment): Appointment {
+  let out = appAppointments.get(a);
+  if (out) return out;
+  const before = a.status === 'cambio' ? a.previous : null;
+  out = {
+    folio: a.folio,
+    serviceId: a.serviceId,
+    employeeId: before?.employeeId ?? a.employeeId,
+    branchId: a.branchId,
+    date: before?.date ?? a.date,
+    start: before?.start ?? a.start,
+    status: a.status === 'cancelada' ? (a.cancelledBy === 'cliente' ? 'cancelada-cliente' : 'cancelada-negocio') : a.status,
+    rescheduledFrom: a.rescheduledFrom,
+    businessNote: a.note,
+    changedAt: a.changedAt,
+    change: before
+      ? {
+          employeeId: a.employeeId !== before.employeeId ? a.employeeId : null,
+          date: a.date !== before.date ? a.date : null,
+          start: a.start !== before.start ? a.start : null,
+          note: a.note ?? '',
+          at: a.changedAt ?? '',
+        }
+      : null,
+    review: a.review,
+    report: a.report,
+  };
+  appAppointments.set(a, out);
+  return out;
+}
 
-  { folio: 'C-10431', serviceId: 'fade', employeeId: 'luis', branchId: 'los-compas-centro', date: '2026-10-31', start: 17 * 60, status: 'atendida', review: null, report: null },
-  { folio: 'C-10402', serviceId: 'corte-clasico', employeeId: 'ramon', branchId: 'los-compas-centro', date: '2026-10-17', start: 12 * 60, status: 'atendida', review: { stars: 5, text: 'Ramón trabaja con mucha calma.' }, report: null },
-  { folio: 'C-10388', serviceId: 'unas', employeeId: 'fernanda', branchId: 'estudio-marisol', date: '2026-10-10', start: 11 * 60, status: 'no-asistio' },
-  {
-    folio: 'C-10370', serviceId: 'fade', employeeId: 'luis', branchId: 'los-compas-centro', date: '2026-10-03', start: 18 * 60, status: 'empleado-no-se-presento',
-    report: { sentOn: '3 de octubre', state: 'en revisión', reason: 'puntualidad', text: 'Llegué a las 6:00 pm y Luis no estaba. Esperé 25 minutos y nadie me avisó que no iba a venir.' },
-  },
-  { folio: 'C-10355', serviceId: 'tinte', employeeId: 'karla', branchId: 'estudio-marisol', date: '2026-09-26', start: 10 * 60, status: 'cancelada-cliente' },
-  {
-    folio: 'C-10318', serviceId: 'corte-barba', employeeId: 'ramon', branchId: 'los-compas-centro', date: '2026-09-12', start: 16 * 60, status: 'atendida',
-    review: { stars: 3, text: 'La barba quedó bien definida, pero la capa tenía cabello del cliente anterior.' },
-    report: { sentOn: '12 de septiembre', state: 'atendido', reason: 'higiene', text: 'La capa que me pusieron tenía cabello del cliente anterior y Ramón no la cambió cuando se lo dije.' },
-  },
-];
+// A change made in the app, in the shape of the shared record.
+function toShared(patch: Partial<Appointment>): Partial<SharedAppointment> {
+  const { status, change, businessNote, folio: _folio, ...rest } = patch;
+  const out: Partial<SharedAppointment> = { ...rest };
+  if (status === 'cancelada-cliente' || status === 'cancelada-negocio') {
+    out.status = 'cancelada';
+    out.cancelledBy = status === 'cancelada-cliente' ? 'cliente' : 'Jefe';
+  } else if (status) out.status = status;
+  if (change === null) out.previous = null;
+  if (businessNote !== undefined) out.note = businessNote;
+  return out;
+}
 
-let state = initial.map((a) => ({ ...a }));
-const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((l) => l());
+let cache: { data: DemoData; email: string; list: Appointment[] } | null = null;
+function snapshot(): Appointment[] {
+  const data = db.getData();
+  if (!cache || cache.data !== data || cache.email !== client.email) {
+    cache = { data, email: client.email, list: data.appointments.filter((a) => a.clientEmail === client.email).map(toApp) };
+  }
+  return cache.list;
+}
 
 export const appointmentStore = {
-  subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); },
-  getSnapshot() { return state; },
+  subscribe: db.subscribe,
+  getSnapshot: snapshot,
+  // The shared store checks the rules (RN-01 to RN-03, RN-08, RN-15) for the
+  // signed-in client and throws an ApiError, changing nothing, if one is broken.
   update(folio: string, patch: Partial<Appointment>) {
-    state = state.map((a) => (a.folio === folio ? { ...a, ...patch } : a));
-    emit();
+    db.patchAppointment(folio, toShared(patch), sessionAccount('app'));
+  },
+  // The same check without saving, for screens that save after the success message.
+  check(folio: string, patch: Partial<Appointment>) {
+    db.checkAppointmentPatch(folio, toShared(patch), sessionAccount('app'));
   },
   // New booking from the app; returns its folio.
-  add(appt: Omit<Appointment, 'folio'>) {
-    const folio = `C-${nextFolio}`;
-    nextFolio += 1;
-    state = [{ folio, ...appt }, ...state];
-    emit();
-    return folio;
+  add({ serviceId, employeeId, branchId, date, start }: Omit<Appointment, 'folio'>) {
+    return db.insertAppointment({ serviceId, employeeId, branchId, date, start }, sessionAccount('app')).folio;
   },
 };
-let nextFolio = 10501;
-
-// Booked appointments block their slot; cancelled ones free it (RF-M06, RF-M07, RN-01).
-setBookedProvider(() =>
-  state
-    .filter((a) => a.status === 'confirmada' || a.status === 'cambio')
-    .map((a) => ({ folio: a.folio, employeeId: a.employeeId, date: a.date, start: a.start, end: a.start + found(services.find((s) => s.id === a.serviceId), a.serviceId).minutes })),
-);
 
 export function useAppointments() {
   return useSyncExternalStore(appointmentStore.subscribe, appointmentStore.getSnapshot, appointmentStore.getSnapshot);
@@ -107,9 +129,12 @@ export function describe(a: Pick<Appointment, 'serviceId' | 'employeeId' | 'bran
 }
 
 // Can the client still cancel / reschedule from the app?
-export function changeWindow(a: Pick<Appointment, 'date' | 'start'>, now = DEMO_TODAY) {
+export function changeWindow(a: Pick<Appointment, 'date' | 'start'> & { branchId?: string }, now = DEMO_TODAY) {
   const start = startDate(a);
-  const deadline = new Date(start.getTime() - CANCEL_HOURS * 3600 * 1000);
+  // RF-W08: each business sets how long before; 2 hours by default.
+  const businessId = db.getData().branches.find((b) => b.id === a.branchId)?.businessId;
+  const hours = db.getData().businesses.find((b) => b.id === businessId)?.minNoticeHours ?? CANCEL_HOURS;
+  const deadline = new Date(start.getTime() - hours * 3600 * 1000);
   return {
     allowed: now < deadline,
     deadline,
@@ -149,19 +174,19 @@ export const canReport = (a: Appointment) => ['atendida', 'empleado-no-se-presen
 
 export const TODAY_LABEL = '12 de noviembre';
 
-// RF-M12: the review is published on the business page and counts in its average.
+// Checks a review or report with the shared store before the success
+// message (RN-08, RN-15); throws an ApiError if it is not allowed.
+export function checkReview(folio: string, review: { stars: number; text: string }) {
+  appointmentStore.check(folio, { review: { stars: review.stars, text: review.text.trim() } });
+}
+export function checkReport(folio: string, report: { reason: string; text: string }) {
+  appointmentStore.check(folio, { report: { sentOn: TODAY_LABEL, state: 'enviado', reason: report.reason, text: report.text.trim() } });
+}
+
+// RF-M12: the shared store publishes the review on the business page and in
+// the Jefe's panel, and it counts in the average.
 export function submitReview(folio: string, { stars, text }: { stars: number; text: string }) {
-  const a = found(state.find((x) => x.folio === folio), folio);
-  const d = describe(a);
-  appointmentStore.update(folio, { review: { stars, text } });
-  return addReview(a.branchId, {
-    id: `r-${folio}`,
-    author: client.name,
-    stars,
-    date: TODAY_LABEL,
-    service: `${d.service.name} con ${d.employee.name}`,
-    text,
-  });
+  appointmentStore.update(folio, { review: { stars, text: text.trim() } });
 }
 
 // RF-M13: reasons listed in the SRS.
@@ -176,7 +201,7 @@ export const reasonLabel = (id: string) => REPORT_REASONS.find((r) => r.id === i
 
 // RF-M13: goes to the Jefe of that business; the employee never sees it (RN-15).
 export function submitReport(folio: string, { reason, text }: { reason: string; text: string }) {
-  appointmentStore.update(folio, { report: { sentOn: TODAY_LABEL, state: 'enviado', reason, text } });
+  appointmentStore.update(folio, { report: { sentOn: TODAY_LABEL, state: 'enviado', reason, text: text.trim() } });
 }
 
 // RF-M14: enviado (blue) | en revisión (amber) | atendido (green), SRS v1.2 4.1.

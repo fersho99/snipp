@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import type { DimensionValue, StyleProp, ViewStyle } from 'react-native';
@@ -12,23 +12,32 @@ import { color, radius, space, status, stripeWidth } from '../theme/tokens';
 
 // Error screen (RF-M18, RN-20, SRS v1.2, 4.2 "Pantalla de error"): full
 // screen on white, keeping the tab bar on the main sections. Red icon for the
-// case, title and a plain explanation, with no technical details, codes or
-// support contacts (client request, 20/11/2026). Black "Reintentar" and the
+// case, title, a plain explanation and the reference code in gray ("Código
+// E-503 · 18/11/2026 01:47"), with no technical details or support contacts:
+// the code is how the error is found in the server logs. Black "Reintentar" and the
 // "Volver al inicio" link. The screen behind keeps what was typed, so a
 // successful retry brings it back as it was.
 export type ScreenFailure = 'sin-conexion' | 'servidor' | 'tiempo' | 'no-existe' | 'esperando';
 
-const FAILURE: Record<Exclude<ScreenFailure, 'esperando'>, { Icon: typeof WifiSlashIcon; title: string; body: string }> = {
-  'sin-conexion': { Icon: WifiSlashIcon, title: 'No hay conexión', body: 'SNIPP necesita internet. Revisa tu wifi o tus datos móviles y vuelve a intentar.' },
-  servidor: { Icon: ExclamationMarkIcon, title: 'Algo salió mal', body: 'Tuvimos un problema de nuestro lado y no pudimos cargar esta pantalla. Vuelve a intentar en un momento.' },
-  tiempo: { Icon: HourglassIcon, title: 'Esto tardó demasiado', body: 'La pantalla no respondió en 15 segundos. Puede ser tu conexión o el servidor; vuelve a intentar.' },
-  'no-existe': { Icon: XIcon, title: 'Ya no está disponible', body: 'Lo que buscas ya no existe o el enlace está mal escrito.' },
+const FAILURE: Record<Exclude<ScreenFailure, 'esperando'>, { Icon: typeof WifiSlashIcon; code: string; title: string; body: string }> = {
+  'sin-conexion': { Icon: WifiSlashIcon, code: 'E-000', title: 'No hay conexión', body: 'SNIPP necesita internet. Revisa tu wifi o tus datos móviles y vuelve a intentar.' },
+  servidor: { Icon: ExclamationMarkIcon, code: 'E-503', title: 'Algo salió mal', body: 'Tuvimos un problema de nuestro lado y no pudimos cargar esta pantalla. Vuelve a intentar en un momento.' },
+  tiempo: { Icon: HourglassIcon, code: 'E-504', title: 'Esto tardó demasiado', body: 'La pantalla no respondió en 15 segundos. Puede ser tu conexión o el servidor; vuelve a intentar.' },
+  'no-existe': { Icon: XIcon, code: 'E-404', title: 'Ya no está disponible', body: 'Lo que buscas ya no existe o el enlace está mal escrito.' },
 };
 
 export function ErrorScreen({ kind, title, detail, onRetry, retrying, tabs, home = '/inicio' }: {
   kind: ScreenFailure; title?: string; detail?: string; onRetry: () => void; retrying?: boolean; tabs?: boolean; home?: string;
 }) {
   const insets = useSafeAreaInsets();
+  // When the error happened, on the device clock (not the demo date). It is
+  // taken again when the case changes ("Cargando" becomes "Esto tardó
+  // demasiado" after 15 s) and when a retry fails again.
+  const [mark, setMark] = useState(() => ({ kind, retrying, at: new Date() }));
+  if (mark.kind !== kind || mark.retrying !== retrying) {
+    setMark({ kind, retrying, at: mark.kind !== kind || (mark.retrying && !retrying) ? new Date() : mark.at });
+  }
+  const at = mark.at;
   const bottom = tabs ? <TabBar /> : null;
   if (kind === 'esperando') {
     return (
@@ -52,6 +61,7 @@ export function ErrorScreen({ kind, title, detail, onRetry, retrying, tabs, home
           </View>
           <Txt variant="title" style={styles.errorTitle} accessibilityRole="header">{title ?? f.title}</Txt>
           <Txt variant="bodySoft" style={styles.errorText}>{detail ?? f.body}</Txt>
+          <Txt variant="small" numeric style={styles.errorCode}>Código {f.code} · {stamp(at)}</Txt>
         </View>
         <Button label="Reintentar" onPress={onRetry} loading={retrying} busyLabel="Reintentando..." />
         <Button variant="link" label="Volver al inicio" onPress={() => router.replace(home)} style={{ alignSelf: 'center', marginTop: space.m }} />
@@ -60,6 +70,9 @@ export function ErrorScreen({ kind, title, detail, onRetry, retrying, tabs, home
     </View>
   );
 }
+
+const two = (n: number) => String(n).padStart(2, '0');
+const stamp = (d: Date) => `${two(d.getDate())}/${two(d.getMonth() + 1)}/${d.getFullYear()} ${two(d.getHours())}:${two(d.getMinutes())}`;
 
 // The connection and loading failures every screen can get (see
 // hooks/useConnectivity.ts). `detail` explains the "no internet" case for
@@ -122,6 +135,7 @@ const styles = StyleSheet.create({
   errorIcon: { width: 96, height: 96, borderRadius: 48, backgroundColor: status.rojo.soft, alignItems: 'center', justifyContent: 'center' },
   errorTitle: { marginTop: space.xl, textAlign: 'center' },
   errorText: { marginTop: space.s, textAlign: 'center', maxWidth: 320 },
+  errorCode: { marginTop: space.m, textAlign: 'center' },
   // SRS v1.2, 4.1: failed action or error in red (light fill, stripe and icon).
   errorNote: { flexDirection: 'row', gap: space.m, padding: space.m, paddingLeft: 0, backgroundColor: status.rojo.soft, borderRadius: radius.control, overflow: 'hidden' },
   errorBar: { width: stripeWidth, alignSelf: 'stretch', marginVertical: -space.m, backgroundColor: status.rojo.stripe },

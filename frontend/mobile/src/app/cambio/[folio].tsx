@@ -62,16 +62,20 @@ export default function ChangeNotice() {
       failNext.current = false;
       return { ok: false, reason: 'No pudimos enviar tu respuesta. Revisa tu internet e inténtalo de nuevo; tu cita no cambió.' };
     }
+    // The store checks the rules first; if one is broken, the error is shown and nothing changes.
     if (kind === 'aceptar') {
+      const accepted = { status: 'confirmada', employeeId: newEmployee.id, date: ch.date ?? appt.date, start: newStart, change: null } as const;
+      appointmentStore.check(appt.folio, accepted);
       return {
         ok: true,
         message: `Listo: aceptaste el cambio de tu cita ${appt.folio}`,
         next: () => {
-          appointmentStore.update(appt.folio, { status: 'confirmada', employeeId: newEmployee.id, date: ch.date ?? appt.date, start: newStart, change: null });
+          appointmentStore.update(appt.folio, accepted);
           router.replace(`/cita/${appt.folio}?aviso=aceptada`);
         },
       };
     }
+    appointmentStore.check(appt.folio, { status: 'cancelada-cliente', change: null });
     return {
       ok: true,
       message: `Listo: cancelaste tu cita del ${d.dateLabel.split(' de ')[0]}`,

@@ -233,9 +233,9 @@ Cada fase se revisa contra este plan antes de pasar a la siguiente.
 
 ---
 
-## 10. Matriz de trazabilidad inicial (para el tester, SRS 5.3)
+## 10. Matriz de trazabilidad (para el tester, SRS 5.3)
 
-Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la API en la fase 5 para la prueba de aceptación) · **Ajustar** = existe y cambia · **Pendiente** = falta construir.
+Actualizada al SRS v1.2 el 23/11/2026. Estado: **Hecho** = la plantilla de frontend ya cumple con la base simulada (falta conectarla a la API para la prueba de aceptación) · **Ajustar** = existe y cambia · **Pendiente** = falta construir. Las pruebas automáticas de cada requerimiento están en la sección 10.1.
 
 | ID | Pantalla o ruta | Estado |
 | --- | --- | --- |
@@ -254,9 +254,11 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-M13 | `/reportar` | Hecho |
 | RF-M14 | `/reportes` | Hecho |
 | RF-M15 | `/puntos`, canje en `/carrito` | Hecho |
-| RF-M16 | `/notificaciones`; push con OneSignal documentado en `services/notifications.js` | Hecho (push real en fase 5) |
+| RF-M16 | `/notificaciones`; push con OneSignal documentado en `services/notifications.ts` | Hecho (push real en fase 5) |
+| RF-M17 | Apartado «Carritos» en la barra inferior con el número de carritos abiertos; un carrito a la vez, se pasa de uno a otro deslizando o tocando la sucursal | Hecho |
+| RF-M18, RN-20 | Pantalla de error: «No hay conexión», «Algo salió mal», «Esto tardó demasiado» (15 s) y «Ya no está disponible», con código de referencia en gris («Código E-503 · 18/11/2026 01:47»), «Reintentar» y «Volver al inicio»; lo capturado se conserva | Hecho |
 | RF-W01, RF-W02, RF-W03 | `/registro/negocio`, `/registro/empleado`, `/entrar`, `/recuperar`, `/restablecer` | Hecho |
-| RF-W27 | `/panel/planes`: crear y editar planes (nombre, precio, duración) y si se ofrecen; un plan creado aparece al registrar un negocio. `/panel/negocios`: estado de pago de cada negocio y su último pago | Hecho |
+| RF-W27 | `/panel/planes`: crear y editar planes (nombre, precio, duración); un plan creado aparece al registrar un negocio y no hay opción para retirarlo. `/panel/negocios`: estado de pago de cada negocio y su último pago | Hecho |
 | RF-W04 | Menú del panel según el rol y bloqueo de secciones ajenas (`/panel/:seccion`) | Hecho (la API debe aplicar la misma regla, RNF-W04) |
 | RF-W25 | Aviso 7 días antes (W2). `/panel/suscripcion`: plan y vencimiento, pagar o renovar con Stripe eligiendo plan (extiende la fecha desde el vencimiento o desde hoy si ya venció) e historial de pagos con referencia | Hecho (Stripe real en fase 5) |
 | RF-W26, RN-13 | `/pago-pendiente` al entrar (Jefe y Empleados) y aviso fijo en el panel mientras siga vencida; ocultar el negocio en la app ya está en la móvil (C5) | Hecho |
@@ -268,7 +270,7 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-W08 | "Anticipación para cancelar o reagendar" en `/panel/sucursales`, 2 horas por defecto, para todo el negocio | Hecho |
 | RF-W09, RN-14 | Desactivar con confirmación (dice cuántas citas agendadas tiene y que se respetan) y reactivar con los datos intactos | Hecho |
 | RNF-W05 | Solo JPG o PNG de hasta 5 MB, con mensaje por cada archivo rechazado; la optimización la hace la API | Hecho en el panel |
-| RF-W10 | Invitar por correo o aceptar la solicitud de ingreso, asignando el horario de trabajo; el Empleado sin negocio pide unirse o acepta la invitación desde Mi perfil | Hecho |
+| RF-W10 | Invitar por correo o aceptar la solicitud de ingreso, asignando el horario de trabajo; el Empleado sin negocio pide unirse o acepta la invitación desde Mi perfil. Una solicitud rechazada sale de la lista del Jefe y el Empleado la ve como «Rechazada» y puede enviar otra a otro negocio | Hecho |
 | RF-W11 | Mi perfil del Empleado: foto (JPG o PNG hasta 5 MB), nombre visible y especialidades | Hecho |
 | RF-W12, RN-11 | Empleado: solicitar migración (enviada, caducada a los 7 días, aceptada). Jefe de destino: aceptar con horario. Jefe de origen: "migración pendiente" y reasignar cada cita futura con la propuesta del sistema (si nadie está libre, la atiende el mismo Empleado); se completa al no quedarle citas y el Jefe recibe el aviso | Hecho |
 | RF-W13, RN-12 | Desvincular: cada cita futura pasa a otro Empleado libre o se cancela con aviso; la cuenta sigue activa y el historial se queda en el negocio | Hecho |
@@ -283,9 +285,24 @@ Estado: **Hecho** = la plantilla de frontend ya cumple (falta conectarla a la AP
 | RF-W20, RN-07 | Existencias por sucursal, "Ajustar existencias" con motivo y movimientos de inventario; las ventas bajan las existencias al pagarse; agotado no se puede comprar | Hecho |
 | RF-W21, RN-06 | `/panel/pedidos` (Jefe y Empleado): pagado → listo para recoger → entregado, y cancelar con reembolso de Stripe (referencia y motivo); el cliente ve cada cambio | Hecho (Stripe real en fase 5) |
 | RF-W24, RN-09 | `/panel/puntos`: pesos por punto en citas y en compras, y valor del punto al canjear, con ejemplos | Hecho |
-| RF-W28 | `/panel/negocios`: suspender y activar con confirmación (oculta o muestra el negocio en la app). `/panel/resenas-reportadas`: reseñas reportadas por los Jefes con su motivo; eliminar (sale de la app) o mantener | Hecho |
-| RNF-M01 a RNF-M04, RNF-W01 a RNF-W05 | Sección 7.1 | Pendiente de medir |
+| RF-W28 | `/panel/negocios`: suspender y activar con confirmación (oculta o muestra el negocio en la app). Mientras está suspendido, el Jefe y sus Empleados ven la banda roja «Tu negocio fue suspendido por el Administrador y no aparece en la app». `/panel/resenas-reportadas`: reseñas reportadas por los Jefes con su motivo; eliminar (sale de la app) o mantener | Hecho |
+| RF-W29, RN-20 | Pantalla de error del panel en el área de contenido: «No hay conexión», «Algo salió mal», «Esto tardó demasiado» y «Esta página no existe», con código de referencia en gris, «Reintentar» e «Ir al inicio del panel» | Hecho |
+| RNF-W03 | Chrome y Edge con pruebas automáticas (escritorio y tableta); Firefox a mano | Hecho en Chrome y Edge; Firefox pendiente de revisar |
+| RNF-M04 | Pantallas de la app a 360 px de ancho sin salirse de lado (prueba automática); faltan los 2 teléfonos Android | Pendiente en teléfonos |
+| RNF-M01 a RNF-M03, RNF-W01, RNF-W02, RNF-W04, RNF-W05 | Sección 7.1 | Pendiente de medir |
 | RNF-G01 a RNF-G08 | Sección 7.2 | Dependencia de back-end e infraestructura |
+
+### 10.1 Pruebas automáticas
+
+Están en `frontend/web/tests` y se corren como dice `frontend/README.md`, sección "Pruebas". Prueban la plantilla con la base simulada; con la API hay que repetirlas contra el servidor.
+
+| Requerimientos | Prueba |
+| --- | --- |
+| Validaciones de formularios (SRS 4.2), RN-02, RNF-W05 | `tests/unit/validators.test.ts` |
+| RN-01, RN-02, RN-03, RN-04, RN-06, RN-07, RN-08, RN-09, RN-13, RN-14, RN-15, RN-20, RF-W08, RF-W16 a RF-W18 | `tests/unit/rules.test.ts` |
+| RF-M02, RF-W04, RNF-G03 | `tests/e2e/rutas.spec.ts` |
+| RF-M06, RF-M10, RF-M11, RF-M12, RF-M13, RF-M14, RF-M15, RF-M16, RF-W10, RF-W14, RF-W18, RF-W21, RF-W23, RF-W28 | `tests/e2e/flujos.spec.ts` |
+| Todas las pantallas de la app y del panel, RNF-W03, RNF-M04 (360 px) | `tests/e2e/pantallas.spec.ts` |
 
 ---
 

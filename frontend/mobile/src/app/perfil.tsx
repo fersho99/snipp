@@ -15,6 +15,7 @@ import { client } from '../data/demo';
 import { pointBalances } from '../data/shop';
 import { color, space, touch } from '../theme/tokens';
 import { DoneNote } from '../components/Done';
+import { LIMITS, checkName, checkPhone, collect } from '@shared/validators';
 
 const AVATAR = 88;
 
@@ -56,8 +57,7 @@ export default function EditProfile() {
 
   const save = () => {
     const e: Record<string, string> = {};
-    if (!name.trim()) e.name = 'Escribe tu nombre.';
-    if (phone.replace(/\D/g, '').length !== 10) e.phone = 'El teléfono debe tener 10 dígitos, sin el +52.';
+    Object.assign(e, collect({ name: checkName(name), phone: checkPhone(phone) }));
     setErrors(e);
     if (Object.keys(e).length) return;
     saving.run(async () => {
@@ -115,6 +115,7 @@ export default function EditProfile() {
       <View style={styles.form}>
         <TextField
           label="Nombre completo"
+          maxLength={LIMITS.name}
           value={name}
           onChangeText={(v) => { setName(v); setSavedAt(null); setErrors((x) => ({ ...x, name: undefined })); }}
           error={errors.name}
@@ -124,6 +125,7 @@ export default function EditProfile() {
         <TextField
           label="Teléfono celular"
           prefix="+52"
+          maxLength={12}
           value={phone}
           onChangeText={(v) => { setPhone(v); setSavedAt(null); setErrors((x) => ({ ...x, phone: undefined })); }}
           error={errors.phone}

@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import AuthLayout from '../components/AuthLayout'
 import { Button, Note, TextField, TextLink } from '../components/ui'
 import { ApiError, networkMessage, registerEmployee } from '../services/auth'
-import { firstName, isEmail } from '../theme'
+import { LIMITS, checkEmail, checkName, checkPassword, collect } from '@shared/validators'
+import { firstName } from '../theme'
 
 // Employee sign-up (RF-W02): an account of their own, not tied to any
 // business. They join one later by invitation or by request (RF-W10).
@@ -34,9 +35,7 @@ export default function RegisterEmployee() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const next: Record<string, string> = {}
-    if (!form.name.trim()) next.name = 'Escribe tu nombre.'
-    if (!isEmail(form.email)) next.email = 'Escribe tu correo completo, por ejemplo nombre@gmail.com.'
-    if (form.password.length < 8) next.password = 'Usa al menos 8 caracteres.'
+    Object.assign(next, collect({ name: checkName(form.name), email: checkEmail(form.email), password: checkPassword(form.password) }))
     setErrors(next)
     setFailure(null)
     if (Object.keys(next).length) return
@@ -71,17 +70,18 @@ export default function RegisterEmployee() {
       <h1 className="text-[28px] font-bold leading-tight">Crea tu cuenta de empleado</h1>
       <p className="mt-2 text-ink-soft">Es tuya, no del negocio donde trabajas. Te unes a un negocio después.</p>
       <form onSubmit={submit} noValidate className="mt-8 flex flex-col gap-5">
-        <TextField label="Nombre completo" autoComplete="name" value={form.name} onChange={set('name')} error={errors.name} />
+        <TextField label="Nombre completo" autoComplete="name" maxLength={LIMITS.name} value={form.name} onChange={set('name')} error={errors.name} />
         <TextField
           label="Correo"
           type="email"
           autoComplete="email"
+          maxLength={LIMITS.email}
           value={form.email}
           onChange={set('email')}
           error={errors.email ?? (failure?.code === 'email-taken' ? 'Ya hay una cuenta con este correo. Entra con ella o usa otro correo.' : undefined)}
           hint="Usa el correo al que el Jefe te va a invitar."
         />
-        <TextField label="Contraseña" secure autoComplete="new-password" value={form.password} onChange={set('password')} error={errors.password} hint="Al menos 8 caracteres." />
+        <TextField label="Contraseña" secure autoComplete="new-password" maxLength={LIMITS.password} value={form.password} onChange={set('password')} error={errors.password} hint="Al menos 8 caracteres, con una letra y un número." />
         {failure && failure.code !== 'email-taken' ? <Note title={networkMessage(failure).title}>{networkMessage(failure).body}</Note> : null}
         <Button type="submit" className="mt-3" loading={loading}>{loading ? 'Creando cuenta' : 'Crear mi cuenta'}</Button>
       </form>

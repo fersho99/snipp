@@ -9,11 +9,12 @@ import Button from '../components/Button';
 import TextField, { FieldError } from '../components/TextField';
 import { OfflineState } from '../components/States';
 import useConnectivity from '../hooks/useConnectivity';
-import { REPORT_REASONS, canReport, describe, startDate, submitReport, useAppointments } from '../data/appointments';
+import { LIMITS } from '@shared/validators';
+import { REPORT_REASONS, canReport, checkReport, describe, startDate, submitReport, useAppointments } from '../data/appointments';
 import { color, font, radius, space, touch } from '../theme/tokens';
 import type { ReportReason } from '../types/domain';
 
-const MAX = 800;
+const MAX = LIMITS.report;
 
 // Report an employee to the Jefe of the business (RF-M13): pick the related
 // appointment, a reason and a description. Only appointments attended or
@@ -116,6 +117,7 @@ export default function Report() {
         failNext.current = false;
         return { ok: false, reason: 'No se envió tu reporte por un problema con el servidor. Lo que escribiste sigue aquí; inténtalo de nuevo.' };
       }
+      if (reason) checkReport(appt.folio, { reason, text });
       return {
         ok: true,
         message: `Listo: enviamos tu reporte al Jefe de ${d.branch.name}`,

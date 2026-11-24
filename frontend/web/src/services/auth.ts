@@ -1,53 +1,121 @@
-// Demo implementation of the account API (RF-W01, RF-W02, RF-W03).
-// In production these are calls to the API over HTTPS (RNF-G02); passwords
-// are stored hashed (RNF-G01) and expired or invalid tokens are rejected (RNF-G03).
-// `estado` lets the screen index force a state (credenciales, correo-registrado, ...).
-import { accounts, DEMO_PASSWORD, DEMO_TODAY } from '../data/demo'
-import { addMonths } from '../theme'
-import type { Session, StoredBusiness } from '../types/domain'
+// Demo implementation of the account API (RF-W01, RF-W02, RF-W03, RF-W04)
+// on the accounts of the database shared with the client app
+// (frontend/shared/auth.ts): passwords are kept hashed (RNF-G01) and the
+// session ends after 8 hours (RNF-G03). It is kept in localStorage, so every
+// tab of the panel shares it. In production these are calls to the API over
+// HTTPS (RNF-G02). `estado` lets the screen index force a state
+// (credenciales, correo-registrado, ...).
+import * as auth from '@shared/auth'
+import * as db from '@shared/store'
+import { ApiError as SharedApiError, getData } from '@shared/store'
+import type { Account, Appointment } from '@shared/types'
+import { checkPassword } from '@shared/validators'
+import type { Role, Session, StoredBusiness } from '../types/domain'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
-const registered = new Set(accounts.map((a) => a.email))
-const KEY = 'snipp-session'
 
-// offline | server | credentials | email-taken | token | card | stripe
-export type ApiErrorCode = 'offline' | 'server' | 'credentials' | 'email-taken' | 'token' | 'card' | 'stripe'
+// Development only: the store API in the browser console, to check that a
+// rule broken without the screens is rejected too (Fase 3). Each call acts
+// as the account signed in to the app or the panel, like a token would.
+//   await snippApi.book({ branchId: 'los-compas-norte', employeeId: 'oscar', serviceId: 'fade', date: '2026-11-13', start: 600 })
+//   await snippApi.panelChange('C-10520', { employeeId: 'ramon' })
+if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+  const appActor = () => auth.sessionAccount('app')
+  const panelActor = () => auth.sessionAccount('panel')
+  Object.assign(window, {
+    snippApi: {
+      data: () => db.getData(),
+      book: (input: db.NewAppointment) => db.bookAppointment(input, appActor()),
+      clientChange: (folio: string, patch: Partial<Appointment>) => db.updateAppointment(folio, patch, appActor()),
+      panelChange: async (folio: string, patch: Partial<Appointment>) => {
+        const before = db.getData().appointments.find((a) => a.folio === folio)
+        if (!before) throw new SharedApiError('not-found', `No existe la cita ${folio}`)
+        db.savePanelChanges([{ ...before, ...patch, folio }], null, panelActor())
+        return db.getData().appointments.find((a) => a.folio === folio)
+      },
+      signUpClient: auth.signUpClient,
+    },
+  })
+}
+
+// offline | server | credentials | email-taken | token | card | stripe, and
+// 'invalid' | 'conflict' | 'forbidden' when a rule or a field check of the
+// shared store rejected the request (its message says why).
+export type ApiErrorCode = 'offline' | 'server' | 'credentials' | 'email-taken' | 'token' | 'card' | 'stripe' | 'invalid' | 'conflict' | 'forbidden'
 export class ApiError extends Error {
   code: ApiErrorCode
-  constructor(code: ApiErrorCode) {
-    super(code)
+  constructor(code: ApiErrorCode, message: string = code) {
+    super(message)
     this.code = code
   }
 }
-
-// Session kept for the demo only; the real one is a token from the API.
-let session: Session | null = null
-try {
-  session = JSON.parse(sessionStorage.getItem(KEY) ?? 'null')
-} catch {
-  session = null
+// The shared store answers with the same codes.
+const PASSED = ['credentials', 'email-taken', 'offline', 'invalid', 'conflict', 'forbidden']
+function rethrow(err: unknown): never {
+  if (err instanceof SharedApiError && PASSED.includes(err.code)) throw new ApiError(err.code as ApiErrorCode, err.message)
+  if (err instanceof SharedApiError) throw new ApiError('server')
+  throw err
 }
-function save(next: Session | null) {
-  session = next
+
+// Message of a rejected rule or field check, or null for any other error.
+export function ruleMessage(err: unknown) {
+  const code = typeof err === 'object' && err !== null && 'code' in err ? (err as { code: unknown }).code : null
+  return (code === 'invalid' || code === 'conflict' || code === 'forbidden' || code === 'not-found') && err instanceof Error ? err.message : null
+}
+
+// A business registered in the panel is not in the sample data: the panel
+// receives it with the session, without branches yet (RF-W05).
+function registeredBusiness(id: string): StoredBusiness | undefined {
+  const b = getData().businesses.find((x) => x.id === id)
+  return b ? { id: b.id, name: b.name, minNoticeHours: 2, branches: [], subscription: { kind: b.subscription.kind, planId: b.subscription.planId, endsOn: `${b.subscription.endsOn}T00:00` } } : undefined
+}
+
+// RF-W26: the overdue-payment message was already shown at this sign-in.
+const OVERDUE_KEY = 'snipp-panel-overdue-seen'
+function overdueSeenBy(): string | null {
   try {
-    if (next) sessionStorage.setItem(KEY, JSON.stringify(next))
-    else sessionStorage.clear()
+    return localStorage.getItem(OVERDUE_KEY)
   } catch {
-    // Storage blocked (private mode): the session lives in memory only.
+    return null
   }
 }
-export const currentSession = (): Session | null => session
+function setOverdueSeen(email: string | null) {
+  try {
+    if (email) localStorage.setItem(OVERDUE_KEY, email)
+    else localStorage.removeItem(OVERDUE_KEY)
+  } catch {
+    // Storage blocked: the message shows again on the next page.
+  }
+}
 
-// Remembers, for this session, that the overdue-payment message was shown
-// at sign-in (RF-W26), so it is not shown again on every page.
+// The same account gives the same object, so pages can depend on it.
+let cache: { account: Account; overdueSeen: boolean; session: Session } | null = null
+function toSession(account: Account): Session {
+  const overdueSeen = overdueSeenBy() === account.email
+  if (cache?.account === account && cache.overdueSeen === overdueSeen) return cache.session
+  const { email, name, phone, businessId, branchId } = account
+  const business = businessId ? registeredBusiness(businessId) : undefined
+  const session: Session = { email, name, phone, role: account.role as Role, businessId, ...(branchId ? { branchId } : {}), ...(business ? { business, planId: business.subscription.planId } : {}), overdueSeen }
+  cache = { account, overdueSeen, session }
+  return session
+}
+
+export function currentSession(): Session | null {
+  const account = auth.sessionAccount('panel')
+  return account ? toSession(account) : null
+}
+
+// Remembers, for this sign-in, that the overdue-payment message was shown
+// (RF-W26), so it is not shown again on every page.
 export function markOverdueSeen() {
-  if (session) save({ ...session, overdueSeen: true })
+  const account = auth.sessionAccount('panel')
+  if (account) setOverdueSeen(account.email)
 }
 
 // Screen index only (development): opens the panel as a demo account.
 export function devSignIn(email: string) {
-  const account = accounts.find((a) => a.email === email)
-  if (account) save({ ...account })
+  setOverdueSeen(null)
+  auth.devSignIn('panel', email)
 }
 
 function fail(estado?: string | null) {
@@ -56,47 +124,43 @@ function fail(estado?: string | null) {
 }
 
 export async function login(email: string, password: string, estado?: string | null) {
-  await wait(700)
+  await wait(100)
   fail(estado)
-  const account = accounts.find((a) => a.email === email.trim().toLowerCase())
-  if (estado === 'credenciales' || !account || password !== DEMO_PASSWORD) throw new ApiError('credentials')
-  save({ ...account })
-  return account
+  if (estado === 'credenciales') throw new ApiError('credentials')
+  setOverdueSeen(null)
+  try {
+    return toSession(await auth.signIn('panel', email, password))
+  } catch (err) {
+    rethrow(err)
+  }
 }
 
 export function logout() {
-  save(null)
+  setOverdueSeen(null)
+  auth.signOut('panel')
 }
 
-export interface BossForm { name: string; email: string; phone: string; businessName: string; planId: string }
-export async function registerBoss({ name, email, phone, businessName, planId }: BossForm, estado?: string | null) {
-  await wait(900)
+export interface BossForm { name: string; email: string; phone: string; password: string; businessName: string; planId: string }
+export async function registerBoss(form: BossForm, estado?: string | null) {
+  await wait(100)
   fail(estado)
-  const key = email.trim().toLowerCase()
-  if (estado === 'correo-registrado' || registered.has(key)) throw new ApiError('email-taken')
-  registered.add(key)
-  // The new business starts with its free month and no branches yet (RN-13, RF-W05).
-  const business: StoredBusiness = {
-    id: `negocio-${Date.now()}`,
-    name: businessName.trim(),
-    minNoticeHours: 2,
-    branches: [],
-    subscription: { kind: 'prueba', planId, endsOn: addMonths(DEMO_TODAY, 1).toISOString() },
+  if (estado === 'correo-registrado') throw new ApiError('email-taken')
+  try {
+    return toSession(await auth.signUpBoss(form))
+  } catch (err) {
+    rethrow(err)
   }
-  const account: Session = { email: key, role: 'jefe', name: name.trim(), phone, planId, businessId: business.id, business }
-  save(account)
-  return account
 }
 
-export async function registerEmployee({ name, email }: { name: string; email: string }, estado?: string | null) {
-  await wait(900)
+export async function registerEmployee(form: { name: string; email: string; phone?: string; password: string }, estado?: string | null) {
+  await wait(100)
   fail(estado)
-  const key = email.trim().toLowerCase()
-  if (estado === 'correo-registrado' || registered.has(key)) throw new ApiError('email-taken')
-  registered.add(key)
-  const account: Session = { email: key, role: 'empleado', name: name.trim(), businessId: null }
-  save(account)
-  return account
+  if (estado === 'correo-registrado') throw new ApiError('email-taken')
+  try {
+    return toSession(await auth.signUpEmployee({ ...form, phone: form.phone ?? '' }))
+  } catch (err) {
+    rethrow(err)
+  }
 }
 
 // Always answers the same way, whether or not the email has an account,
@@ -111,12 +175,16 @@ export async function resetPassword(token: string | null, password: string, esta
   await wait(800)
   fail(estado)
   if (estado === 'enlace-vencido' || !token) throw new ApiError('token')
+  const invalid = checkPassword(String(password ?? ''))
+  if (invalid) throw new ApiError('invalid', invalid)
   return true
 }
 
 // Message for the errors every form can get.
 export function networkMessage(err: unknown) {
   const code = typeof err === 'object' && err !== null && 'code' in err ? (err as { code: unknown }).code : null
+  const rule = ruleMessage(err)
+  if (rule) return { title: 'Revisa los datos', body: rule }
   if (code === 'offline') return { title: 'No hay conexión a internet', body: 'SNIPP necesita internet. Revisa tu conexión y vuelve a intentar; lo que escribiste sigue aquí.' }
   return { title: 'No pudimos completar la operación', body: 'Hubo un problema con el servidor. Intenta de nuevo en un momento; lo que escribiste sigue aquí.' }
 }

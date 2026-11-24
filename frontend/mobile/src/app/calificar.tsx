@@ -9,10 +9,11 @@ import Button from '../components/Button';
 import TextField, { FieldError } from '../components/TextField';
 import { ErrorScreen, OfflineState } from '../components/States';
 import useConnectivity from '../hooks/useConnectivity';
-import { canReview, describe, submitReview, useAppointment } from '../data/appointments';
+import { LIMITS } from '@shared/validators';
+import { canReview, checkReview, describe, submitReview, useAppointment } from '../data/appointments';
 import { color, space, touch } from '../theme/tokens';
 
-const MAX = 500;
+const MAX = LIMITS.review;
 const WORDS = ['', 'Muy mal', 'Mal', 'Regular', 'Bien', 'Excelente'];
 
 // Rate the business (RF-M12): 1 to 5 stars and a review, only after an
@@ -64,6 +65,7 @@ export default function Rate() {
         failNext.current = false;
         return { ok: false, reason: 'No se publicó tu reseña por un problema con el servidor. Lo que escribiste sigue aquí; inténtalo de nuevo.' };
       }
+      checkReview(appt.folio, { stars, text });
       return {
         ok: true,
         message: `Listo: tu reseña ya está en la página de ${d.branch.name}`,

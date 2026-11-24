@@ -8,6 +8,7 @@ import { AddToCartButton, CartBar, CartLimitSheet, ProductPhoto } from '../../co
 import { StatusLine } from '../../components/Appointment';
 import useConnectivity from '../../hooks/useConnectivity';
 import { getBranch, openStatus, branches } from '../../data/catalog';
+import { getBusiness } from '../../data/demo';
 import { cartSummary, pointsAt, productsFor, seedDemoCarts, stockStatus, useCarts } from '../../data/shop';
 import { money } from '../../theme/format';
 import { color, font, space } from '../../theme/tokens';
@@ -27,7 +28,8 @@ export default function Store() {
   const carts = useCarts();
   const mine = carts.find((c) => c.branchId === branch.id);
   const summary = mine ? cartSummary(mine) : null;
-  const items = productsFor(branch.id);
+  // Demo: a branch that does not sell products yet.
+  const items = estado === 'sin-productos' ? [] : productsFor(branch.id);
   const [limit, setLimit] = useState(false);
 
   // Demo: 3 carts of other branches, then try to add here.
@@ -42,6 +44,7 @@ export default function Store() {
 
   const available = items.filter((p) => p.stock > 0).length;
   const points = pointsAt(branch.businessId);
+  const business = getBusiness(branch.businessId);
   const status = openStatus(branch);
   const inCart = (id: string) => mine?.items.find((i) => i.productId === id)?.qty ?? 0;
 
@@ -51,28 +54,27 @@ export default function Store() {
         <BackButton />
         <CartButton branchId={branch.id} />
       </View>
-      <Txt variant="small" style={{ marginTop: space.s }}>Recoges en {branch.address}, no hay envío</Txt>
+      {/* SRS v1.2, 4.2 "Tienda": header «Tienda de [sucursal]». */}
+      <Txt variant="title" accessibilityRole="header" style={{ marginTop: space.s }}>Tienda de {branch.name}</Txt>
+      <Txt variant="small" style={{ marginTop: space.xs }}>Recoges en {branch.address}, no hay envío</Txt>
 
       {estado === 'cargando' ? (
         <StoreSkeleton />
       ) : items.length === 0 ? (
-        <View style={{ marginTop: space.s }}>
-          <Txt variant="title" accessibilityRole="header">{branch.name} todavía no vende productos en SNIPP</Txt>
+        <View style={{ marginTop: space.l }}>
+          <Txt variant="heading">Todavía no vende productos en SNIPP</Txt>
           <Txt variant="bodySoft" style={{ marginTop: space.s }}>
             Cuando la sucursal dé de alta productos, aparecerán aquí.
           </Txt>
         </View>
       ) : (
         <>
-          <Txt variant="title" accessibilityRole="header" style={{ marginTop: space.s }}>
-            {items.length} {items.length === 1 ? 'producto' : 'productos'} en {branch.name}
-          </Txt>
-          <Txt variant="small" style={{ marginTop: space.xs }}>
-            {available} {available === 1 ? 'disponible' : 'disponibles'}. {status.open ? `Puedes recoger hoy ${status.label.replace('Abierto ', '')}` : status.label}.
+          <Txt variant="small" style={{ marginTop: space.l }}>
+            {items.length} {items.length === 1 ? 'producto' : 'productos'}, {available} {available === 1 ? 'disponible' : 'disponibles'}. {status.open ? `Puedes recoger hoy ${status.label.replace('Abierto ', '')}` : status.label}.
           </Txt>
           {points ? (
             <Txt variant="body" numeric style={{ marginTop: space.l }}>
-              Tienes <Txt style={{ fontFamily: font.bodySemi }}>{points} puntos</Txt> en {branch.name.replace('Barbería ', '').replace(' Norte', '')}: {money(points)} de descuento en estos productos.
+              Tienes <Txt style={{ fontFamily: font.bodySemi }}>{points} puntos</Txt> en {business.name}: {money(points)} de descuento en estos productos.
             </Txt>
           ) : null}
 

@@ -1,6 +1,30 @@
 # SNIPP: plantillas de frontend
 
-> **Fuente de verdad: SRS v1.1 (13/11/2026).** El plan está en [`../PLAN-ACTUALIZACION-SRS.md`](../PLAN-ACTUALIZACION-SRS.md). Las fases 1 (identidad SNIPP en escala de grises) y 2 (quitar extras y corregir reglas en M1–M5) ya están aplicadas; ver "Actualización al SRS v1.1" al final. Las secciones de lotes de abajo describen cómo se construyeron; donde contradigan al SRS, gana el SRS y la sección final.
+> **Fuente de verdad: SRS v1.2 (18/11/2026).** El plan y la matriz de trazabilidad están en [`../PLAN-ACTUALIZACION-SRS.md`](../PLAN-ACTUALIZACION-SRS.md). Las secciones de lotes de abajo describen cómo se construyeron; donde contradigan al SRS, gana el SRS.
+
+## Para empezar (todo junto)
+
+```bash
+cd frontend/mobile && npm install
+cd ../web && npm install
+npm run app        # exporta la app a web/public/app
+npm run dev        # app en http://localhost:3000/app, panel en http://localhost:3000/entrar
+```
+
+Cuentas de prueba:
+
+| Correo | Contraseña | Dónde | Caso |
+| --- | --- | --- | --- |
+| `andrea.valenzuela@gmail.com` | `compas2025` | App | Cliente con citas, pedidos y puntos |
+| `cliente.nuevo@gmail.com` | `compas2025` | App | Cliente sin historial |
+| `admin@snipp.mx` | `snipp2026` | Panel | Administrador |
+| `martin.salazar@loscompas.mx` | `snipp2026` | Panel | Jefe de Barbería Los Compas (al corriente) |
+| `jefe.vencido@elfaro.mx` | `snipp2026` | Panel | Jefe con la suscripción vencida |
+| `jefe.suspendido@unascoral.mx` | `snipp2026` | Panel | Jefe de un negocio suspendido |
+| `luis.ortega@gmail.com`, `oscar.felix@gmail.com` | `snipp2026` | Panel | Empleados |
+| `sofia.ramos@gmail.com` | `snipp2026` | Panel | Empleada sin negocio |
+
+La app solo acepta clientes y el panel solo Jefes, Empleados y Administrador. "Reiniciar datos de demo" vuelve a los datos de ejemplo. Las pruebas están en "Pruebas", más abajo.
 
 - `mobile/`: app de clientes, Expo SDK 58 + React Native + Expo Router, en TypeScript estricto (migrado de JavaScript el 17/11/2026 sin cambiar pantallas, textos ni reglas).
 - `web/`: panel para Jefe, Empleado y Administrador: Next.js 16 (App Router) + TypeScript estricto + Tailwind CSS 4. Lotes W1 a W9 hechos; migrado de Vite + JavaScript el 17/11/2026 sin cambiar pantallas, textos ni reglas.
@@ -17,8 +41,11 @@ npm run typecheck       # TypeScript estricto, sin generar archivos
 
 En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`). Solo existe en desarrollo; la APK abre directo en "Entrar".
 
-Cuenta de demostración para el inicio de sesión: `andrea.valenzuela@gmail.com` / `compas2025`.
-Cualquier otra combinación muestra el error de credenciales; registrarse con ese mismo correo muestra "correo ya registrado".
+Cuentas de cliente (contraseña `compas2025`):
+- `andrea.valenzuela@gmail.com` (Andrea Valenzuela): con citas, pedidos y puntos
+- `cliente.nuevo@gmail.com` (Daniel Ochoa): sin historial
+
+Sin sesión, cualquier pantalla manda a Entrar; con sesión, Entrar y Registro mandan a Inicio. El registro crea una cuenta de verdad en la base simulada (un correo repetido muestra "correo ya registrado"), y "Cerrar sesión" la cierra. La sesión dura 8 horas.
 
 ## Correr la plataforma web
 
@@ -33,14 +60,132 @@ npm run typecheck  # TypeScript
 En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`); en producción `/` abre "Entrar".
 
 Cuentas de demostración (contraseña `snipp2026` para todas):
-- Administrador: `admin@snipp.mx` (Daniela Ibarra)
-- Jefe de Barbería Los Compas: `martin.salazar@loscompas.mx` (Martín Salazar)
-- Empleado de Barbería Los Compas, sucursal Centro: `luis.ortega@gmail.com` (Luis Ortega)
-- Empleado sin negocio: `sofia.ramos@gmail.com` (Sofía Ramos); ya pidió unirse a Los Compas Centro
+
+| Correo | Rol | Caso |
+| --- | --- | --- |
+| `admin@snipp.mx` | Administrador (Daniela Ibarra) | Planes, negocios, reseñas reportadas |
+| `martin.salazar@loscompas.mx` | Jefe (Martín Salazar) | Barbería Los Compas al corriente, 2 sucursales |
+| `jefe.vencido@elfaro.mx` | Jefe (Rogelio Tapia) | Barbería El Faro, suscripción vencida: pantalla de pago pendiente |
+| `jefe.suspendido@unascoral.mx` | Jefe (Karen Lugo) | Uñas Coral, suspendido por el Administrador |
+| `luis.ortega@gmail.com` | Empleado (Luis Ortega) | Sucursal Centro |
+| `oscar.felix@gmail.com` | Empleado (Óscar Félix) | Sucursal Norte |
+| `sofia.ramos@gmail.com` | Empleado sin negocio (Sofía Ramos) | Ya pidió unirse a Los Compas Centro |
+
+Las contraseñas se guardan solo como hash SHA-256 con sal (`shared/auth.ts`). El registro de Jefe (con su negocio y el mes de prueba) y el de Empleado crean cuentas de verdad. Cada rol ve solo sus secciones; otra sección muestra "No tienes acceso a esta sección". La sesión del panel se guarda en `localStorage` (todas las pestañas la comparten) y dura 8 horas.
 
 En el índice de desarrollo, `/panel?como=jefe|empleado|sin-negocio|admin` abre el panel con esa cuenta sin escribir la contraseña (solo en `npm run dev`).
 
 La estructura de carpetas de la web está en [`web/README.md`](web/README.md).
+
+## App y panel juntos (datos compartidos)
+
+La app y el panel leen la misma base de datos simulada, guardada en el `localStorage` del navegador (`shared/store.ts`, clave `snipp-demo`). Para que la compartan, la app se sirve dentro de la web en `/app`:
+
+```bash
+cd frontend/web
+npm run app        # exporta la app (Expo web) a web/public/app; repetir tras cambiar la app
+npm run dev        # app en http://localhost:3000/app, panel en http://localhost:3000/panel
+```
+
+Una cita reservada en `/app` aparece en la agenda del panel, y un cambio hecho en el panel aparece en la app; todo sobrevive a recargar. "Reiniciar datos de demo" (índice de desarrollo, menú del panel y Cuenta en la app) vuelve a los datos de ejemplo. La app en `localhost:8081` o en Android tiene su propia copia en memoria y no se cruza con la web hasta que exista la API.
+
+`frontend/shared/` tiene:
+
+- `types.ts`: los tipos.
+- `seed.ts`: el único conjunto de datos de ejemplo (negocios, planes, sucursales, servicios, Empleados, cuentas, productos, existencias, bloqueos, citas, solicitudes, pedidos, puntos, notificaciones, reseñas y reportes). `history.ts` agrega 3 meses de ventas para el dashboard.
+- `dates.ts`: las fechas.
+- `store.ts`: el almacén, con versión de esquema. Al cambiar la forma de los datos se sube `SCHEMA_VERSION` y los datos guardados se cambian por los de ejemplo.
+- Las operaciones con forma de API, que revisan quién las pide:
+  - `catalog.ts`: sucursales, servicios, productos, existencias, Empleados, solicitudes e invitaciones.
+  - `shop.ts`: carritos, pago, pedidos, reembolsos y lealtad.
+  - `feedback.ts`: reportes y reseñas reportadas.
+  - `billing.ts`: planes, pagos de suscripción y suspensión.
+  - `notifications.ts`: avisos al cliente.
+  - `effects.ts`: lo que cada cambio trae consigo (el aviso al cliente, los puntos, la reseña publicada).
+
+Web y app lo importan como `@shared/...`.
+
+### Historia completa en dos pestañas
+
+Con `npm run dev`, abre la app en una pestaña (`/app`, Andrea) y el panel en otra (`/entrar`, Martín). Lo que se hace en un lado aparece en el otro, sin recargar a mano:
+
+1. **Cita.** Andrea reserva en la app y la cita aparece en la agenda del Jefe y del Empleado. Si el panel la cancela, la cambia de hora o de Empleado, o la marca, Andrea la ve así en "Mis citas" y le llega el aviso. Una cita cambiada queda en "Cambio sin respuesta" hasta que Andrea acepta, reagenda o cancela.
+2. **Altas.**
+   - Lo que el Jefe registra aparece en la app: una sucursal, un servicio, un producto, o un Empleado que acepta (por solicitud o por invitación).
+   - Lo que el Jefe desactiva desaparece de la app.
+   - Si rechaza una solicitud de ingreso o de migración, el Empleado la ve como «Rechazada» y puede enviar otra a otro negocio.
+3. **Venta.**
+   - Andrea paga un carrito y el pedido aparece en "Pedidos" de la sucursal.
+   - Al pagar bajan las existencias, el dashboard suma la venta y Andrea gana puntos en ese negocio.
+   - Cuando el panel marca el pedido como listo, a Andrea le llega el aviso. Si lo cancela, se reembolsa: regresan las piezas y los puntos, y Andrea lo ve como "Cancelado · reembolsado".
+4. **Reseñas y reportes.**
+   - La reseña de Andrea aparece en la página de la sucursal y en "Reseñas" del Jefe.
+   - Su reporte aparece en "Reportes", y el estado que pone el Jefe le llega a la app.
+   - El Jefe reporta una reseña al Administrador. Si el Administrador la elimina, sale de la app y del promedio.
+5. **Suscripción.** Un negocio vencido o suspendido no aparece en la app. Al pagar (Jefe) o al activarlo (Administrador), vuelve a aparecer.
+
+Las fotos que se suben en el panel solo se ven en esa pestaña, porque son archivos del navegador y no caben en `localStorage`. Si el Jefe cambia un servicio o un producto que comparten varias sucursales (por ejemplo, el precio del Fade en Centro), esa sucursal recibe su propia copia y las demás quedan igual.
+
+## Validaciones y seguridad
+
+- **Validadores compartidos** (`shared/validators.ts`): correo, teléfono de 10 dígitos, nombre (letras, espacios, `.`, `'` y `-`), contraseña (8 a 64 caracteres, con letra y número), precio (mayor que 0), existencias (entero, 0 o más), horarios (inicio antes del fin), fecha de cita (hasta 2 meses, RN-02) e imagen (JPG o PNG hasta 5 MB). `LIMITS` da el largo máximo de cada campo: los formularios lo usan como `maxLength` y los validadores lo revisan. El error sale en rojo debajo del campo y lo escrito se conserva.
+- **Reglas de negocio en el almacén** (`shared/rules.ts`, aplicadas en `shared/store.ts`), no solo en la pantalla:
+  - Citas: sin encimarse con otra cita ni con un bloqueo (RN-01), hasta 2 meses (RN-02), cancelar o reagendar hasta 2 horas antes (RN-03), una reseña por cita atendida (RN-08), un reporte por cita atendida o con "Empleado no se presentó" (RN-15).
+  - No se reserva en un negocio vencido o suspendido, y no aparece en la app (RN-13).
+  - Un Empleado solo cambia sus propias citas y no las pasa a otro; el Jefe, las de su negocio (RF-W16 a RF-W18). El cliente solo cambia las suyas, y solo los datos permitidos.
+  - Tienda (`shared/shop.ts`): 3 carritos (RN-06), cantidades enteras sin pasar de las existencias (RN-07, RN-18), puntos solo del mismo negocio y sin pasar del saldo ni del total (RN-09), y un mismo pago no crea dos pedidos (RN-20).
+- **Prueba desde la consola** (solo con `npm run dev`): en la pestaña del panel, `snippApi` llama al almacén como la cuenta con sesión en la app o en el panel. Por ejemplo, con Andrea en `/app` y Óscar en el panel:
+
+  ```js
+  await snippApi.book({ branchId: 'los-compas-norte', employeeId: 'oscar', serviceId: 'fade', date: '2027-03-01', start: 600 })  // rechazada: más de 2 meses
+  await snippApi.panelChange('C-10520', { employeeId: 'ramon' })                                                            // rechazada: no es su cita
+  ```
+
+- **Inyección:** todo lo que se escribe se guarda y se muestra como texto. No hay `dangerouslySetInnerHTML`, `eval`, `new Function` ni `innerHTML`. La web manda cabeceras de seguridad (`web/next.config.ts`): `Content-Security-Policy` (solo recursos del mismo sitio, sin `object`, sin marcos), `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` y `Permissions-Policy`. `script-src` lleva `'unsafe-inline'` porque Next y la app exportada usan scripts en línea; quitarlo requiere un nonce por página desde el servidor.
+
+### Lo que el backend debe repetir
+
+El frontend solo ayuda a capturar bien: cualquiera puede saltarse la pantalla o editar el `localStorage`. La API debe:
+
+1. **Validar** cada campo con las mismas reglas y largos de `shared/validators.ts`, con listas permitidas, y rechazar lo demás con un código y un mensaje.
+2. **Guardar contraseñas con un hash lento** (bcrypt o Argon2 con sal por cuenta). El SHA-256 de la demo es solo para no guardar texto plano.
+3. **Usar consultas parametrizadas** (o el ORM) en todo acceso a la base de datos; nunca armar SQL con texto del usuario (RNF-G05).
+4. **Autorizar por rol y por negocio** con la cuenta del token, nunca con lo que mande la pantalla: el cliente solo sus citas y pedidos, el Empleado solo sus citas, el Jefe solo su negocio, el Administrador solo planes, negocios y reseñas reportadas.
+5. **Revisar las reglas de negocio** de `shared/rules.ts` dentro de una transacción (por ejemplo, RN-01 con un bloqueo o una restricción única para que dos reservas al mismo tiempo no pasen), e idempotencia en pagos y reembolsos (RN-20).
+6. **Escapar al mostrar** en correos y notificaciones, y mandar la CSP con nonce para quitar `'unsafe-inline'`.
+
+## Pruebas
+
+```bash
+cd frontend/web
+npm test           # pruebas unitarias (Vitest), menos de 1 segundo
+npm run test:e2e   # de punta a punta (Playwright): exporta la app, compila la web y la prueba en el puerto 3100
+npx playwright show-report   # el reporte de la última corrida, con capturas de lo que falló
+```
+
+- **Unitarias** (`web/tests/unit`):
+  - `validators.test.ts`: cada validador de `shared/validators.ts` con valores buenos, malos y en el límite.
+  - `rules.test.ts`: las reglas de `shared/rules.ts` con los datos de ejemplo. Cubre:
+    - reservas (RN-01, RN-02, RN-13, RN-14);
+    - cambios del cliente (RN-03, RF-W08) y del panel (RF-W16 a RF-W18);
+    - reseñas y reportes (RN-08, RN-15);
+    - tienda (RN-06, RN-07, RN-09, RN-20).
+- **De punta a punta** (`web/tests/e2e`), con la app y el panel en dos pestañas del mismo navegador:
+  - `rutas.spec.ts`: rutas protegidas sin sesión, cuentas de la plataforma equivocada, secciones de otro rol (RF-W04) y sesión vencida a las 8 horas (RNF-G03).
+  - `flujos.spec.ts`: estas historias:
+    - una cita reservada en la app que el panel cancela;
+    - una venta (existencias, puntos, pedido listo y aviso);
+    - un reembolso;
+    - una reseña y un reporte que el Jefe atiende;
+    - una reseña que el Jefe reporta y el Administrador elimina, y que sale de la app;
+    - una solicitud aceptada;
+    - un negocio suspendido y reactivado.
+  - `pantallas.spec.ts`: cada pantalla de la app y del panel abre sin la pantalla de error ni errores en la consola. En la tableta y el teléfono mide cada elemento visible, porque la app se desplaza dentro de sus propios contenedores y el ancho de la página no crece aunque algo se salga.
+- **Navegadores** (RNF-W03, RNF-M04):
+  - Todas las pruebas corren en Chrome.
+  - Las rutas y las pantallas también corren en Edge.
+  - Las pantallas del panel también corren en una tableta de 820 px, y las de la app en un teléfono de 360 px. En los dos, nada debe salirse de lado.
+  - Usan el Chrome y el Edge instalados en la computadora (`channel`). Firefox se revisa a mano. Para agregarlo: `npx playwright install firefox` y un proyecto `firefox` en `playwright.config.ts`.
 
 ## Estructura
 
@@ -49,7 +194,7 @@ mobile/src/
   app/          pantallas (una ruta por archivo, .tsx)
   components/   Txt, Button, TextField, Screen/BackButton, States (OfflineState, ErrorNote, Skeleton, PhotoPlaceholder)
   theme/        tokens.ts (paleta, espacios, tipografía), format.ts (dinero MXN, horas, fechas)
-  data/         datos de ejemplo (demo.ts compartido por todos los lotes) y almacenes en memoria
+  data/         lo que la app agrega a los datos de frontend/shared (fotos, reseñas) y almacenes
   types/        domain.ts: tipos del dominio (sucursal, cita, pedido, ...), los mismos que usará la API
   hooks/        useConnectivity (sin modo sin conexión: pantalla de reintento)
 ```

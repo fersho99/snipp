@@ -2,7 +2,7 @@
 // its branches and its subscription (RF-W04, RF-W05, RF-W25, RF-W26, RN-13).
 // In production this is one call to the API, filtered by the role and the
 // business of the signed-in user (RNF-W04).
-import { businesses, DEMO_TODAY } from '../data/demo'
+import { DEMO_TODAY, panelBusiness } from '../data/demo'
 import { ApiError, logout } from './auth'
 import type { Business, Session, Subscription, SubscriptionStatus } from '../types/domain'
 
@@ -59,7 +59,7 @@ export async function loadPanel(session: Session): Promise<{ business: Business 
   if (forced === 'error-servidor') throw new ApiError('server')
   if (!session.businessId) return { business: null }
 
-  const stored = businesses[session.businessId] ?? session.business
+  const stored = panelBusiness(session.businessId) ?? session.business
   if (!stored) throw new ApiError('server')
   const business: Business = {
     ...stored,

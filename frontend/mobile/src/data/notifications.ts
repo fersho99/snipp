@@ -1,78 +1,57 @@
-// Notifications the client received (RF-M16). In production each one arrives
-// as an OneSignal push (see services/notifications.ts) and the API keeps the
-// list; here it is an in-memory store so booking, cancelling or rescheduling
-// in the demo adds the matching notification.
+// Notifications the client received (RF-M16), from the database shared with
+// the web panel (frontend/shared/notifications.ts). In production each one
+// arrives as a OneSignal push (see services/notifications.ts) and the API
+// keeps the list. Here an action in the app adds its notification, and so
+// does a change the branch makes in the panel: a changed or cancelled
+// appointment, an order ready or cancelled, a report followed up.
 import { useSyncExternalStore } from 'react';
+import { sessionAccount } from '@shared/auth';
+import { fromIso, fromIsoDateTime, iso } from '@shared/dates';
+import * as shared from '@shared/notifications';
+import { getData, subscribe } from '@shared/store';
+import type { ClientNotification, DemoData } from '@shared/types';
+import { DEMO_TODAY, client } from './demo';
+import { longDate, time } from '../theme/format';
 import type { AppNotification } from '../types/domain';
 
-// kind: confirmacion | recordatorio-24h | recordatorio-1h | cambio |
-//       cancelacion | reagendada | pedido-listo | carrito-por-vaciar |
-//       carrito-vaciado (RN-18: one day before a cart expires and when it does)
-// day: hoy | ayer | antes (how the list groups them)
-let state: AppNotification[] = [
-  {
-    id: 'n8', kind: 'cambio', day: 'hoy', when: '9:12 am', read: false, route: '/cambio/C-10490',
-    title: 'Barbería Los Compas cambió tu cita del martes 24',
-    body: 'Ramón Cázares te atiende a las 6:00 pm en lugar de Luis Ortega. Acepta el cambio, reagenda o cancela.',
-  },
-  {
-    id: 'n7', kind: 'cancelacion', day: 'ayer', when: '7:40 pm', read: false, route: '/cita/C-10486',
-    title: 'Los Compas Norte canceló tu cita del sábado 21',
-    body: 'Tu corte clásico de las 12:00 pm con Óscar Félix. Puedes reservar otro horario.',
-  },
-  {
-    id: 'n6', kind: 'pedido-listo', day: 'ayer', when: '11:30 am', read: true, route: '/pedido/P-2279',
-    title: 'Tu pedido P-2279 está listo para recoger',
-    body: 'Recógelo en Barbería Los Compas, Av. Obregón y Calle 5. Muestra el folio al llegar.',
-  },
-  {
-    id: 'n9', kind: 'carrito-vaciado', day: 'antes', when: 'martes 10 de noviembre, 9:40 pm', read: true, route: '/tienda/navaja-fina',
-    title: 'Se vació tu carrito de Navaja Fina',
-    body: 'Pasaron 7 días sin cambios. Los productos siguen en la tienda si aún los quieres.',
-  },
-  {
-    id: 'n5', kind: 'confirmacion', day: 'antes', when: 'lunes 9 de noviembre, 8:05 pm', read: true, route: '/cita/C-10497',
-    title: 'Cita confirmada: uñas acrílicas el sábado 28',
-    body: 'Con Fernanda Lugo en Estudio Marisol a las 11:00 am. Folio C-10497.',
-  },
-  {
-    id: 'n4', kind: 'confirmacion', day: 'antes', when: 'sábado 7 de noviembre, 1:15 pm', read: true, route: '/cita/C-10482',
-    title: 'Cita confirmada: fade el jueves 19',
-    body: 'Con Luis Ortega en Barbería Los Compas a las 5:30 pm. Folio C-10482.',
-  },
-  {
-    id: 'n3', kind: 'pedido-listo', day: 'antes', when: 'lunes 2 de noviembre, 1:02 pm', read: true, route: '/pedido/P-2264',
-    title: 'Tu pedido P-2264 está listo para recoger',
-    body: 'Recógelo en Barbería Los Compas, Av. Obregón y Calle 5. Muestra el folio al llegar.',
-  },
-  {
-    id: 'n2', kind: 'recordatorio-1h', day: 'antes', when: 'sábado 31 de octubre, 4:00 pm', read: true, route: '/cita/C-10431',
-    title: 'Tu cita es en 1 hora',
-    body: 'Fade con Luis Ortega a las 5:00 pm en Barbería Los Compas.',
-  },
-  {
-    id: 'n1', kind: 'recordatorio-24h', day: 'antes', when: 'viernes 30 de octubre, 5:00 pm', read: true, route: '/cita/C-10431',
-    title: 'Mañana tienes cita a las 5:00 pm',
-    body: 'Fade con Luis Ortega en Barbería Los Compas, Av. Obregón y Calle 5.',
-  },
-];
+// day: hoy | ayer | antes (how the list groups them); when: the time, or the
+// whole date for older ones.
+const yesterday = iso(new Date(DEMO_TODAY.getFullYear(), DEMO_TODAY.getMonth(), DEMO_TODAY.getDate() - 1));
+const cards = new WeakMap<ClientNotification, AppNotification>();
+function toApp(n: ClientNotification): AppNotification {
+  let out = cards.get(n);
+  if (!out) {
+    const at = fromIsoDateTime(n.at);
+    const date = n.at.slice(0, 10);
+    const day = date === iso(DEMO_TODAY) ? 'hoy' : date === yesterday ? 'ayer' : 'antes';
+    out = { id: n.id, kind: n.kind, day, when: day === 'antes' ? `${longDate(fromIso(date))}, ${time(at)}` : time(at), read: n.read, route: n.route, title: n.title, body: n.body };
+    cards.set(n, out);
+  }
+  return out;
+}
 
-const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((l) => l());
-let nextId = 10;
+let cache: { data: DemoData; email: string; list: AppNotification[] } | null = null;
+function snapshot(): AppNotification[] {
+  const data = getData();
+  if (!cache || cache.data !== data || cache.email !== client.email) {
+    cache = { data, email: client.email, list: shared.notificationsOf(data, client.email).map(toApp) };
+  }
+  return cache.list;
+}
+
+// The list belongs to the signed-in client, so there is nothing to load
+// when the client changes. Kept for data/session.ts.
+export function loadClientNotifications(_withSamples: boolean) {}
 
 export const notificationStore = {
-  subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); },
-  getSnapshot() { return state; },
+  subscribe,
+  getSnapshot: snapshot,
   // What the API would send right after an action in the app.
   push({ kind, title, body, route }: Pick<AppNotification, 'kind' | 'title' | 'body' | 'route'>) {
-    state = [{ id: `n${nextId}`, kind, day: 'hoy', when: 'ahora', read: false, title, body, route }, ...state];
-    nextId += 1;
-    emit();
+    shared.notify(sessionAccount('app'), kind, title, body, route);
   },
   markRead(id: string) {
-    state = state.map((n) => (n.id === id ? { ...n, read: true } : n));
-    emit();
+    shared.markNotificationRead(id, sessionAccount('app'));
   },
 };
 

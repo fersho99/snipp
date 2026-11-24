@@ -1,55 +1,24 @@
 // Free-slot rules for the booking flow (demo implementation of what the API
-// will return):
-// - Dates go from today up to two months ahead, never further.
-// - Only slots inside the branch hours, outside the professional's blocks
-//   (breaks, vacations) and not overlapping their other appointments.
+// will return), on the data shared with the web panel:
+// - Dates go from today up to two months ahead, never further (RN-02).
+// - Only slots inside the professional's work schedule, outside their
+//   blocks (breaks, vacations, RF-W15) and not overlapping their other
+//   appointments, booked in the app or in the panel (RN-01).
 // - Today, only slots that have not started yet.
+import { fromIsoDateTime, iso, minutesOf } from '@shared/dates';
+import { getData } from '@shared/store';
 import { DEMO_TODAY } from './demo';
 import { longDate, time } from '../theme/format';
 import type { Branch } from '../types/domain';
 
-type Interval = [number, number];
-export interface Booked { folio: string; employeeId: string; date: string; start: number; end: number }
 export interface Slot { start: number; employeeId: string }
 
 const SLOT_STEP = 30; // minutes between possible start times
-const BOOKED_LENGTH = 45; // typical length of an existing appointment
 
-// Services each professional performs.
-export const staffServices: Record<string, string[]> = {
-  luis: ['corte-clasico', 'fade', 'barba', 'corte-barba'],
-  ramon: ['corte-clasico', 'barba', 'corte-barba'],
-  oscar: ['corte-clasico', 'fade', 'barba', 'corte-barba'],
-  karla: ['tinte', 'mechas'],
-  fernanda: ['unas'],
-};
-
-// Recurring breaks, in minutes from midnight.
-const breaks: Record<string, [number, number, string][]> = {
-  luis: [[14 * 60, 15 * 60, 'descanso de 2:00 a 3:00 pm']],
-  ramon: [[13 * 60, 14 * 60, 'descanso de 1:00 a 2:00 pm']],
-  karla: [[14 * 60, 15 * 60, 'descanso de 2:00 a 3:00 pm']],
-  fernanda: [[13 * 60, 14 * 60, 'descanso de 1:00 a 2:00 pm']],
-};
-
-// Vacations / one-off blocks: employee -> list of ISO dates.
-const daysOff: Record<string, string[]> = {
-  luis: ['2026-11-26', '2026-11-27'],
-  ramon: ['2026-12-23'],
-  oscar: ['2026-11-18', '2026-11-19', '2026-11-20'], // same vacation the web agenda shows
-};
-
-// Days the demo shows as fully booked for a professional.
-const fullDays: Record<string, string[]> = { luis: ['2026-11-14', '2026-11-21'] };
-
-// Appointments already booked in the system (set by data/appointments.ts).
-let bookedProvider: () => Booked[] = () => [];
-export function setBookedProvider(fn: () => Booked[]) {
-  bookedProvider = fn;
-}
-
-// Slots kept free on purpose so the sample appointments always fit.
-const keepFree: Record<string, Interval> = { 'luis|2026-11-19': [15 * 60, 18 * 60 + 30] };
+// Services each professional performs and their work schedule, as the panel
+// last saved them (RF-W10).
+const employeeOf = (id: string) => getData().employees.find((e) => e.id === id);
+const performs = (employeeId: string, serviceId: string) => !!employeeOf(employeeId)?.serviceIds.includes(serviceId);
 
 export const today = () => new Date(DEMO_TODAY.getFullYear(), DEMO_TODAY.getMonth(), DEMO_TODAY.getDate());
 
@@ -58,72 +27,59 @@ export function lastBookableDate() {
   return new Date(t.getFullYear(), t.getMonth() + 2, t.getDate());
 }
 
-export const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-export const fromIso = (s: string) => {
-  const [y, m, d] = s.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
+export { fromIso, hhmm, iso } from '@shared/dates';
+export const fromHhmm = minutesOf;
 
 export const minutesLabel = (m: number) => time(new Date(2025, 0, 1, Math.floor(m / 60), m % 60));
-export const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-export const fromHhmm = (s: string) => {
-  const [h, m] = s.split(':').map(Number);
-  return h * 60 + m;
-};
-
-// Small deterministic PRNG so the same day always shows the same bookings.
-function seeded(str: string) {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i += 1) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
-  return () => {
-    h += 0x6d2b79f5;
-    let t = h;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function bookedIntervals(employeeId: string, date: Date, open: number, close: number) {
-  const key = `${employeeId}|${iso(date)}`;
-  const rand = seeded(key);
-  const free = keepFree[key];
-  const list: Interval[] = [];
-  for (let s = open; s + BOOKED_LENGTH <= close; s += SLOT_STEP) {
-    if (rand() < 0.38) {
-      const interval: Interval = [s, s + BOOKED_LENGTH];
-      if (free && interval[0] < free[1] && interval[1] > free[0]) continue;
-      list.push(interval);
-      s += SLOT_STEP; // existing appointments do not stack back to back
-    }
-  }
-  return list;
-}
 
 const overlaps = (a0: number, a1: number, b0: number, b1: number) => a0 < b1 && a1 > b0;
+
+// Blocks of the professional that touch this date, as [start, end] minutes
+// of that day (a vacation covers the whole day).
+function blocksOn(employeeId: string, date: Date) {
+  const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayEnd = new Date(dayStart.getTime() + 24 * 3600 * 1000);
+  return getData()
+    .blocks.filter((b) => b.employeeId === employeeId)
+    .map((b) => ({ reason: b.reason, from: fromIsoDateTime(b.from), to: fromIsoDateTime(b.to) }))
+    .filter((b) => b.from < dayEnd && b.to > dayStart)
+    .map((b) => ({
+      reason: b.reason,
+      start: Math.max(0, (b.from.getTime() - dayStart.getTime()) / 60000),
+      end: Math.min(24 * 60, (b.to.getTime() - dayStart.getTime()) / 60000),
+    }));
+}
+
+// Work hours of the professional that day, in minutes, or null on a day off.
+function workHours(employeeId: string, date: Date): [number, number] | null {
+  const h = employeeOf(employeeId)?.schedule[date.getDay()];
+  return h ? [minutesOf(h[0]), minutesOf(h[1])] : null;
+}
+
+const isDayOff = (employeeId: string, date: Date) => {
+  const hours = workHours(employeeId, date);
+  return !hours || blocksOn(employeeId, date).some((b) => b.start <= hours[0] && b.end >= hours[1]);
+};
 
 // Free start times (minutes) for one professional on one date.
 // `ignoreFolio`: when rescheduling, the appointment being moved does not block itself.
 export function freeSlotsFor(branch: Branch, employeeId: string, date: Date, durationMinutes: number, ignoreFolio?: string) {
-  const hours = branch.hours[date.getDay()];
-  if (!hours) return [];
-  if (daysOff[employeeId]?.includes(iso(date))) return [];
-  if (fullDays[employeeId]?.includes(iso(date))) return [];
-  const open = hours[0] * 60;
-  const close = hours[1] * 60;
-  const booked: Interval[] = [
-    ...bookedIntervals(employeeId, date, open, close),
-    ...bookedProvider().filter((b) => b.employeeId === employeeId && b.date === iso(date) && b.folio !== ignoreFolio).map((b): Interval => [b.start, b.end]),
-  ];
-  const blocks = breaks[employeeId] ?? [];
-  const isToday = iso(date) === iso(today());
+  const hours = workHours(employeeId, date);
+  if (!branch.hours[date.getDay()] || !hours) return [];
+  const [open, close] = hours;
+  const day = iso(date);
+  const booked = getData()
+    .appointments.filter((a) => a.employeeId === employeeId && a.date === day && a.folio !== ignoreFolio && (a.status === 'confirmada' || a.status === 'cambio'))
+    .map((a) => [a.start, a.start + (getData().services.find((s) => s.id === a.serviceId)?.minutes ?? 45)]);
+  const blocks = blocksOn(employeeId, date);
+  const isToday = day === iso(today());
   const nowMin = DEMO_TODAY.getHours() * 60 + DEMO_TODAY.getMinutes();
 
   const slots: number[] = [];
   for (let s = open; s + durationMinutes <= close; s += SLOT_STEP) {
     const e = s + durationMinutes;
     if (isToday && s <= nowMin) continue;
-    if (blocks.some(([b0, b1]) => overlaps(s, e, b0, b1))) continue;
+    if (blocks.some((b) => overlaps(s, e, b.start, b.end))) continue;
     if (booked.some(([b0, b1]) => overlaps(s, e, b0, b1))) continue;
     slots.push(s);
   }
@@ -132,12 +88,12 @@ export function freeSlotsFor(branch: Branch, employeeId: string, date: Date, dur
 
 // Professionals at this branch who perform the service.
 export function staffFor(branch: Branch, serviceId: string) {
-  return branch.staff.filter((e) => staffServices[e.id]?.includes(serviceId));
+  return branch.staff.filter((e) => performs(e.id, serviceId));
 }
 
 // Slots for the chosen professional (RF-M06); each slot carries who attends it.
 export function slotsFor(branch: Branch, employeeId: string | null | undefined, serviceId: string, date: Date, durationMinutes: number, ignoreFolio?: string): Slot[] {
-  const candidates = branch.staff.filter((e) => e.id === employeeId && staffServices[e.id]?.includes(serviceId));
+  const candidates = branch.staff.filter((e) => e.id === employeeId && performs(e.id, serviceId));
   const byStart = new Map<number, string>();
   candidates.forEach((e) => {
     freeSlotsFor(branch, e.id, date, durationMinutes, ignoreFolio).forEach((s) => {
@@ -152,15 +108,16 @@ export function dayStatus(branch: Branch, employeeId: string | null | undefined,
   if (date < today()) return 'past';
   if (date > lastBookableDate()) return 'out';
   if (!branch.hours[date.getDay()]) return 'closed';
-  if (employeeId && daysOff[employeeId]?.includes(iso(date))) return 'off';
+  if (employeeId && isDayOff(employeeId, date)) return 'off';
   return slotsFor(branch, employeeId, serviceId, date, durationMinutes, ignoreFolio).length ? 'open' : 'full';
 }
 
 // Human explanation of what was removed from the grid.
 export function blocksNote(employeeId: string | null | undefined, date: Date) {
-  if (!employeeId) return null;
-  if (daysOff[employeeId]?.includes(iso(date))) return 'ese día está de vacaciones';
-  return breaks[employeeId]?.[0]?.[2] ?? null;
+  // A whole day off is not offered at all, so there is nothing to explain.
+  if (!employeeId || isDayOff(employeeId, date)) return null;
+  const b = blocksOn(employeeId, date)[0];
+  return b ? `${b.reason.toLowerCase()} de ${minutesLabel(b.start)} a ${minutesLabel(b.end)}` : null;
 }
 
 export function groupSlots<T extends Slot>(slots: T[]) {

@@ -12,8 +12,19 @@ const left = (n: number) => (n === 0 ? 'Vence hoy.' : n === 1 ? 'Falta 1 día.' 
 // Notice at the top of every panel page.
 // RF-W25: the Jefe sees it from 7 days before the free month or the paid
 // period ends. RF-W26 / RN-13: once it ended without payment, the Jefe and
-// every Empleado see that the business is hidden in the app.
-export default function SubscriptionNotice({ role, business, status }: { role: Role; business: Business; status: SubscriptionStatus | null }) {
+// every Empleado see that the business is hidden in the app. RF-W28: while
+// the Administrator keeps it suspended, they all see the red band first.
+export default function SubscriptionNotice({ role, business, status, suspended }: { role: Role; business: Business; status: SubscriptionStatus | null; suspended?: boolean }) {
+  if (suspended) {
+    return (
+      <Banner
+        tone="rojo"
+        title="Tu negocio fue suspendido por el Administrador y no aparece en la app"
+        body={`Mientras siga suspendido, ${business.name} y sus sucursales no reciben reservas ni pedidos nuevos. Las citas ya agendadas se respetan.`}
+        action={null}
+      />
+    )
+  }
   if (!status || status.status === 'al-dia') return null
   const sub = business.subscription
   const isJefe = role === 'jefe'
@@ -45,7 +56,7 @@ export default function SubscriptionNotice({ role, business, status }: { role: R
 }
 
 // SRS v1.2, 4.2.2 "Avisos del negocio": amber band when it is about to
-// expire, red once it expired.
+// expire, red once it expired or while the business is suspended.
 function Banner({ tone, title, body, action }: { tone: StatusColor; title: string; body: string; action: { to: string; label: string } | null }) {
   return (
     <div className={`mb-8 flex flex-col gap-3 rounded-control px-5 py-4 sm:flex-row sm:items-center sm:justify-between ${NOTICE[tone]}`} role="status">

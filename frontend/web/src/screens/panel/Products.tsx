@@ -13,6 +13,7 @@ import useAction from '@/lib/useAction'
 import { imageProblem, MAX_IMAGE_MB } from '../../services/branches'
 import { adjustStock, productLabel, saveProduct, useShopStore } from '../../services/shop'
 import { longDate, money, timeOfDay } from '../../theme'
+import { LIMITS, checkLabel, checkPrice, checkStock, checkText, collect, parseAmount } from '@shared/validators'
 
 // Productos e inventario of the branch picked in the menu (RF-W19, RF-W20).
 // `sub` = 'detalle' opens one product (or "nuevo").
@@ -151,9 +152,9 @@ function AdjustDialog({ product, onClose, onDone }: { product: Product; onClose:
   const [error, setError] = useState<string | null>(null)
   const adjusting = useAction({ busy: 'Guardando...', done: 'Existencias guardadas', failed: 'No se pudo guardar' })
   const n = Number(value)
-  const valid = /^\d+$/.test(value.trim())
+  const valid = !checkStock(value)
   const submit = () => {
-    if (!valid) return setError('Escribe cuántas piezas hay, en número entero.')
+    if (!valid) return setError(checkStock(value))
     if (n === product.stock) return setError('Es la misma cantidad que ya tiene.')
     adjusting.run(() => adjustStock(product.id, n, reason), {
       onDone: () => onDone(`${productLabel(product)} quedó con ${n} ${n === 1 ? 'pieza' : 'piezas'}.`),
@@ -167,7 +168,7 @@ function AdjustDialog({ product, onClose, onDone }: { product: Product; onClose:
       actions={<><Button variant="secondary" onClick={onClose} disabled={adjusting.busy}>Cancelar</Button><Button {...adjusting.button} onClick={submit}>Guardar</Button></>}
     >
       <p>Hoy hay {product.stock} {product.stock === 1 ? 'pieza' : 'piezas'}.</p>
-      <TextField label="Piezas que hay ahora" inputMode="numeric" value={value} onChange={(e) => { setValue(e.target.value); setError(null) }} error={error} hint={valid && n !== product.stock ? `Cambio: ${n > product.stock ? '+' : '−'}${Math.abs(n - product.stock)}` : undefined} />
+      <TextField label="Piezas que hay ahora" inputMode="numeric" maxLength={LIMITS.stock} value={value} onChange={(e) => { setValue(e.target.value); setError(null) }} error={error} hint={valid && n !== product.stock ? `Cambio: ${n > product.stock ? '+' : '−'}${Math.abs(n - product.stock)}` : undefined} />
       <div className="flex flex-col gap-1.5">
         <label htmlFor="adj-reason" className="text-sm font-medium">Motivo</label>
         <select id="adj-reason" value={reason} onChange={(e) => setReason(e.target.value)} className="min-h-11 rounded-control border-2 border-divider bg-sunken px-3 text-[15px] outline-none focus:border-ink-soft">
@@ -211,10 +212,15 @@ function ProductEditor() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const next: Record<string, string> = {}
-    const price = Number(form.price.replace(/[$,\s]/g, ''))
-    if (!form.name.trim()) next.name = 'Escribe el nombre del producto.'
-    if (!Number.isFinite(price) || price <= 0) next.price = 'Escribe el precio en pesos, mayor que cero.'
-    if (isNew && !/^\d+$/.test(String(form.stock).trim())) next.stock = 'Escribe cuántas piezas hay, en número entero (puede ser 0).'
+    const price = parseAmount(form.price.replace(/[$\s]/g, ''))
+    Object.assign(next, collect({
+      name: checkLabel(form.name, LIMITS.productName, 'Escribe el nombre del producto.'),
+      size: checkText(form.size, LIMITS.size),
+      price: checkPrice(form.price.replace(/[$\s]/g, '')),
+      stock: isNew ? checkStock(String(form.stock)) : null,
+      description: checkText(form.description, LIMITS.description),
+      howTo: checkText(form.howTo, LIMITS.description),
+    }))
     setErrors(next)
     if (Object.keys(next).length) return
     setSaved(false)
@@ -248,13 +254,13 @@ function ProductEditor() {
         {errors.photo ? <FieldError>{errors.photo}</FieldError> : null}
 
         <div className="grid gap-5 sm:grid-cols-[2fr_1fr]">
-          <TextField label="Nombre" value={form.name} onChange={set('name')} error={errors.name} />
-          <TextField label="Presentación" value={form.size} onChange={set('size')} hint="Por ejemplo: 100 g o 30 ml." />
+          <TextField label="Nombre" maxLength={LIMITS.productName} value={form.name} onChange={set('name')} error={errors.name} />
+          <TextField label="Presentación" maxLength={LIMITS.size} value={form.size} onChange={set('size')} error={errors.size} hint="Por ejemplo: 100 g o 30 ml." />
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
-          <TextField label="Precio" prefix="$" inputMode="decimal" value={form.price} onChange={set('price')} error={errors.price} />
+          <TextField label="Precio" prefix="$" inputMode="decimal" maxLength={LIMITS.price + 1} value={form.price} onChange={set('price')} error={errors.price} />
           {isNew ? (
-            <TextField label="Existencias iniciales" inputMode="numeric" value={form.stock} onChange={set('stock')} error={errors.stock} hint="Piezas que hay hoy en esta sucursal." />
+            <TextField label="Existencias iniciales" inputMode="numeric" maxLength={LIMITS.stock} value={form.stock} onChange={set('stock')} error={errors.stock} hint="Piezas que hay hoy en esta sucursal." />
           ) : (
             <div>
               <p className="text-[15px] font-medium">Existencias</p>
@@ -263,8 +269,8 @@ function ProductEditor() {
             </div>
           )}
         </div>
-        <TextArea label="Descripción" rows={3} value={form.description} onChange={set('description')} hint="Para qué sirve; aparece en la ficha del producto en la app." />
-        <TextArea label="Cómo se usa" rows={2} value={form.howTo} onChange={set('howTo')} />
+        <TextArea label="Descripción" rows={3} maxLength={LIMITS.description} value={form.description} onChange={set('description')} error={errors.description} hint="Para qué sirve; aparece en la ficha del producto en la app." />
+        <TextArea label="Cómo se usa" rows={2} maxLength={LIMITS.description} value={form.howTo} onChange={set('howTo')} error={errors.howTo} />
 
         {saved ? <Note tone="done" title="Producto guardado. Ya se ve así en la tienda de la app." /> : null}
         <Button type="submit" {...saving.button} className="self-start">{isNew ? 'Agregar a la tienda' : 'Guardar cambios'}</Button>

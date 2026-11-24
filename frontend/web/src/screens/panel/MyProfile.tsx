@@ -11,7 +11,8 @@ import useAction from '@/lib/useAction'
 import { imageProblem, MAX_IMAGE_MB } from '../../services/branches'
 import { acceptInvitation, expiresOn, lastAppointmentOf, saveProfile, sendRequest, useStaffStore } from '../../services/staff'
 import { longDate, timeOfDay } from '../../theme'
-import { NOTICE, NOTICE_ICON } from '../../components/status'
+import { NOTICE, NOTICE_ICON, StatusTag } from '../../components/status'
+import { LIMITS, checkLabel, checkName } from '@shared/validators'
 
 // Mi perfil, for the Empleado (RF-W11): own photo, visible name and
 // specialties, which the app shows when a client picks a professional.
@@ -54,6 +55,10 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
   const addSpecialty = () => {
     const v = newSpecialty.trim()
     if (!v) return
+    const problem = checkLabel(v, LIMITS.specialty, '')
+    setErrors((x) => ({ ...x, specialty: problem }))
+    if (problem) return
+    if (form.specialties.length >= 10) return setErrors((x) => ({ ...x, specialty: 'Puedes tener hasta 10 especialidades.' }))
     if (!form.specialties.some((x) => x.toLowerCase() === v.toLowerCase())) change({ specialties: [...form.specialties, v] })
     setNewSpecialty('')
   }
@@ -61,7 +66,8 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const next: Record<string, string> = {}
-    if (!form.displayName.trim()) next.displayName = 'Escribe el nombre que verán los clientes.'
+    const name = checkName(form.displayName, 'Escribe el nombre que verán los clientes.')
+    if (name) next.displayName = name
     setErrors(next)
     if (Object.keys(next).length) return
     saving.run(() => saveProfile(email, { ...form, displayName: form.displayName.trim() }), { onDone: () => setSaved(true) })
@@ -85,7 +91,7 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
       </div>
       {errors.photo ? <FieldError className="mt-3">{errors.photo}</FieldError> : null}
 
-      <TextField className="mt-8 max-w-md" label="Nombre visible" value={form.displayName} onChange={(e) => change({ displayName: e.target.value })} error={errors.displayName} hint="Como te conocen los clientes, por ejemplo «Luis Ortega» o «Güero Ortega»." />
+      <TextField className="mt-8 max-w-md" label="Nombre visible" maxLength={LIMITS.name} value={form.displayName} onChange={(e) => change({ displayName: e.target.value })} error={errors.displayName} hint="Como te conocen los clientes, por ejemplo «Luis Ortega» o «Güero Ortega»." />
 
       <div className="mt-8">
         <p className="text-[15px] font-medium">Especialidades</p>
@@ -107,8 +113,10 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
           <TextField
             className="flex-1"
             label="Agregar especialidad"
+            maxLength={LIMITS.specialty}
             value={newSpecialty}
-            onChange={(e) => setNewSpecialty(e.target.value)}
+            error={errors.specialty}
+            onChange={(e) => { setNewSpecialty(e.target.value); setErrors((x) => ({ ...x, specialty: undefined })) }}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSpecialty() } }}
             placeholder="Por ejemplo: Fades"
           />
@@ -127,9 +135,11 @@ function ProfileForm({ email, profile }: { email: string; profile: EditableProfi
 const where = (req: MyRequest) => (req.branchName === req.businessName ? req.businessName : `${req.businessName}, sucursal ${req.branchName}`)
 
 // Business + branch pickers shared by "join" and "migrate".
-function RequestForm({ email, kind, excludeBusinessId, submitLabel }: { email: string; kind: 'ingreso' | 'migracion'; excludeBusinessId?: string | null; submitLabel: string }) {
-  const options = directory.filter((b) => b.id !== excludeBusinessId)
-  const [businessId, setBusinessId] = useState(options[0].id)
+// `rejectedBy`: the business that did not accept the last request, so the
+// form starts on another one (RF-W10); it can still be chosen again.
+function RequestForm({ email, kind, excludeBusinessId, rejectedBy, submitLabel }: { email: string; kind: 'ingreso' | 'migracion'; excludeBusinessId?: string | null; rejectedBy?: string; submitLabel: string }) {
+  const options = directory().filter((b) => b.id !== excludeBusinessId)
+  const [businessId, setBusinessId] = useState((options.find((b) => b.name !== rejectedBy) ?? options[0]).id)
   const business = options.find((b) => b.id === businessId)
   const [branchId, setBranchId] = useState(business?.branches[0]?.id ?? '')
   const sending = useAction({ busy: 'Enviando...', done: 'Solicitud enviada', failed: 'No se pudo enviar' })
@@ -195,11 +205,16 @@ function Migration({ me, email, store }: { me: StaffMember; email: string; store
                 Su Jefe no respondió en 7 días (venció el {longDate(expiresOn(req.sentOn))}). Puedes enviarla de nuevo o elegir otro negocio.
               </Note>
             </div>
+          ) : req?.kind === 'migracion' && req.status === 'rechazada' ? (
+            <div className="mt-4">
+              <StatusTag status={{ color: 'rojo', icon: 'cancelada', label: 'Rechazada' }} className="mb-2" />
+              <Note title={`${where(req)} no aceptó tu solicitud`}>Sigues trabajando aquí como siempre. Puedes enviar una solicitud a otro negocio.</Note>
+            </div>
           ) : null}
           <p className="mt-3 max-w-prose">
             Envía una solicitud al negocio al que te quieres cambiar. Si su Jefe la acepta, ya no se reservan nuevas citas contigo aquí y te cambias cuando termines tus citas. Si no responde en 7 días, la solicitud caduca.
           </p>
-          <RequestForm email={email} kind="migracion" excludeBusinessId={me.businessId} submitLabel="Solicitar migración" />
+          <RequestForm email={email} kind="migracion" excludeBusinessId={me.businessId} rejectedBy={req?.kind === 'migracion' && req.status === 'rechazada' ? req.businessName : undefined} submitLabel="Solicitar migración" />
         </>
       )}
     </section>
@@ -249,8 +264,14 @@ function Join({ email, store }: { email: string; store: StaffState }) {
         </div>
       ) : (
         <>
+          {req?.status === 'rechazada' ? (
+            <div className="mt-4">
+              <StatusTag status={{ color: 'rojo', icon: 'cancelada', label: 'Rechazada' }} className="mb-2" />
+              <Note title={`${where(req)} no aceptó tu solicitud`}>Puedes enviar una solicitud a otro negocio o a otra sucursal.</Note>
+            </div>
+          ) : null}
           <p className="mt-3 max-w-prose">Pide unirte a la sucursal donde trabajas. Su Jefe acepta tu solicitud y te asigna tu horario. También te puede invitar por correo.</p>
-          <RequestForm email={email} kind="ingreso" submitLabel="Enviar solicitud" />
+          <RequestForm email={email} kind="ingreso" rejectedBy={req?.status === 'rechazada' ? req.businessName : undefined} submitLabel="Enviar solicitud" />
         </>
       )}
     </section>

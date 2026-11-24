@@ -1,11 +1,21 @@
 // Products sold for pickup at each branch, the carts (one per branch, up to
-// 3), orders and loyalty points. In-memory stores for the demo; in production
-// the carts are kept in the client's account (RN-18).
+// 3), orders and loyalty points, in the database shared with the web panel
+// (frontend/shared/shop.ts). The carts are kept in the client's account
+// (RN-18); paying one creates the order the branch sees in the panel, and
+// what the branch does with it (ready, delivered, cancelled) shows up here.
 import { useEffect, useSyncExternalStore } from 'react';
-import { businesses, products as baseProducts } from './demo';
+import { sessionAccount } from '@shared/auth';
+import { dayMonth } from '@shared/effects';
+import { fromIso, fromIsoDateTime } from '@shared/dates';
+import * as sharedShop from '@shared/shop';
+import { getData, subscribe as onDataChange } from '@shared/store';
+import type { DemoData, Order as SharedOrder, PointsMovement as SharedPoints } from '@shared/types';
+import { MAX_CARTS as SHARED_MAX_CARTS, cartProblem, paymentProblem, pointsProblem, quantityProblem, type Problem } from '@shared/rules';
+import { ApiError } from '@shared/store';
+import { businesses, client, products as baseProducts } from './demo';
 import { getBranch } from './catalog';
 import { notificationStore } from './notifications';
-import { time } from '../theme/format';
+import { longDate, time } from '../theme/format';
 import type { Branch, Cart, CartItem, Order, Photo, PointsMovement, Product, StatusColor, StatusText } from '../types/domain';
 import type { PaymentResult } from '../services/payments';
 
@@ -39,17 +49,9 @@ const details: Record<string, ProductDetails> = {
   },
 };
 
-// Stock per branch (pieces). Los Compas centro uses the master-prompt counts.
-const stockByBranch: Record<string, Record<string, number>> = {
-  'los-compas-centro': { pomada: 14, aceite: 6, shampoo: 0, cera: 22 },
-  'los-compas-norte': { pomada: 3, cera: 5 },
-  'los-compas-sur': { pomada: 6, cera: 4 },
-  'navaja-fina': { aceite: 4, pomada: 8 },
-  'estudio-marisol': {},
-};
-
+// Stock per branch (pieces), as the panel last saved it.
 export function productsFor(branchId: string): Product[] {
-  const stock = stockByBranch[branchId] ?? {};
+  const stock = getData().stock[branchId] ?? {};
   return baseProducts
     .filter((p) => p.id in stock)
     .map((p) => ({ ...p, ...details[p.id], stock: stock[p.id], branchId }));
@@ -62,43 +64,69 @@ export const productLabel = (p: Pick<Product, 'name' | 'size'>) => (p.size ? `${
 export const pointsEarned = (amount: number) => Math.floor(amount / PESOS_PER_POINT_EARNED);
 
 // ------------------------------------------------------------------ store
-function createStore<T>(initial: T) {
-  let state = initial;
-  const listeners = new Set<() => void>();
+// A view of the shared data for the signed-in client. `set` saves the
+// client's carts in their account.
+function clientView<T>(build: (d: DemoData, email: string) => T, save?: (next: T) => void) {
+  let cache: { data: DemoData; email: string; value: T } | null = null;
+  const get = () => {
+    const data = getData();
+    if (!cache || cache.data !== data || cache.email !== client.email) cache = { data, email: client.email, value: build(data, client.email) };
+    return cache.value;
+  };
   return {
-    get: () => state,
-    set: (next: T | ((s: T) => T)) => { state = typeof next === 'function' ? (next as (s: T) => T)(state) : next; listeners.forEach((l) => l()); },
-    subscribe: (l: () => void) => { listeners.add(l); return () => listeners.delete(l); },
+    get,
+    set: (next: T | ((s: T) => T)) => save?.(typeof next === 'function' ? (next as (s: T) => T)(get()) : next),
+    subscribe: onDataChange,
   };
 }
 
 // RF-M09, RN-06: one cart per branch, at most 3 open at a time.
-export const MAX_CARTS = 3;
+export const MAX_CARTS = SHARED_MAX_CARTS;
+// The rules live in shared/rules.ts; here they are applied to the carts
+// until they move to the shared store (phase 4).
+function fail(p: Problem | null) {
+  if (p) throw new ApiError(p.code, p.message);
+}
 // RN-18: a cart without changes for 7 days is emptied.
 export const CART_DAYS = 7;
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
-const cartStore = createStore<Cart[]>([]);
+const cartStore = clientView<Cart[]>(
+  (d, email) => d.carts.filter((c) => c.clientEmail === email).map(({ branchId, items, updatedAt, warned }) => ({ branchId, items, updatedAt, ...(warned ? { warned } : {}) })),
+  (next) => {
+    try {
+      sharedShop.saveCarts(next, sessionAccount('app'));
+    } catch {
+      // Without a session there is no account to keep the carts in.
+    }
+  },
+);
 // status: pagado | listo | entregado | cancelado (RF-M11, RF-W20). The branch
 // changes it on the web and the app shows it in "Mis pedidos".
-const orderStore = createStore<Order[]>([
-  {
-    folio: 'P-2279', branchId: 'los-compas-centro', items: [{ productId: 'aceite', qty: 1, price: 190 }], total: 190, pointsUsed: 0,
-    status: 'listo', paymentRef: 'pi_3QIx4m2eZvKYlo2C0qW8dRtz', placedOn: 'martes 10 de noviembre',
-    timeline: [['pagado', 'martes 10 de noviembre, 6:12 pm'], ['listo', 'miércoles 11 de noviembre, 11:30 am']],
-  },
-  {
-    folio: 'P-2264', branchId: 'los-compas-centro', items: [{ productId: 'cera', qty: 1, price: 210 }], total: 137, pointsUsed: 73, placedOn: 'lunes 2 de noviembre',
-    status: 'entregado', paymentRef: 'pi_3QH8sK2eZvKYlo2C1aX4TbQe',
-    timeline: [['pagado', 'lunes 2 de noviembre, 12:14 pm'], ['listo', 'lunes 2 de noviembre, 1:02 pm'], ['entregado', 'martes 3 de noviembre, 6:40 pm']],
-  },
-  {
-    folio: 'P-2250', branchId: 'los-compas-norte', items: [{ productId: 'pomada', qty: 1, price: 230 }], total: 230, pointsUsed: 0, placedOn: 'sábado 24 de octubre',
-    status: 'cancelado', paymentRef: 'pi_3QDzRt2eZvKYlo2C0mN7wLsP', refund: { amount: 230, note: 'La sucursal se quedó sin pomada.' },
-    timeline: [['pagado', 'sábado 24 de octubre, 10:30 am'], ['cancelado', 'sábado 24 de octubre, 11:05 am']],
-  },
-]);
+const orderCards = new WeakMap<SharedOrder, Order>();
+const whenText = (at: string) => `${dayMonth(at.slice(0, 10))}, ${time(fromIsoDateTime(at))}`;
+function toAppOrder(o: SharedOrder): Order {
+  let out = orderCards.get(o);
+  if (!out) {
+    const total = o.items.reduce((s, i) => s + i.qty * i.price, 0) - o.discount;
+    out = {
+      folio: o.folio,
+      branchId: o.branchId,
+      items: o.items.map(({ productId, qty, price }) => ({ productId, qty, price })),
+      total,
+      pointsUsed: o.pointsUsed,
+      status: o.status,
+      paymentRef: o.paymentRef,
+      placedOn: longDate(fromIso(o.timeline[0][1].slice(0, 10))),
+      ...(o.refund ? { refund: { amount: o.refund.amount, note: o.refund.reason } } : {}),
+      timeline: o.timeline.map(([st, at]) => [st, whenText(at)] as [Order['status'], string]),
+    };
+    orderCards.set(o, out);
+  }
+  return out;
+}
+const orderStore = clientView<Order[]>((d, email) => d.orders.filter((o) => o.clientEmail === email).map(toAppOrder));
 
 // Open carts, oldest first. Every screen that shows them also empties the
 // ones that expired (the API does it in production).
@@ -136,14 +164,16 @@ export function orderStatusOf(order: Order): StatusText {
 // RF-M15, RN-09: points are earned per business (attended appointments and
 // purchases) and can only be spent on products of that same business.
 // Every movement is kept so the client can see where the balance comes from.
-const ledgerStore = createStore<PointsMovement[]>([
-  { id: 'm6', businessId: 'los-compas', points: 19, label: 'Compra, pedido P-2279', date: 'martes 10 de noviembre', route: '/pedido/P-2279' },
-  { id: 'm5', businessId: 'los-compas', points: 13, label: 'Compra, pedido P-2264', date: 'lunes 2 de noviembre', route: '/pedido/P-2264' },
-  { id: 'm4', businessId: 'los-compas', points: -73, label: 'Canjeaste en el pedido P-2264', date: 'lunes 2 de noviembre', route: '/pedido/P-2264' },
-  { id: 'm3', businessId: 'los-compas', points: 22, label: 'Fade, cita C-10431 atendida', date: 'sábado 31 de octubre', route: '/cita/C-10431' },
-  { id: 'm2', businessId: 'los-compas', points: 18, label: 'Corte clásico, cita C-10402 atendida', date: 'sábado 17 de octubre', route: '/cita/C-10402' },
-  { id: 'm1', businessId: 'los-compas', points: 28, label: 'Corte + barba, cita C-10318 atendida', date: 'sábado 12 de septiembre', route: '/cita/C-10318' },
-]);
+const pointCards = new WeakMap<SharedPoints, PointsMovement>();
+function toAppPoints(m: SharedPoints): PointsMovement {
+  let out = pointCards.get(m);
+  if (!out) {
+    out = { id: m.id, businessId: m.businessId, points: m.points, label: m.label, date: longDate(fromIso(m.on)), route: m.route };
+    pointCards.set(m, out);
+  }
+  return out;
+}
+const ledgerStore = clientView<PointsMovement[]>((d, email) => d.points.filter((m) => m.clientEmail === email).map(toAppPoints));
 
 export function usePointsLedger() {
   return useSyncExternalStore(ledgerStore.subscribe, ledgerStore.get, ledgerStore.get);
@@ -179,9 +209,10 @@ export const cart = {
   add(branchId: string, productId: string, qty = 1): 'added' | 'limit' | 'out-of-stock' {
     const list = cartStore.get();
     const current = list.find((c) => c.branchId === branchId);
-    if (!current && list.length >= MAX_CARTS) return 'limit';
+    if (cartProblem(list.map((c) => c.branchId), branchId)) return 'limit';
     const product = getProduct(branchId, productId);
     if (!product || product.stock <= 0) return 'out-of-stock';
+    if (!Number.isInteger(qty) || qty < 1) return 'added';
     const existing = current?.items.find((i) => i.productId === productId);
     const nextQty = Math.min(product.stock, (existing?.qty ?? 0) + qty);
     updateCart(branchId, (c) => ({
@@ -193,7 +224,11 @@ export const cart = {
     }));
     return 'added';
   },
+  // RN-07: whole pieces, never more than the branch has.
   setQty(branchId: string, productId: string, qty: number) {
+    const product = getProduct(branchId, productId);
+    if (!product) return;
+    if (quantityProblem(qty, product.stock)) qty = Math.max(0, Math.min(Math.floor(qty) || 0, product.stock));
     updateCart(branchId, (c) => {
       const items = c?.items ?? [];
       return {
@@ -304,40 +339,29 @@ export function seedDemoCarts(kind: 'uno' | 'tres') {
   ]);
 }
 
-let nextFolio = 2291;
-// RF-M10: pays one cart. Only that cart goes away; the others stay the same.
+// Checked before charging: stock (RN-07) and points of this business only,
+// never more than the balance or the purchase (RN-09). Throws an ApiError.
+export function checkOrder(summary: CartSummary) {
+  if (!summary.count) throw new ApiError('invalid', 'Tu carrito no tiene productos disponibles.');
+  summary.lines.forEach((l) => fail(quantityProblem(l.billedQty, getProduct(summary.branch.id, l.productId)?.stock ?? 0)));
+  fail(pointsProblem(summary.discount / PESOS_PER_POINT_SPENT, pointsAt(summary.branch.businessId), summary.subtotal));
+}
+
+// RF-M10: pays one cart. The shared store creates the order, lowers the
+// stock, moves the points of this business and empties only this cart; the
+// same payment never makes two orders (RN-20).
 export function createOrder(summary: CartSummary, payment: Extract<PaymentResult, { status: 'paid' }>) {
-  const folio = `P-${nextFolio}`;
-  nextFolio += 1;
   const billed = summary.lines.filter((l) => l.billedQty > 0);
-  orderStore.set((list) => [
-    {
-      folio,
-      branchId: summary.branch.id,
-      items: billed.map((l) => ({ productId: l.productId, qty: l.billedQty, price: l.product.price })),
-      total: summary.total,
-      pointsUsed: summary.discount / PESOS_PER_POINT_SPENT,
-      status: 'pagado',
-      paymentRef: payment.reference, // RN-17: only the Stripe transaction reference is kept
-      placedOn: 'jueves 12 de noviembre',
-      timeline: [['pagado', 'hoy, jueves 12 de noviembre, 10:04 am']],
-    },
-    ...list,
-  ]);
-  // RF-M15: redeemed points go down and the purchase earns new ones, both in this business.
-  const businessId = summary.branch.businessId;
-  const used = summary.discount / PESOS_PER_POINT_SPENT;
-  const moves: PointsMovement[] = [];
-  if (pointsEarned(summary.total)) moves.push({ id: `${folio}-gana`, businessId, points: pointsEarned(summary.total), label: `Compra, pedido ${folio}`, date: 'jueves 12 de noviembre', route: `/pedido/${folio}` });
-  if (used) moves.push({ id: `${folio}-canje`, businessId, points: -used, label: `Canjeaste en el pedido ${folio}`, date: 'jueves 12 de noviembre', route: `/pedido/${folio}` });
-  ledgerStore.set((l) => [...moves, ...l]);
-  // RF-W20, RN-07: stock goes down once the payment is confirmed.
-  billed.forEach((l) => {
-    const stock = stockByBranch[summary.branch.id];
-    stock[l.productId] = Math.max(0, stock[l.productId] - l.billedQty);
-  });
-  cart.empty(summary.branch.id);
-  return folio;
+  const order = sharedShop.placeOrder(
+    { branchId: summary.branch.id, items: billed.map((l) => ({ productId: l.productId, qty: l.billedQty })), pointsUsed: summary.discount / PESOS_PER_POINT_SPENT, paymentRef: payment.reference },
+    sessionAccount('app'),
+  );
+  return order.folio;
 }
 
 export const getOrder = (folio: string | undefined) => orderStore.get().find((o) => o.folio === folio);
+
+// Orders, points and carts belong to the signed-in client and are read for
+// their email, so there is nothing to load when the client changes. Kept
+// for data/session.ts.
+export function loadClientShop(_withSamples: boolean) {}

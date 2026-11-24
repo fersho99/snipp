@@ -5,6 +5,7 @@ import Screen from '../components/Screen';
 import Txt from '../components/Txt';
 import Button from '../components/Button';
 import ListRow from '../components/ListRow';
+import ResetDemo from '../components/ResetDemo';
 import { OfflineState, Skeleton } from '../components/States';
 import { TabBar } from '../components/Appointment';
 import useConnectivity from '../hooks/useConnectivity';
@@ -12,6 +13,7 @@ import { client } from '../data/demo';
 import { useAppointments } from '../data/appointments';
 import { pointBalances, useOrders, usePointsLedger } from '../data/shop';
 import { useNotifications } from '../data/notifications';
+import { signOut } from '../data/session';
 import { space } from '../theme/tokens';
 
 // Account tab: entry to profile, orders (RF-M11), points (RF-M15),
@@ -69,7 +71,8 @@ export default function Account() {
             <ListRow Icon={UserIcon} title="Editar perfil" detail="Nombre, teléfono y foto" onPress={() => router.push('/perfil')} last />
           </View>
 
-          <Button variant="link" label="Cerrar sesión" onPress={() => router.replace('/entrar')} style={{ marginTop: space.xl }} />
+          <Button variant="link" label="Cerrar sesión" onPress={() => { signOut(); router.replace('/entrar'); }} style={{ marginTop: space.xl }} />
+          <ResetDemo style={{ marginTop: space.l }} />
         </>
       )}
     </Screen>

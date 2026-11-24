@@ -35,6 +35,9 @@
       ]
     ],
     "scheme": "snipp",
-    "backgroundColor": "#FFFFFF"
+    "backgroundColor": "#FFFFFF",
+    "experiments": {
+      "baseUrl": "/app"
+    }
   }
 }

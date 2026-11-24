@@ -10,7 +10,7 @@ import { ConfirmSheet, ProductPhoto, QtyStepper, expiryStatus, piecesLabel } fro
 import { StatusLine, StatusNotice, TabBar } from '../components/Appointment';
 import useConnectivity from '../hooks/useConnectivity';
 import { getBusiness } from '../data/demo';
-import { cart, cartSummary, createOrder, getCart, pointsEarned, seedDemoCarts, useCarts } from '../data/shop';
+import { cart, cartSummary, checkOrder, createOrder, getCart, pointsEarned, seedDemoCarts, useCarts } from '../data/shop';
 import { declineMessage, payOrder } from '../services/payments';
 import useAction, { wait } from '../hooks/useAction';
 import { money } from '../theme/format';
@@ -169,11 +169,11 @@ function CartPage({ data, declineFirst, failEmpty }: { data: CartData; declineFi
   if (!s) return null;
   const { branch, expiry } = s;
   const business = getBusiness(branch.businessId);
-  const shortBusiness = business.name.replace('Barbería ', '');
 
   // RF-M10: only this cart is charged. The order is created and the cart
   // goes away once the green answer has been shown.
   const pay = () => payment.run(async () => {
+    checkOrder(s); // nothing is charged if the cart breaks a rule
     const r = await payOrder({ simulate: declineNext.current ? 'declined' : 'paid' });
     if (r.status === 'declined') {
       declineNext.current = false;
@@ -226,7 +226,7 @@ function CartPage({ data, declineFirst, failEmpty }: { data: CartData; declineFi
           {s.available && s.subtotal ? (
             <Pressable onPress={() => setUsePoints((v) => !v)} accessibilityRole="switch" accessibilityState={{ checked: usePoints }} style={styles.pointsRow}>
               <Txt variant="body" numeric style={{ flex: 1, fontFamily: font.bodyMedium }}>
-                Usar {s.usable} puntos de {shortBusiness}: {money(s.usable)} de descuento
+                Usar {s.usable} puntos de {business.name}: {money(s.usable)} de descuento
               </Txt>
               <Switch
                 value={usePoints}
@@ -249,7 +249,7 @@ function CartPage({ data, declineFirst, failEmpty }: { data: CartData; declineFi
           <Row label="Total" value={money(s.total)} strong />
           {s.total ? (
             <Txt variant="small" numeric style={{ marginTop: space.xs }}>
-              Con este pedido ganas {pointsEarned(s.total)} puntos en {shortBusiness}.
+              Con este pedido ganas {pointsEarned(s.total)} puntos en {business.name}.
             </Txt>
           ) : null}
         </View>

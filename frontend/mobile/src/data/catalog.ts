@@ -1,8 +1,16 @@
 // Branch profiles as the client app sees them: photos, hours, services,
-// professionals and reviews. Built on top of the shared sample data.
-import { DEMO_TODAY, employees, services } from './demo';
+// professionals and reviews. Everything but the photos comes from the data
+// shared with the web panel (frontend/shared/store.ts), so a branch, a
+// service or an Empleado the Jefe registers shows up here, and one the Jefe
+// deactivates goes away (RF-W05 to RF-W10, RN-14).
+import { dayMonth } from '@shared/effects';
+import { isPublished } from '@shared/feedback';
+import { businessVisible } from '@shared/rules';
+import { getData } from '@shared/store';
+import type { Branch as SharedBranch, DemoData } from '@shared/types';
+import { DEMO_TODAY, employees, liveList, services } from './demo';
 import { time } from '../theme/format';
-import type { Branch, DayHours, Employee, Service } from '../types/domain';
+import type { Branch, Employee, Service } from '../types/domain';
 
 const photo = {
   interior: require('../../assets/photos/barberia-interior.jpg'),
@@ -11,33 +19,15 @@ const photo = {
   frasco: require('../../assets/photos/producto-frasco.jpg'),
 };
 
-// Hours per weekday, 0 = domingo. null = closed. [open, close] in 24 h.
-const MON_SAT_10_20: DayHours[] = [null, [10, 20], [10, 20], [10, 20], [10, 20], [10, 20], [10, 18]];
-
-// What the web panel controls and the app must respect (RF-W07, RF-W09,
-// RF-W12, RF-W26, RF-W28, RN-13, RN-14). All active in the demo; change a
-// flag to see the item disappear from the app.
-export const businessStatus: Record<string, { subscription: 'activa' | 'prueba' | 'vencida'; suspended: boolean }> = {
-  'los-compas': { subscription: 'activa', suspended: false },
-  'estudio-marisol': { subscription: 'activa', suspended: false },
-  'navaja-fina': { subscription: 'prueba', suspended: false },
-};
-const inactiveBranches: string[] = []; // branch ids deactivated by their Jefe
-const inactiveServices: Record<string, string[]> = {}; // { branchId: [serviceId] }
-export const employeeStatus: Record<string, 'activo' | 'migracion-pendiente'> = { luis: 'activo', ramon: 'activo', oscar: 'activo', karla: 'activo', fernanda: 'activo', itzel: 'activo' }; // or 'migracion-pendiente'
-
 const svc = (ids: string[]): Service[] => ids.map((id) => services.find((s) => s.id === id)).filter((s): s is Service => !!s);
-const staff = (ids: string[]): Employee[] => ids.map((id) => employees.find((e) => e.id === id)).filter((e): e is Employee => !!e);
 
-export const branches: Branch[] = [
+// Photos and the rating before the demo of each sample branch. A branch
+// registered in the panel has no photos in the app yet (they are files of
+// that browser) and starts without rating.
+type AppExtras = Pick<Branch, 'id' | 'rating' | 'reviewCount' | 'cover' | 'coverFile' | 'gallery' | 'galleryFiles'>;
+const EXTRAS: AppExtras[] = [
   {
     id: 'los-compas-centro',
-    businessId: 'los-compas',
-    name: 'Barbería Los Compas',
-    kind: 'Barbería',
-    address: 'Av. Obregón y Calle 5',
-    neighborhood: 'Col. Centro',
-    phone: '653 534 2210',
     rating: 4.7,
     reviewCount: 212,
     cover: photo.interior,
@@ -46,25 +36,9 @@ export const branches: Branch[] = [
       { source: photo.fade, alt: 'Barbero haciendo un fade con máquina en la nuca de un cliente' },
       { source: photo.frasco, alt: 'Frasco de pomada sobre una piedra' },
     ],
-    description:
-      'Barbería de barrio desde 2014. Fades, cortes clásicos y arreglo de barba con toalla caliente. Hay café mientras esperas y estacionamiento en la Calle 5.',
-    hours: MON_SAT_10_20,
-    services: svc(['corte-clasico', 'fade', 'barba', 'corte-barba']),
-    staff: staff(['luis', 'ramon']),
-    reviews: [
-      { id: 'r1', author: 'Jorge Méndez', stars: 5, date: '4 de noviembre', service: 'Fade con Luis Ortega', text: 'Llegué a las 5:30 y a las 5:32 ya estaba en la silla. Luis dejó el fade parejo y me explicó cómo peinarlo en la casa.' },
-      { id: 'r2', author: 'Carlos Ríos', stars: 5, date: '1 de noviembre', service: 'Corte + barba con Ramón Cázares', text: 'Ramón trabaja la navaja con mucha calma. La barba me quedó definida sin irritación.' },
-      { id: 'r3', author: 'Daniela Paz', stars: 3, date: '28 de octubre', service: 'Corte clásico con Ramón Cázares', text: 'Buen corte, pero esperé 15 minutos aunque tenía cita a las 12:00.' },
-    ],
   },
   {
     id: 'los-compas-norte',
-    businessId: 'los-compas',
-    name: 'Los Compas Norte',
-    kind: 'Barbería',
-    address: 'Av. Libertad y Calle 32',
-    neighborhood: 'Col. Burócrata',
-    phone: '653 536 1184',
     rating: 4.5,
     reviewCount: 86,
     cover: photo.fade,
@@ -72,87 +46,86 @@ export const branches: Branch[] = [
       { source: photo.fade, alt: 'Barbero haciendo un fade con máquina en la nuca de un cliente' },
       { source: photo.interior, alt: 'Dos sillones de barbero de piel frente al espejo largo' },
     ],
-    description: 'La segunda sucursal de Los Compas, con los mismos precios. Más tranquila entre semana antes de las 4:00 pm.',
-    hours: MON_SAT_10_20,
-    services: svc(['corte-clasico', 'fade', 'barba', 'corte-barba']),
-    staff: staff(['oscar']), // each Empleado belongs to one branch (RF-W10)
-    reviews: [
-      { id: 'r4', author: 'Iván Soto', stars: 5, date: '6 de noviembre', service: 'Fade con Óscar Félix', text: 'Sin espera y el corte quedó igual que en la del centro.' },
-      { id: 'r5', author: 'Luz Gámez', stars: 4, date: '30 de octubre', service: 'Corte clásico con Óscar Félix', text: 'Le corté el pelo a mi hijo de 8 años. Mucha paciencia con él.' },
-    ],
-  },
-  {
-    // Demo branch with products, so a fourth cart can be tried (RF-M09 limit).
-    id: 'los-compas-sur',
-    businessId: 'los-compas',
-    name: 'Los Compas Sur',
-    kind: 'Barbería',
-    address: 'Av. Sinaloa y Calle 40',
-    neighborhood: 'Col. Industrial',
-    phone: '653 537 2045',
-    rating: null,
-    reviewCount: 0,
-    cover: photo.interior,
-    gallery: [{ source: photo.interior, alt: 'Dos sillones de barbero de piel frente al espejo largo' }],
-    description: 'La tercera sucursal de Los Compas, con los mismos precios. Abrió este mes.',
-    hours: MON_SAT_10_20,
-    services: svc(['corte-clasico', 'fade', 'barba']),
-    staff: [],
-    reviews: [],
   },
   {
     id: 'estudio-marisol',
-    businessId: 'estudio-marisol',
-    name: 'Estudio Marisol',
-    kind: 'Salón y uñas',
-    address: 'Calle 2 y Av. Madero',
-    neighborhood: 'Col. Centro',
-    phone: '653 534 0957',
     rating: 4.8,
     reviewCount: 143,
     cover: photo.unas,
     gallery: [{ source: photo.unas, alt: 'Manos con uñas recién arregladas sobre una mesa con esmaltes y lámpara' }],
-    description: 'Salón de color y uñas. Tintes, mechas y uñas acrílicas con cita. Para mechas, llega con el cabello sin lavar.',
-    hours: [null, [9, 19], [9, 19], [9, 19], [9, 19], [9, 19], [9, 15]],
-    services: svc(['tinte', 'mechas', 'unas']),
-    staff: staff(['karla', 'fernanda']),
-    reviews: [
-      { id: 'r6', author: 'Paola Robles', stars: 5, date: '7 de noviembre', service: 'Mechas con Karla Ruiz', text: 'Karla me hizo prueba de mechón antes de empezar. El tono quedó exacto al de la foto que le llevé.' },
-      { id: 'r7', author: 'Mariana León', stars: 5, date: '3 de noviembre', service: 'Uñas acrílicas con Fernanda Lugo', text: 'Me duraron tres semanas sin levantarse.' },
-    ],
   },
   {
     id: 'navaja-fina',
-    businessId: 'navaja-fina',
-    name: 'Navaja Fina',
-    kind: 'Barbería clásica',
-    address: 'Blvd. Juárez',
-    neighborhood: 'Col. Comercial',
-    phone: '653 535 7702',
     rating: null,
     reviewCount: 0,
     cover: null,
     coverFile: 'navaja-fina-portada.jpg',
     gallery: [],
     galleryFiles: ['navaja-fina-portada.jpg', 'navaja-fina-sillones.jpg'],
-    description: 'Barbería clásica con afeitado a navaja y toalla caliente. Abrió en SNIPP este mes.',
-    hours: [null, null, [11, 21], [11, 21], [11, 21], [11, 21], [11, 21]],
-    services: svc(['corte-clasico', 'barba', 'corte-barba']),
-    staff: [],
-    reviews: [],
   },
 ];
 
-// A branch shows in the app only if it is active and its business is not
-// suspended and has a paid subscription or trial.
+const hour = (hhmm: string) => Number(hhmm.split(':')[0]);
+const reviewDate = (on: string) => dayMonth(on);
+
+// The shared branch plus the photos. Reviews come from the shared data: one
+// removed by the Administrador leaves the list and the average (RF-W28), a
+// new one from the app joins them (RF-M12).
+function appBranch(d: DemoData, b: SharedBranch): Branch {
+  const extras = EXTRAS.find((x) => x.id === b.id);
+  const published = d.reviews.filter((r) => r.branchId === b.id && isPublished(r));
+  const fresh = published.filter((r) => r.id.startsWith('rv-'));
+  const removed = d.reviews.filter((r) => r.branchId === b.id && !isPublished(r) && !r.id.startsWith('rv-'));
+  const sum = (list: { stars: number }[]) => list.reduce((x, r) => x + r.stars, 0);
+  let rating: number | null;
+  let reviewCount: number;
+  if (extras?.rating != null) {
+    reviewCount = extras.reviewCount + fresh.length - removed.length;
+    rating = reviewCount ? Math.round(((extras.rating * extras.reviewCount + sum(fresh) - sum(removed)) / reviewCount) * 10) / 10 : null;
+  } else {
+    reviewCount = published.length;
+    rating = reviewCount ? Math.round((sum(published) / reviewCount) * 10) / 10 : null;
+  }
+  return {
+    cover: null,
+    gallery: [],
+    ...extras,
+    id: b.id,
+    rating,
+    reviewCount,
+    businessId: b.businessId,
+    name: b.name,
+    kind: d.businesses.find((x) => x.id === b.businessId)?.kind ?? '',
+    address: b.address,
+    neighborhood: b.neighborhood,
+    phone: b.phone,
+    description: b.description,
+    hours: b.hours.map((h) => (h ? [hour(h[0]), hour(h[1])] : null)),
+    // RN-14: inactive services are not offered.
+    services: svc(b.serviceIds.filter((id) => !b.inactiveServiceIds.includes(id))),
+    // Professionals clients can book: bookable and not leaving (RF-W10, RF-W12).
+    staff: d.employees
+      .filter((e) => e.branchId === b.id && e.bookable && e.status === 'activo')
+      .map((e) => employees.find((x) => x.id === e.id))
+      .filter((e): e is Employee => !!e),
+    reviews: [...published].sort((x, y) => y.on.localeCompare(x.on)).map((r) => ({ id: r.id, author: r.author, stars: r.stars, date: reviewDate(r.on), service: r.service, text: r.text })),
+  };
+}
+
+export const branches: Branch[] = liveList((d) => d.branches.map((b) => appBranch(d, b)));
+
+// RN-13, RF-W09: a branch shows in the app only if the Jefe has it active,
+// it offers something, and its business is not suspended and its
+// subscription or trial has not run out (the same rule the store uses to
+// reject a booking).
 export function isVisible(branch: Branch) {
-  const biz = businessStatus[branch.businessId];
-  return !inactiveBranches.includes(branch.id) && biz && !biz.suspended && biz.subscription !== 'vencida';
+  const shared = getData().branches.find((b) => b.id === branch.id);
+  return !!shared?.active && branch.services.length > 0 && businessVisible(getData().businesses.find((b) => b.id === branch.businessId), DEMO_TODAY);
 }
 
 // Services and professionals the client can book right now.
-export const activeServices = (branch: Branch) => branch.services.filter((s) => !(inactiveServices[branch.id] ?? []).includes(s.id));
-export const bookableStaff = (branch: Branch) => branch.staff.filter((e) => employeeStatus[e.id] === 'activo');
+export const activeServices = (branch: Branch) => branch.services;
+export const bookableStaff = (branch: Branch) => branch.staff;
 
 export const visibleBranches = () => branches.filter(isVisible);
 
@@ -162,17 +135,6 @@ export function branchOf(id: string): Branch {
   const b = getBranch(id);
   if (!b) throw new Error(`Missing branch ${id}`);
   return b;
-}
-
-// RF-M12: a new review goes first in the list and updates the average.
-export function addReview(branchId: string, review: Branch['reviews'][number]) {
-  const b = getBranch(branchId);
-  if (!b) return { rating: null, reviewCount: 0 };
-  const total = (b.rating ?? 0) * b.reviewCount + review.stars;
-  b.reviewCount += 1;
-  b.rating = Math.round((total / b.reviewCount) * 10) / 10;
-  b.reviews = [review, ...b.reviews];
-  return { rating: b.rating, reviewCount: b.reviewCount };
 }
 
 export const priceFrom = (branch: Branch) => Math.min(...activeServices(branch).map((s) => s.price));

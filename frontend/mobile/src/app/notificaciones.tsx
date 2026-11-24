@@ -19,6 +19,8 @@ const ICON = {
   reagendada: ArrowsClockwiseIcon,
   cancelacion: XCircleIcon,
   'pedido-listo': ShoppingBagIcon,
+  'pedido-cancelado': XCircleIcon,
+  reporte: BellIcon,
   'carrito-por-vaciar': ClockIcon,
   'carrito-vaciado': TrashIcon,
 };

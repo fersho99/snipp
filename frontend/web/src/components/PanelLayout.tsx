@@ -9,6 +9,7 @@ import { List, SignOut, X, type Icon } from '@phosphor-icons/react'
 import { Logo, Skeleton } from './ui'
 import SubscriptionNotice from './SubscriptionNotice'
 import PanelError from './PanelError'
+import ResetDemo from './ResetDemo'
 import { accounts, ROLE_LABEL } from '../data/demo'
 import { navFor } from '../data/nav'
 import { currentSession, devSignIn, type ApiError } from '../services/auth'
@@ -20,12 +21,18 @@ import { resetDemoBranches, useBusinessSetup } from '../services/branches'
 import { resetDemoStaff } from '../services/staff'
 import { resetDemoReports } from '../services/reports'
 import { resetDemoShop } from '../services/shop'
-import { applyLoadedSubscription, ensureBusiness, resetDemoSubscriptions, useSubscriptionsStore } from '../services/subscriptions'
+import { applyLoadedSubscription, resetDemoSubscriptions, useSubscriptionsStore } from '../services/subscriptions'
 import { getPickedBranch, loadPanel, setDemoEstado, setPickedBranch, signOut, subscriptionStatus } from '../services/panel'
 import type { Branch, Business, Session } from '../types/domain'
 
 // Screen index shortcut (development only): ?como=jefe | empleado | sin-negocio | admin
-const DEV_ACCOUNTS: Record<string, Session> = { admin: accounts[0], jefe: accounts[1], empleado: accounts[2], 'sin-negocio': accounts[3] }
+const byEmail = (email: string) => accounts.find((a) => a.email === email) as Session
+const DEV_ACCOUNTS: Record<string, Session> = {
+  admin: byEmail('admin@snipp.mx'),
+  jefe: byEmail('martin.salazar@loscompas.mx'),
+  empleado: byEmail('luis.ortega@gmail.com'),
+  'sin-negocio': byEmail('sofia.ramos@gmail.com'),
+}
 
 // Panel shell for the three roles (RF-W04): side menu with only the role's
 // sections, the Jefe's branch selector, and the subscription notices
@@ -51,7 +58,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   })
 
   const session = currentSession()
-  const setup = useBusinessSetup(session?.businessId ?? null, session?.business)
+  const setup = useBusinessSetup(session?.businessId ?? null)
   const reportStore = useReportsStore()
   const shopStore = useShopStore()
   const staffStore = useStaffStore()
@@ -72,7 +79,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     loadPanel(session)
       .then((loaded) => {
         if (loaded.business) {
-          ensureBusiness(loaded.business)
           applyLoadedSubscription(loaded.business.id, loaded.business.subscription)
         }
         setData(loaded)
@@ -99,7 +105,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   // The subscription lives in its own store so paying it (RF-W25) updates
   // the notices at once.
   const loadedBusiness = data?.business ?? null
-  const liveSub = loadedBusiness ? subs.businesses.find((b) => b.id === loadedBusiness.id)?.subscription : null
+  const liveBusiness = loadedBusiness ? subs.businesses.find((b) => b.id === loadedBusiness.id) : null
+  const liveSub = liveBusiness?.subscription
   const business = loadedBusiness ? { ...loadedBusiness, subscription: liveSub ?? loadedBusiness.subscription } : null
   const sub = business ? subscriptionStatus(business.subscription) : null
 
@@ -193,7 +200,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </div>
         ) : (
           <>
-            {business ? <SubscriptionNotice role={session.role} business={business} status={sub} /> : null}
+            {business ? <SubscriptionNotice role={session.role} business={business} status={sub} suspended={liveBusiness?.suspended} /> : null}
             <PanelContext.Provider value={{ session, business, activeBranch, branches, setup }}>{children}</PanelContext.Provider>
           </>
         )}
@@ -278,6 +285,7 @@ function Sidebar({ session, business, branches, activeBranch, onPickBranch, read
           <SignOut size={20} aria-hidden="true" />
           Cerrar sesión
         </button>
+        <ResetDemo className="-mx-3 px-3" />
       </div>
     </div>
   )
