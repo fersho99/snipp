@@ -6,7 +6,8 @@ import { Logo } from '../components/ui'
 import ResetDemo from '../components/ResetDemo'
 
 // Development index: every web screen and state, for review against the SRS.
-// Not part of the delivered platform: in production "/" opens Entrar.
+// Lives in /pantallas, not in "/" (which opens the panel). Not part of the
+// delivered platform: in production /pantallas opens Entrar.
 const SCREENS = [
   {
     group: 'Lote W1: acceso y registro',

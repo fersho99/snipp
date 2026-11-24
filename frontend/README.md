@@ -8,8 +8,10 @@
 cd frontend/mobile && npm install
 cd ../web && npm install
 npm run app        # exporta la app a web/public/app
-npm run dev        # app en http://localhost:3000/app, panel en http://localhost:3000/entrar
+npm run dev        # app en http://localhost:3000/app, panel en http://localhost:3000
 ```
+
+Las dos abren el flujo real: sin sesión piden entrar, y con sesión abren Inicio (app) o el panel de esa cuenta. El índice con cada pantalla y cada estado está aparte, en `/pantallas`, solo en desarrollo.
 
 Cuentas de prueba:
 
@@ -39,7 +41,7 @@ npx expo start --web    # vista previa en el navegador, en una columna de 390 px
 npm run typecheck       # TypeScript estricto, sin generar archivos
 ```
 
-En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`). Solo existe en desarrollo; la APK abre directo en "Entrar".
+La app abre en Inicio, y sin sesión pide entrar. En `/pantallas` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`). Solo existe en desarrollo; en la APK manda a "Entrar".
 
 Cuentas de cliente (contraseña `compas2025`):
 - `andrea.valenzuela@gmail.com` (Andrea Valenzuela): con citas, pedidos y puntos
@@ -57,7 +59,7 @@ npm run lint       # ESLint
 npm run typecheck  # TypeScript
 ```
 
-En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`); en producción `/` abre "Entrar".
+`/` abre el panel de la cuenta con sesión, y sin sesión manda a "Entrar". En `/pantallas` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`); en producción `/pantallas` abre "Entrar".
 
 Cuentas de demostración (contraseña `snipp2026` para todas):
 
@@ -73,7 +75,7 @@ Cuentas de demostración (contraseña `snipp2026` para todas):
 
 Las contraseñas se guardan solo como hash SHA-256 con sal (`shared/auth.ts`). El registro de Jefe (con su negocio y el mes de prueba) y el de Empleado crean cuentas de verdad. Cada rol ve solo sus secciones; otra sección muestra "No tienes acceso a esta sección". La sesión del panel se guarda en `localStorage` (todas las pestañas la comparten) y dura 8 horas.
 
-En el índice de desarrollo, `/panel?como=jefe|empleado|sin-negocio|admin` abre el panel con esa cuenta sin escribir la contraseña (solo en `npm run dev`).
+En el índice de desarrollo (`/pantallas`), `/panel?como=jefe|empleado|sin-negocio|admin` abre el panel con esa cuenta sin escribir la contraseña (solo en `npm run dev`).
 
 La estructura de carpetas de la web está en [`web/README.md`](web/README.md).
 
@@ -84,10 +86,10 @@ La app y el panel leen la misma base de datos simulada, guardada en el `localSto
 ```bash
 cd frontend/web
 npm run app        # exporta la app (Expo web) a web/public/app; repetir tras cambiar la app
-npm run dev        # app en http://localhost:3000/app, panel en http://localhost:3000/panel
+npm run dev        # app en http://localhost:3000/app, panel en http://localhost:3000
 ```
 
-Una cita reservada en `/app` aparece en la agenda del panel, y un cambio hecho en el panel aparece en la app; todo sobrevive a recargar. "Reiniciar datos de demo" (índice de desarrollo, menú del panel y Cuenta en la app) vuelve a los datos de ejemplo. La app en `localhost:8081` o en Android tiene su propia copia en memoria y no se cruza con la web hasta que exista la API.
+Una cita reservada en `/app` aparece en la agenda del panel, y un cambio hecho en el panel aparece en la app; todo sobrevive a recargar. "Reiniciar datos de demo" (índice de desarrollo en `/pantallas`, menú del panel y Cuenta en la app) vuelve a los datos de ejemplo. La app en `localhost:8081` o en Android tiene su propia copia en memoria y no se cruza con la web hasta que exista la API.
 
 `frontend/shared/` tiene:
 
@@ -241,7 +243,7 @@ Las fotos de los profesionales se muestran como bloques con el nombre del archiv
 | Reserva (servicio, profesional, fecha y hora, confirmación) | `/reservar?sucursal=los-compas-centro` | horarios cargando, el horario se ocupa al confirmar, sucursal sin profesionales (`navaja-fina`), sin conexión |
 | Cita reservada | `/reserva-confirmada` | nota para la sucursal, abrir calendario |
 
-Se puede entrar a cualquier paso con `&servicio=fade&profesional=luis&fecha=2025-11-20&hora=17:30` (ver el índice en `/`).
+Se puede entrar a cualquier paso con `&servicio=fade&profesional=luis&fecha=2025-11-20&hora=17:30` (ver el índice en `/pantallas`).
 
 Composición:
 - Sin stepper: arriba se arma la frase de la cita ("Fade con Luis Ortega, jueves 20 de noviembre a las 5:30 pm"); cada parte va subrayada en terracota y al tocarla regresa a ese paso.

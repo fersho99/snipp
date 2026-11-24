@@ -1,6 +1,8 @@
-import DevIndex from '@/screens/DevIndex'
+import { redirect } from 'next/navigation'
 
-// Screen index (development only; in production it sends to /entrar).
+// "/" opens the panel: with a session it shows the panel of that account,
+// without one the panel sends to Entrar. The index of every screen is in
+// /pantallas (development only).
 export default function Page() {
-  return <DevIndex />
+  redirect('/panel')
 }

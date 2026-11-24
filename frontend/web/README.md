@@ -4,7 +4,7 @@ Panel para Jefe, Empleado y Administrador: Next.js 16 (App Router) + TypeScript 
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000 ; en "/" está el índice de pantallas y estados
+npm run dev        # http://localhost:3000 abre el panel (sin sesión, Entrar); en "/pantallas" está el índice de pantallas y estados
 npm run build      # compila para producción
 npm run lint       # ESLint con la configuración de Next
 npm run typecheck  # TypeScript estricto, sin generar archivos
