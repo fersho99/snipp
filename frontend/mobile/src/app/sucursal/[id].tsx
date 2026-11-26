@@ -20,7 +20,7 @@ const STAFF_PHOTO = 132;
 // Branch profile: full-width gallery, name, today's hours, services as a
 // typographic list, professionals, recent reviews and a pinned "Reservar".
 // States: ?estado=cargando | error | sin-resenas | sin-conexion
-// navaja-fina has no reviews, no photos and no staff profiles yet.
+// navaja-fina has no reviews and no staff profiles yet.
 export default function BranchProfile() {
   const { id, estado } = useLocalSearchParams<{ id?: string; estado?: string }>();
   const { online, failure, retry, retrying } = useConnectivity(estado === 'error' ? 'error-servidor' : estado);

@@ -17,6 +17,11 @@ const photo = {
   fade: require('../../assets/photos/trabajo-fade.jpg'),
   unas: require('../../assets/photos/unas.jpg'),
   frasco: require('../../assets/photos/producto-frasco.jpg'),
+  extensiones: require('../../assets/photos/estudio-marisol-extensiones.jpg'),
+  navajaFina: require('../../assets/photos/navaja-fina-portada.jpg'),
+  sillones: require('../../assets/photos/navaja-fina-sillones.jpg'),
+  elFaro: require('../../assets/photos/el-faro-portada.jpg'),
+  unasCoral: require('../../assets/photos/unas-coral-portada.jpg'),
 };
 
 const svc = (ids: string[]): Service[] => ids.map((id) => services.find((s) => s.id === id)).filter((s): s is Service => !!s);
@@ -24,7 +29,7 @@ const svc = (ids: string[]): Service[] => ids.map((id) => services.find((s) => s
 // Photos and the rating before the demo of each sample branch. A branch
 // registered in the panel has no photos in the app yet (they are files of
 // that browser) and starts without rating.
-type AppExtras = Pick<Branch, 'id' | 'rating' | 'reviewCount' | 'cover' | 'coverFile' | 'gallery' | 'galleryFiles'>;
+type AppExtras = Pick<Branch, 'id' | 'rating' | 'reviewCount' | 'cover' | 'gallery'>;
 const EXTRAS: AppExtras[] = [
   {
     id: 'los-compas-centro',
@@ -52,16 +57,34 @@ const EXTRAS: AppExtras[] = [
     rating: 4.8,
     reviewCount: 143,
     cover: photo.unas,
-    gallery: [{ source: photo.unas, alt: 'Manos con uñas recién arregladas sobre una mesa con esmaltes y lámpara' }],
+    gallery: [
+      { source: photo.unas, alt: 'Manos con uñas recién arregladas sobre una mesa con esmaltes y lámpara' },
+      { source: photo.extensiones, alt: 'Manos colocando extensiones en un chongo de cabello rubio' },
+    ],
   },
   {
     id: 'navaja-fina',
     rating: null,
     reviewCount: 0,
-    cover: null,
-    coverFile: 'navaja-fina-portada.jpg',
-    gallery: [],
-    galleryFiles: ['navaja-fina-portada.jpg', 'navaja-fina-sillones.jpg'],
+    cover: photo.navajaFina,
+    gallery: [
+      { source: photo.navajaFina, alt: 'Barbería de madera oscura con sillones de piel y repisas de productos' },
+      { source: photo.sillones, alt: 'Fila de sillones de barbero negros frente a espejos con marco de madera' },
+    ],
+  },
+  {
+    id: 'el-faro',
+    rating: null,
+    reviewCount: 0,
+    cover: photo.elFaro,
+    gallery: [{ source: photo.elFaro, alt: 'Sillón de barbero negro frente a una pared de ladrillo con espejos' }],
+  },
+  {
+    id: 'unas-coral',
+    rating: null,
+    reviewCount: 0,
+    cover: photo.unasCoral,
+    gallery: [{ source: photo.unasCoral, alt: 'Tres frascos de esmalte en tonos coral escurriendo sobre un bloque blanco' }],
   },
 ];
 

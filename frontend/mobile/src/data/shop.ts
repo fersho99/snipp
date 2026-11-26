@@ -19,7 +19,7 @@ import { longDate, time } from '../theme/format';
 import type { Branch, Cart, CartItem, Order, Photo, PointsMovement, Product, StatusColor, StatusText } from '../types/domain';
 import type { PaymentResult } from '../services/payments';
 
-type ProductDetails = { photo?: Photo; photoFile?: string; description: string; howTo: string };
+type ProductDetails = { photo?: Photo; description: string; howTo: string };
 
 // Loyalty rules set by each business (web batch W8): $10 in products = 1
 // point, 1 point = $1 off products of that same business.
@@ -33,17 +33,17 @@ const details: Record<string, ProductDetails> = {
     howTo: 'Toma una cantidad del tamaño de un chícharo, frótala entre las manos y aplícala con el cabello seco.',
   },
   aceite: {
-    photoFile: 'aceite-para-barba.jpg',
+    photo: require('../../assets/photos/aceite-para-barba.jpg'),
     description: 'Suaviza la barba y quita la comezón de las primeras semanas. Aroma a cedro.',
     howTo: 'De 3 a 4 gotas después de bañarte, de la raíz a las puntas.',
   },
   shampoo: {
-    photoFile: 'shampoo-matizador.jpg',
+    photo: require('../../assets/photos/shampoo-matizador.jpg'),
     description: 'Neutraliza el tono amarillo en canas y cabello decolorado.',
     howTo: 'Úsalo una o dos veces por semana; déjalo 3 minutos antes de enjuagar.',
   },
   cera: {
-    photoFile: 'cera-fijacion-media.jpg',
+    photo: require('../../assets/photos/cera-fijacion-media.jpg'),
     description: 'Para peinados con textura que puedes rehacer durante el día.',
     howTo: 'Calienta un poco entre los dedos y peina en seco o con el cabello húmedo.',
   },

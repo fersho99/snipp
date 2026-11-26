@@ -33,8 +33,3 @@ export function minutes(total: number) {
   const m = total % 60;
   return m ? `${h} h ${m} min` : `${h} h`;
 }
-
-// Expected photo filename for a person: "Ramón Cázares" -> "ramon-cazares.jpg".
-export function photoFile(name: string) {
-  return `${name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-')}.jpg`;
-}
