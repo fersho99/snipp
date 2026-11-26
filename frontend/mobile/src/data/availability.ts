@@ -112,6 +112,16 @@ export function dayStatus(branch: Branch, employeeId: string | null | undefined,
   return slotsFor(branch, employeeId, serviceId, date, durationMinutes, ignoreFolio).length ? 'open' : 'full';
 }
 
+// First day from today with free slots, so the calendar opens already showing
+// hours; null when nothing is free until the last bookable date.
+export function firstOpenDay(branch: Branch, employeeId: string | null | undefined, serviceId: string, durationMinutes: number, ignoreFolio?: string) {
+  const end = lastBookableDate();
+  for (let d = today(); d <= end; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+    if (dayStatus(branch, employeeId, serviceId, d, durationMinutes, ignoreFolio) === 'open') return d;
+  }
+  return null;
+}
+
 // Human explanation of what was removed from the grid.
 export function blocksNote(employeeId: string | null | undefined, date: Date) {
   // A whole day off is not offered at all, so there is nothing to explain.

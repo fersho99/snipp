@@ -13,7 +13,7 @@ import { activeServices, bookableStaff, getBranch, isVisible, branches } from '.
 import { appointmentStore } from '../data/appointments';
 import { notificationStore } from '../data/notifications';
 import { employees, services } from '../data/demo';
-import { blocksNote, fromHhmm, fromIso, groupSlots, iso, lastBookableDate, minutesLabel, slotsFor, staffFor } from '../data/availability';
+import { blocksNote, dayStatus, firstOpenDay, fromHhmm, fromIso, groupSlots, iso, lastBookableDate, minutesLabel, slotsFor, staffFor } from '../data/availability';
 import { longDate, minutes, money, shortDate } from '../theme/format';
 import { color, font, radius, space, touch } from '../theme/tokens';
 
@@ -39,13 +39,31 @@ export default function Booking() {
   const bookable = isVisible(found) && branch.staff.length > 0;
   const { online, failure, retry, retrying } = useConnectivity(p.estado);
 
+  // The day to show when the calendar opens: the one already chosen if it
+  // still has free hours for this service and professional, otherwise the
+  // first day that has them, so the hours show without another tap.
+  const dayFor = (current: Date | null, employee: string, svc: string) => {
+    const minutesOfService = services.find((s) => s.id === svc)?.minutes ?? 45;
+    if (current && dayStatus(branch, employee, svc, current, minutesOfService) === 'open') return current;
+    return firstOpenDay(branch, employee, svc, minutesOfService);
+  };
+
   const [serviceId, setServiceId] = useState<string | null>(p.servicio ?? null);
-  const [pro, setPro] = useState<string | null>(p.profesional ?? null);
-  const [date, setDate] = useState<Date | null>(p.fecha ? fromIso(p.fecha) : null);
+  // A service that only one professional does comes with that professional.
+  const onlyPro = (svc: string | undefined) => {
+    const able = svc ? staffFor(branch, svc) : [];
+    return able.length === 1 ? able[0].id : null;
+  };
+  const [pro, setPro] = useState<string | null>(() => p.profesional ?? onlyPro(p.servicio));
+  const [date, setDate] = useState<Date | null>(() => {
+    if (p.fecha) return fromIso(p.fecha);
+    const who = p.profesional ?? onlyPro(p.servicio);
+    return who && p.servicio ? dayFor(null, who, p.servicio) : null;
+  });
   const [slot, setSlot] = useState<LabeledSlot | null>(null);
   const [step, setStep] = useState<Step>(() => {
     if (p.hora) return 'confirmar';
-    if (p.profesional && p.servicio) return 'fecha';
+    if (p.servicio && (p.profesional || onlyPro(p.servicio))) return 'fecha';
     if (p.servicio) return 'profesional';
     return 'servicio';
   });
@@ -92,7 +110,8 @@ export default function Booking() {
   // ----- navigation between steps
   const goBack = () => {
     if (step === 'confirmar') setStep('fecha');
-    else if (step === 'fecha') setStep('profesional');
+    // When only one professional does the service, that step was skipped.
+    else if (step === 'fecha') setStep(service && staffFor(branch, service.id).length === 1 ? 'servicio' : 'profesional');
     else if (step === 'profesional') setStep('servicio');
     else if (router.canGoBack()) router.back();
     else router.replace('/inicio');
@@ -101,8 +120,14 @@ export default function Booking() {
   const pickService = (id: string) => {
     setServiceId(id);
     setSlot(null);
-    // With a professional already chosen who does this service, go straight to the day.
-    if (pro && staffFor(branch, id).some((e) => e.id === pro)) return setStep('fecha');
+    // Straight to the day when the professional is already known: chosen
+    // before and doing this service, or the only one who does it.
+    const known = pro && staffFor(branch, id).some((e) => e.id === pro) ? pro : onlyPro(id);
+    if (known) {
+      setPro(known);
+      setDate((d) => dayFor(d, known, id));
+      return setStep('fecha');
+    }
     setPro(null);
     setStep('profesional');
   };
@@ -110,6 +135,7 @@ export default function Booking() {
   const pickPro = (id: string) => {
     setPro(id);
     setSlot(null);
+    if (serviceId) setDate((d) => dayFor(d, id, serviceId));
     setStep('fecha');
   };
 
