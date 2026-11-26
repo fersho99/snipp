@@ -10,7 +10,7 @@ import useConnectivity from '../../hooks/useConnectivity';
 import { CANCEL_HOURS, appointmentStore, describe, useAppointment } from '../../data/appointments';
 import { getEmployee } from '../../data/demo';
 import { fromIso, minutesLabel } from '../../data/availability';
-import { longDate, money, photoFile } from '../../theme/format';
+import { longDate, money } from '../../theme/format';
 import { color, font, space } from '../../theme/tokens';
 
 // The business changed professional, date or time. The client accepts,
@@ -145,7 +145,7 @@ function Person({ label, name, specialty, struck }: { label: string; name: strin
   return (
     <View style={styles.person}>
       <Txt variant="small">{label}</Txt>
-      <PhotoPlaceholder compact filename={photoFile(name)} style={styles.personPhoto} />
+      <PhotoPlaceholder compact name={name} style={styles.personPhoto} />
       <Txt
         variant="body"
         style={[{ fontFamily: font.bodySemi }, struck && { textDecorationLine: 'line-through', color: color.inkSoft, fontFamily: font.body }]}

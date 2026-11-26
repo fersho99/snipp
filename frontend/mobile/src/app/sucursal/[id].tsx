@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { CaretDownIcon, CaretUpIcon, MapPinIcon, PhoneIcon } from 'phosphor-react-native';
+import { CaretDownIcon, CaretRightIcon, CaretUpIcon, MapPinIcon, PhoneIcon } from 'phosphor-react-native';
 import Screen, { BackButton } from '../../components/Screen';
 import Txt from '../../components/Txt';
 import Button from '../../components/Button';
@@ -44,12 +44,17 @@ export default function BranchProfile() {
   const reviews = estado === 'sin-resenas' ? [] : branch.reviews;
   const cheapest = cheapestService(branch);
   const photos = branch.gallery.length ? branch.gallery : null;
+  // RF-M06: booking needs a professional; without one there is nothing to book.
+  const canBook = branch.staff.length > 0;
+  // Opens the booking with what the client already tapped here.
+  const book = (pick: { servicio?: string; profesional?: string } = {}) =>
+    router.push({ pathname: '/reservar', params: { sucursal: branch.id, ...pick } });
 
   return (
     <Screen
       padded={false}
       footer={
-        branch.staff.length ? (
+        canBook ? (
           <View style={styles.footer}>
             <View style={{ flex: 1 }}>
               <Txt variant="small">{branch.services.length} servicios</Txt>
@@ -57,7 +62,7 @@ export default function BranchProfile() {
             </View>
             <Button
               label="Reservar"
-              onPress={() => router.push({ pathname: '/reservar', params: { sucursal: branch.id } })}
+              onPress={() => book()}
               style={{ minWidth: 160 }}
             />
           </View>
@@ -93,7 +98,7 @@ export default function BranchProfile() {
         </View>
       ) : (
         <View style={styles.padded}>
-          <PhotoPlaceholder filename={branch.galleryFiles?.join(', ')} style={{ height: Math.round(frameWidth * 0.55) }} />
+          <PhotoPlaceholder style={{ height: Math.round(frameWidth * 0.55) }} />
         </View>
       )}
 
@@ -141,20 +146,40 @@ export default function BranchProfile() {
           </View>
         </View>
 
-        {/* Services: name and duration left, tabular price right. No dividers. */}
+        {/* Services: name and duration left, tabular price right. No dividers.
+            Tapping one starts the booking with that service already chosen. */}
         <Txt variant="title" accessibilityRole="header" style={styles.section}>
           {branch.services.length} servicios
         </Txt>
-        <View style={{ marginTop: space.m, gap: space.l }}>
-          {branch.services.map((s) => (
-            <View key={s.id} style={styles.serviceRow} accessible accessibilityLabel={`${s.name}, ${minutes(s.minutes)}, ${money(s.price)}`}>
-              <View style={{ flex: 1 }}>
-                <Txt variant="body" style={{ fontFamily: font.bodyMedium }}>{s.name}</Txt>
-                <Txt variant="small" numeric>{minutes(s.minutes)}</Txt>
+        {canBook ? <Txt variant="small" style={{ marginTop: space.xs }}>Toca un servicio para reservarlo.</Txt> : null}
+        <View style={{ marginTop: space.s }}>
+          {branch.services.map((s) => {
+            const row = (
+              <>
+                <View style={{ flex: 1 }}>
+                  <Txt variant="body" style={{ fontFamily: font.bodyMedium }}>{s.name}</Txt>
+                  <Txt variant="small" numeric>{minutes(s.minutes)}</Txt>
+                </View>
+                <Txt variant="body" numeric style={{ fontFamily: font.bodyMedium }}>{money(s.price)}</Txt>
+              </>
+            );
+            return canBook ? (
+              <Pressable
+                key={s.id}
+                onPress={() => book({ servicio: s.id })}
+                accessibilityRole="button"
+                accessibilityLabel={`Reservar ${s.name}, ${minutes(s.minutes)}, ${money(s.price)}`}
+                style={({ pressed }) => [styles.serviceRow, styles.serviceTap, pressed && { backgroundColor: color.sunken }]}
+              >
+                {row}
+                <CaretRightIcon size={18} color={color.inkSoft} />
+              </Pressable>
+            ) : (
+              <View key={s.id} style={[styles.serviceRow, styles.serviceTap]} accessible accessibilityLabel={`${s.name}, ${minutes(s.minutes)}, ${money(s.price)}`}>
+                {row}
               </View>
-              <Txt variant="body" numeric style={{ fontFamily: font.bodyMedium }}>{money(s.price)}</Txt>
-            </View>
-          ))}
+            );
+          })}
         </View>
         <Txt variant="small" style={{ marginTop: space.l }}>Las citas se pagan en la sucursal.</Txt>
       </View>
@@ -183,16 +208,20 @@ export default function BranchProfile() {
       </View>
       {branch.staff.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.staffList}>
-          {branch.staff.map((e) => {
-            const file = `${e.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-')}.jpg`;
-            return (
-              <View key={e.id} style={{ width: STAFF_PHOTO }}>
-                <PhotoPlaceholder filename={file} style={{ width: STAFF_PHOTO, height: STAFF_PHOTO * 1.2, padding: space.s }} />
-                <Txt variant="label" style={{ marginTop: space.s }}>{e.name}</Txt>
-                <Txt variant="small">{e.specialty}</Txt>
-              </View>
-            );
-          })}
+          {branch.staff.map((e) => (
+            <Pressable
+              key={e.id}
+              onPress={() => book({ profesional: e.id })}
+              accessibilityRole="button"
+              accessibilityLabel={`Reservar con ${e.name}, ${e.specialty}`}
+              style={({ pressed }) => [{ width: STAFF_PHOTO }, pressed && { opacity: 0.7 }]}
+            >
+              <PhotoPlaceholder name={e.name} style={{ width: STAFF_PHOTO, height: STAFF_PHOTO * 1.2, padding: space.s }} />
+              <Txt variant="label" style={{ marginTop: space.s }}>{e.name}</Txt>
+              <Txt variant="small">{e.specialty}</Txt>
+              <Txt variant="small" style={styles.bookWith}>Reservar</Txt>
+            </Pressable>
+          ))}
         </ScrollView>
       ) : (
         <Txt variant="bodySoft" style={[styles.padded, { marginTop: space.s }]}>
@@ -274,6 +303,8 @@ const styles = StyleSheet.create({
   contactRow: { flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: 40 },
   section: { marginTop: space.xxxl },
   serviceRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: space.l },
+  serviceTap: { alignItems: 'center', minHeight: touch + 8, marginHorizontal: -space.s, paddingHorizontal: space.s, borderRadius: radius.control },
+  bookWith: { marginTop: space.xs, color: color.ink, textDecorationLine: 'underline' },
   staffList: { paddingHorizontal: space.xl, gap: space.l, marginTop: space.l },
   reviewHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   footer: { flexDirection: 'row', alignItems: 'center', gap: space.l },

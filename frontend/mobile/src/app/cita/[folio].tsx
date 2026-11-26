@@ -13,7 +13,7 @@ import useConnectivity from '../../hooks/useConnectivity';
 import { CANCEL_HOURS, NOW_NEAR_C10482, appointmentStore, canReport, canReview, changeWindow, describe, reportStatusOf, statusOf, useAppointment } from '../../data/appointments';
 import { notificationStore } from '../../data/notifications';
 import { DEMO_TODAY, getEmployee } from '../../data/demo';
-import { money, photoFile } from '../../theme/format';
+import { money } from '../../theme/format';
 import { color, font, radius, sheetShadow, space, touch } from '../../theme/tokens';
 import type { Appointment } from '../../types/domain';
 import { DoneNote } from '../../components/Done';
@@ -82,7 +82,7 @@ export default function AppointmentDetail() {
       <View style={styles.section}>
         <Txt variant="small">Te atiende</Txt>
         <View style={styles.person}>
-          <PhotoPlaceholder compact filename={photoFile(d.employee.name)} style={styles.personPhoto} />
+          <PhotoPlaceholder compact name={d.employee.name} style={styles.personPhoto} />
           <View style={{ flex: 1 }}>
             <Txt variant="body" style={{ fontFamily: font.bodySemi }}>{d.employee.name}</Txt>
             <Txt variant="small">{d.employee.specialty}</Txt>
