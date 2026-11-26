@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import type { DimensionValue, StyleProp, ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ExclamationMarkIcon, HourglassIcon, WarningCircleIcon, WifiSlashIcon, XIcon } from 'phosphor-react-native';
+import { ExclamationMarkIcon, HourglassIcon, ImageIcon, WarningCircleIcon, WifiSlashIcon, XIcon } from 'phosphor-react-native';
 import Txt from './Txt';
 import Button from './Button';
 import { TabBar } from './Appointment';
@@ -117,13 +117,20 @@ export function Skeleton({ width = '100%', height = 16, radius: r = 6, style }: 
   return <Animated.View style={[{ width, height, borderRadius: r, backgroundColor: color.sunken, opacity }, style]} />;
 }
 
-// Stand-in for a photo that has not been provided yet: sunken block with the
-// expected filename, never a generic illustration.
-// `compact` shrinks the label for thumbnails under ~80 px.
-export function PhotoPlaceholder({ filename, style, compact }: { filename?: string; style?: StyleProp<ViewStyle>; compact?: boolean }) {
+// Stand-in for a photo that has not been provided yet: a sunken block with
+// the person's initials (`name`) or, for a place or a product, a quiet photo
+// icon. The client never sees a file name.
+// `compact` shrinks it for thumbnails under ~80 px.
+export function PhotoPlaceholder({ name, style, compact }: { name?: string; style?: StyleProp<ViewStyle>; compact?: boolean }) {
+  const initials = name?.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
   return (
-    <View style={[styles.placeholder, style]}>
-      <Txt variant="small" numeric style={[{ textAlign: 'center' }, compact && { fontSize: 11, lineHeight: 14 }]}>{filename}</Txt>
+    // Decorative: the name is already written next to it.
+    <View style={[styles.placeholder, style]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      {initials ? (
+        <Txt variant={compact ? 'label' : 'title'} style={{ color: color.inkSoft }}>{initials}</Txt>
+      ) : (
+        <ImageIcon size={compact ? 20 : 32} color={color.inkSoft} />
+      )}
     </View>
   );
 }

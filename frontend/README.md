@@ -234,7 +234,7 @@ Composición:
 
 Datos que se agregaron (no venían en el prompt maestro y se pueden cambiar en `src/data/catalog.ts`): colonias de Los Compas Norte y Navaja Fina, teléfonos, distancias, calificaciones (Los Compas 4.7 de 212 reseñas, Norte 4.5 de 86, Estudio Marisol 4.8 de 143, Navaja Fina sin reseñas), horarios, qué servicios y qué profesionales hay en cada sucursal, y los textos de las reseñas.
 
-Las fotos de los profesionales se muestran como bloques con el nombre del archivo esperado (`luis-ortega.jpg`, etc.) hasta que haya fotos reales.
+Mientras no haya fotos reales, los profesionales se muestran con sus iniciales y las sucursales y los productos con un ícono de foto; el cliente nunca ve un nombre de archivo. Los nombres esperados de las fotos siguen en los datos (`coverFile`, `galleryFiles`, `photoFile`).
 
 ## Lote M3: flujo de reserva (hecho)
 

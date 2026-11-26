@@ -19,7 +19,15 @@ export default function Booked() {
   const d = describe(appt);
 
   return (
-    <Screen footer={<Button label="Volver al inicio" onPress={() => router.replace('/inicio')} />}>
+    <Screen
+      footer={
+        // The new appointment is one tap away; Inicio stays as the way out.
+        <View style={{ gap: space.s }}>
+          <Button label="Ver mi cita" onPress={() => router.replace(`/cita/${appt.folio}`)} />
+          <Button variant="secondary" label="Volver al inicio" onPress={() => router.replace('/inicio')} />
+        </View>
+      }
+    >
       <View style={{ marginTop: space.xxxl }}>
         <View style={styles.status}>
           <CheckCircleIcon size={20} color={status.verde.text} weight="fill" />

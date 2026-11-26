@@ -1,5 +1,5 @@
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import type { ReactNode } from 'react';
+import type { ComponentRef, ReactNode, Ref } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeftIcon } from 'phosphor-react-native';
@@ -8,6 +8,7 @@ import { color, space, touch } from '../theme/tokens';
 // Scrollable, keyboard-aware page on paper. `footer` stays pinned above the
 // keyboard / bottom inset (used for the main action of long forms).
 // `bottomBar` (the tab bar) sits under the footer, edge to edge.
+// `scrollRef` lets a screen move the page, e.g. to show what just appeared.
 type ScreenProps = {
   children?: ReactNode;
   footer?: ReactNode;
@@ -16,15 +17,16 @@ type ScreenProps = {
   contentStyle?: StyleProp<ViewStyle>;
   scroll?: boolean;
   topInset?: boolean;
+  scrollRef?: Ref<ComponentRef<typeof ScrollView>>;
 };
-export default function Screen({ children, footer, bottomBar, padded = true, contentStyle, scroll = true, topInset = true }: ScreenProps) {
+export default function Screen({ children, footer, bottomBar, padded = true, contentStyle, scroll = true, topInset = true, scrollRef }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const top = { paddingTop: topInset ? insets.top + space.s : 0 };
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {scroll ? (
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[padded && styles.padded, top, { paddingBottom: footer || bottomBar ? space.xl : insets.bottom + space.xxl }, contentStyle]}>
+        <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={[padded && styles.padded, top, { paddingBottom: footer || bottomBar ? space.xl : insets.bottom + space.xxl }, contentStyle]}>
           {children}
         </ScrollView>
       ) : (

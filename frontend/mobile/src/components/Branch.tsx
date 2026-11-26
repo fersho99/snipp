@@ -43,10 +43,10 @@ export const SearchField = forwardRef<React.ComponentRef<typeof TextInput>, Sear
   );
 });
 
-// Branch cover photo, or the sunken placeholder with the expected filename.
+// Branch cover photo, or the sunken placeholder while there is none.
 export function Cover({ branch, height, style }: { branch: Branch; height: number; style?: StyleProp<ViewStyle> }) {
   if (!branch.cover) {
-    return <PhotoPlaceholder filename={branch.coverFile} style={[{ height }, style]} />;
+    return <PhotoPlaceholder style={[{ height }, style]} />;
   }
   return (
     <Image
