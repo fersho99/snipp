@@ -20,7 +20,7 @@ import { color, font, radius, sheetShadow, space, status, touch } from '../theme
 
 export function ProductPhoto({ product, size, style }: { product: Product; size?: number; style?: StyleProp<ViewStyle> }) {
   const box = size ? { width: size, height: size } : { aspectRatio: 1 };
-  if (!product.photo) return <PhotoPlaceholder compact={!!size && size < 90} filename={product.photoFile} style={[box, style]} />;
+  if (!product.photo) return <PhotoPlaceholder compact={!!size && size < 90} style={[box, style]} />;
   return <Image source={product.photo} style={[box, { borderRadius: radius.photo }, style as StyleProp<ImageStyle>]} contentFit="cover" accessibilityLabel={`Foto de ${product.name}`} />;
 }
 

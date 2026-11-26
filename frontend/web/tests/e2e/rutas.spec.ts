@@ -20,6 +20,21 @@ test('el panel sin sesión manda a Entrar', async ({ page }) => {
   }
 })
 
+test('al abrir el proyecto entra al flujo y no al índice de pantallas', async ({ page }) => {
+  await open(page, '/')
+  await expect(page).toHaveURL(/\/entrar$/)
+  await open(page, '/app')
+  await expect(page).toHaveURL(/\/app\/entrar$/)
+
+  await panelSignIn(page, MARTIN)
+  await open(page, '/')
+  await expect(page).toHaveURL(/\/panel$/)
+  await appSignIn(page)
+  await expect(page).toHaveURL(/\/app\/inicio$/)
+  await open(page, '/app')
+  await expect(page).toHaveURL(/\/app\/inicio$/)
+})
+
 test('la app solo acepta clientes y el panel solo Jefes, Empleados y Administrador', async ({ page }) => {
   await appSignIn(page, MARTIN, PANEL_PASSWORD)
   await expect(page.getByText('El correo o la contraseña no coinciden')).toBeVisible()

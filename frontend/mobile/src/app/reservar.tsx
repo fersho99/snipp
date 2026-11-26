@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import useAction, { wait } from '../hooks/useAction';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
@@ -13,7 +13,7 @@ import { activeServices, bookableStaff, getBranch, isVisible, branches } from '.
 import { appointmentStore } from '../data/appointments';
 import { notificationStore } from '../data/notifications';
 import { employees, services } from '../data/demo';
-import { blocksNote, fromHhmm, fromIso, groupSlots, iso, lastBookableDate, minutesLabel, slotsFor, staffFor } from '../data/availability';
+import { blocksNote, dayStatus, firstOpenDay, fromHhmm, fromIso, groupSlots, iso, lastBookableDate, minutesLabel, slotsFor, staffFor } from '../data/availability';
 import { longDate, minutes, money, shortDate } from '../theme/format';
 import { color, font, radius, space, touch } from '../theme/tokens';
 
@@ -24,11 +24,11 @@ const CANCEL_HOURS = 2; // branch setting: minimum notice to cancel or reschedul
 
 const employeeName = (id: string | null | undefined) => employees.find((e) => e.id === id)?.name;
 const firstName = (id: string | null | undefined) => employeeName(id)?.split(' ')[0];
-const photoFile = (name: string) => `${name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-')}.jpg`;
 
 // Booking flow: servicio → profesional → fecha y hora → confirmación.
 // No stepper: the appointment is written as a sentence at the top and each
-// chosen part can be tapped to change it.
+// chosen part can be tapped to change it (a line under the sentence says so).
+// From a branch, a tapped service or professional comes already chosen.
 // Deep links: ?sucursal=&servicio=&profesional=&fecha=YYYY-MM-DD&hora=HH:MM
 // States: ?estado=horario-ocupado | error (booking fails once) | cargando | sin-conexion
 export default function Booking() {
@@ -39,13 +39,31 @@ export default function Booking() {
   const bookable = isVisible(found) && branch.staff.length > 0;
   const { online, failure, retry, retrying } = useConnectivity(p.estado);
 
+  // The day to show when the calendar opens: the one already chosen if it
+  // still has free hours for this service and professional, otherwise the
+  // first day that has them, so the hours show without another tap.
+  const dayFor = (current: Date | null, employee: string, svc: string) => {
+    const minutesOfService = services.find((s) => s.id === svc)?.minutes ?? 45;
+    if (current && dayStatus(branch, employee, svc, current, minutesOfService) === 'open') return current;
+    return firstOpenDay(branch, employee, svc, minutesOfService);
+  };
+
   const [serviceId, setServiceId] = useState<string | null>(p.servicio ?? null);
-  const [pro, setPro] = useState<string | null>(p.profesional ?? null);
-  const [date, setDate] = useState<Date | null>(p.fecha ? fromIso(p.fecha) : null);
+  // A service that only one professional does comes with that professional.
+  const onlyPro = (svc: string | undefined) => {
+    const able = svc ? staffFor(branch, svc) : [];
+    return able.length === 1 ? able[0].id : null;
+  };
+  const [pro, setPro] = useState<string | null>(() => p.profesional ?? onlyPro(p.servicio));
+  const [date, setDate] = useState<Date | null>(() => {
+    if (p.fecha) return fromIso(p.fecha);
+    const who = p.profesional ?? onlyPro(p.servicio);
+    return who && p.servicio ? dayFor(null, who, p.servicio) : null;
+  });
   const [slot, setSlot] = useState<LabeledSlot | null>(null);
   const [step, setStep] = useState<Step>(() => {
     if (p.hora) return 'confirmar';
-    if (p.profesional) return 'fecha';
+    if (p.servicio && (p.profesional || onlyPro(p.servicio))) return 'fecha';
     if (p.servicio) return 'profesional';
     return 'servicio';
   });
@@ -56,6 +74,7 @@ export default function Booking() {
   const [failNext, setFailNext] = useState(p.estado === 'horario-ocupado');
 
   const service = services.find((s) => s.id === serviceId);
+  const page = useRef<ComponentRef<typeof ScrollView>>(null);
   const employeeId = pro;
 
   const slots = useMemo(() => {
@@ -91,7 +110,8 @@ export default function Booking() {
   // ----- navigation between steps
   const goBack = () => {
     if (step === 'confirmar') setStep('fecha');
-    else if (step === 'fecha') setStep('profesional');
+    // When only one professional does the service, that step was skipped.
+    else if (step === 'fecha') setStep(service && staffFor(branch, service.id).length === 1 ? 'servicio' : 'profesional');
     else if (step === 'profesional') setStep('servicio');
     else if (router.canGoBack()) router.back();
     else router.replace('/inicio');
@@ -100,13 +120,22 @@ export default function Booking() {
   const pickService = (id: string) => {
     setServiceId(id);
     setSlot(null);
-    if (pro && !staffFor(branch, id).some((e) => e.id === pro)) setPro(null);
+    // Straight to the day when the professional is already known: chosen
+    // before and doing this service, or the only one who does it.
+    const known = pro && staffFor(branch, id).some((e) => e.id === pro) ? pro : onlyPro(id);
+    if (known) {
+      setPro(known);
+      setDate((d) => dayFor(d, known, id));
+      return setStep('fecha');
+    }
+    setPro(null);
     setStep('profesional');
   };
 
   const pickPro = (id: string) => {
     setPro(id);
     setSlot(null);
+    if (serviceId) setDate((d) => dayFor(d, id, serviceId));
     setStep('fecha');
   };
 
@@ -116,6 +145,8 @@ export default function Booking() {
     setLoadingSlots(true);
     await new Promise((r) => setTimeout(r, 350));
     setLoadingSlots(p.estado === 'cargando');
+    // The free hours are under the calendar: bring them into view.
+    setTimeout(() => page.current?.scrollToEnd({ animated: true }), 50);
   };
 
   const confirm = () => booking.run(async () => {
@@ -174,18 +205,23 @@ export default function Booking() {
     ) : null;
 
   return (
-    <Screen key={step} footer={footer}>
+    <Screen key={step} footer={footer} scrollRef={page}>
       <BackButton label={step === 'servicio' ? 'Salir de la reserva' : 'Paso anterior'} onPress={goBack} />
       <Txt variant="small" style={{ marginTop: space.s }}>{branch.name}, {branch.address}</Txt>
       <View style={{ marginTop: space.s }}>
         {parts.length ? (
-          <BookingSentence parts={parts} onEdit={(s) => setStep(s as Step)} />
+          <>
+            <BookingSentence parts={parts} onEdit={(s) => setStep(s as Step)} />
+            <Txt variant="small" style={{ marginTop: space.xs }}>Toca lo subrayado para cambiarlo.</Txt>
+          </>
         ) : (
-          <Txt variant="title" accessibilityRole="header">¿Qué te vas a hacer?</Txt>
+          <Txt variant="title" accessibilityRole="header">
+            {pro ? `¿Qué te vas a hacer con ${firstName(pro)}?` : '¿Qué te vas a hacer?'}
+          </Txt>
         )}
       </View>
 
-      {step === 'servicio' && <ServiceStep branch={branch} selected={serviceId} onPick={pickService} />}
+      {step === 'servicio' && <ServiceStep branch={branch} selected={serviceId} pro={pro} onPick={pickService} />}
       {step === 'profesional' && service && <ProStep branch={branch} service={service} selected={pro} onPick={pickPro} />}
       {step === 'fecha' && service && (
         <DateStep
@@ -219,12 +255,14 @@ export default function Booking() {
 
 // ----------------------------------------------------------------- servicio
 type BookableBranch = Branch;
-function ServiceStep({ branch, selected, onPick }: { branch: BookableBranch; selected: string | null; onPick: (id: string) => void }) {
+function ServiceStep({ branch, selected, pro, onPick }: { branch: BookableBranch; selected: string | null; pro: string | null; onPick: (id: string) => void }) {
+  // Coming from a professional on the branch page: only what that person does.
+  const offered = pro ? branch.services.filter((s) => staffFor(branch, s.id).some((e) => e.id === pro)) : branch.services;
   return (
     <View style={{ marginTop: space.xxl }}>
-      <Txt variant="label">Elige el servicio</Txt>
+      <Txt variant="label">{pro ? `Servicios que hace ${firstName(pro)}` : 'Elige el servicio'}</Txt>
       <View style={{ marginTop: space.s }}>
-        {branch.services.map((s) => {
+        {offered.map((s) => {
           const active = s.id === selected;
           return (
             <Pressable
@@ -263,7 +301,7 @@ function ProStep({ branch, service, selected, onPick }: { branch: BookableBranch
           return (
             <Pressable key={e.id} onPress={() => onPick(e.id)} accessibilityRole="button" accessibilityState={{ selected: active }} accessibilityLabel={`${e.name}, ${e.specialty}`} style={styles.proTile}>
               <View style={[styles.proPhotoWrap, active && styles.proPhotoActive]}>
-                <PhotoPlaceholder filename={photoFile(e.name)} style={styles.proPhoto} />
+                <PhotoPlaceholder name={e.name} style={styles.proPhoto} />
               </View>
               <Txt variant="heading" style={{ marginTop: space.s }}>{e.name}</Txt>
               <Txt variant="small">{e.specialty}</Txt>

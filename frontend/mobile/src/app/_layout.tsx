@@ -10,9 +10,10 @@ import { color } from '../theme/tokens';
 import { Toaster } from '../components/Done';
 import { useSessionAccount } from '../data/session';
 
-// Screens that open without a session (RF-M01). The screen index ("index")
-// only exists in development; in production it goes to Entrar.
-const PUBLIC = new Set(['index', 'entrar', 'registro', 'recuperar', 'recuperar-enviado', '+not-found', '_sitemap']);
+// Screens that open without a session (RF-M01). "index" sends to Inicio,
+// which asks for a session; the screen index ("pantallas") only exists in
+// development, and in production it goes to Entrar.
+const PUBLIC = new Set(['index', 'pantallas', 'entrar', 'registro', 'recuperar', 'recuperar-enviado', '+not-found', '_sitemap']);
 // Screens that make no sense with a session open.
 const SIGNED_OUT_ONLY = new Set(['entrar', 'registro']);
 

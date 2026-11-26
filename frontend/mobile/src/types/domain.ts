@@ -58,10 +58,7 @@ export interface Branch {
   rating: number | null;
   reviewCount: number;
   cover: Photo | null;
-  // Expected file when the photo is not in the demo yet.
-  coverFile?: string;
   gallery: { source: Photo; alt: string }[];
-  galleryFiles?: string[];
   description: string;
   hours: DayHours[];
   services: Service[];
@@ -131,7 +128,6 @@ export interface Product {
   stock: number;
   branchId: string;
   photo?: Photo;
-  photoFile?: string;
   description: string;
   howTo: string;
 }

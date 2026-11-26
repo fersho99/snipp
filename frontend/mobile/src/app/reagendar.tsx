@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ComponentRef } from 'react';
 import useAction, { wait } from '../hooks/useAction';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Screen, { BackButton } from '../components/Screen';
 import Txt from '../components/Txt';
@@ -11,7 +11,7 @@ import useConnectivity from '../hooks/useConnectivity';
 import { CANCEL_HOURS, NOW_NEAR_C10482, appointmentStore, changeWindow, describe, useAppointment } from '../data/appointments';
 import { DEMO_TODAY, getEmployee } from '../data/demo';
 import { notificationStore } from '../data/notifications';
-import { groupSlots, iso, lastBookableDate, minutesLabel, slotsFor } from '../data/availability';
+import { firstOpenDay, groupSlots, iso, lastBookableDate, minutesLabel, slotsFor } from '../data/availability';
 import { longDate, minutes, shortDate } from '../theme/format';
 import { space } from '../theme/tokens';
 import type { LabeledSlot } from '../components/Booking';
@@ -26,7 +26,8 @@ export default function Reschedule() {
   const appt = useAppointment(cita ?? 'C-10482');
   const { online, failure, retry, retrying } = useConnectivity(estado);
   const fromChange = desdeCambio === '1';
-  const [date, setDate] = useState<Date | null>(null);
+  const [picked, setPicked] = useState<Date | null>(null);
+  const page = useRef<ComponentRef<typeof ScrollView>>(null);
   const [slot, setSlot] = useState<LabeledSlot | null>(null);
   const [loading, setLoading] = useState(false);
   const saving = useAction({ busy: 'Reagendando...', done: 'Cita reagendada', failed: 'No se pudo reagendar' });
@@ -36,13 +37,20 @@ export default function Reschedule() {
   // After a business change, the client keeps the professional the business proposed.
   const employeeId = appt ? (fromChange && appt.change?.employeeId ? appt.change.employeeId : appt.employeeId) : null;
   const employee = employeeId ? getEmployee(employeeId) : null;
+  // Until the client picks a day, the first one with free hours is shown, so
+  // the hours are on screen without another tap.
+  const firstDay = useMemo(
+    () => (appt && d && employeeId ? firstOpenDay(d.branch, employeeId, d.service.id, d.service.minutes, appt.folio) : null),
+    [appt, employeeId],
+  );
+  const date = picked ?? firstDay;
 
   const slots = useMemo(() => {
     if (!appt || !date || !d) return [];
     return slotsFor(d.branch, employeeId, d.service.id, date, d.service.minutes, appt.folio)
       .filter((s) => !(iso(date) === appt.date && s.start === appt.start))
       .map((s) => ({ ...s, label: minutesLabel(s.start) }));
-  }, [appt, date, employeeId]);
+  }, [appt, date?.getTime(), employeeId]);
 
   if (!online) return <OfflineState kind={failure} onRetry={retry} retrying={retrying} />;
   if (!appt || !d || !employee || !employeeId) return null;
@@ -65,11 +73,13 @@ export default function Reschedule() {
   }
 
   const pickDate = async (day: Date) => {
-    setDate(day);
+    setPicked(day);
     setSlot(null);
     setLoading(true);
     await new Promise((r) => setTimeout(r, 350));
     setLoading(false);
+    // The free hours are under the calendar: bring them into view.
+    setTimeout(() => page.current?.scrollToEnd({ animated: true }), 50);
   };
 
   const save = () => saving.run(async () => {
@@ -99,6 +109,7 @@ export default function Reschedule() {
 
   return (
     <Screen
+      scrollRef={page}
       footer={
         <Button
           label={slot && date ? `Cambiar al ${longDate(date).split(' de ')[0]} a las ${slot.label}` : 'Elige un nuevo horario'}

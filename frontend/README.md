@@ -8,8 +8,10 @@
 cd frontend/mobile && npm install
 cd ../web && npm install
 npm run app        # exporta la app a web/public/app
-npm run dev        # app en http://localhost:3000/app, panel en http://localhost:3000/entrar
+npm run dev        # app en http://localhost:3000/app, panel en http://localhost:3000
 ```
+
+Las dos abren el flujo real: sin sesión piden entrar, y con sesión abren Inicio (app) o el panel de esa cuenta. El índice con cada pantalla y cada estado está aparte, en `/pantallas`, solo en desarrollo.
 
 Cuentas de prueba:
 
@@ -39,7 +41,7 @@ npx expo start --web    # vista previa en el navegador, en una columna de 390 px
 npm run typecheck       # TypeScript estricto, sin generar archivos
 ```
 
-En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`). Solo existe en desarrollo; la APK abre directo en "Entrar".
+La app abre en Inicio, y sin sesión pide entrar. En `/pantallas` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`). Solo existe en desarrollo; en la APK manda a "Entrar".
 
 Cuentas de cliente (contraseña `compas2025`):
 - `andrea.valenzuela@gmail.com` (Andrea Valenzuela): con citas, pedidos y puntos
@@ -57,7 +59,7 @@ npm run lint       # ESLint
 npm run typecheck  # TypeScript
 ```
 
-En `/` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`); en producción `/` abre "Entrar".
+`/` abre el panel de la cuenta con sesión, y sin sesión manda a "Entrar". En `/pantallas` hay un índice de desarrollo con cada pantalla y cada estado (`?estado=...`); en producción `/pantallas` abre "Entrar".
 
 Cuentas de demostración (contraseña `snipp2026` para todas):
 
@@ -73,7 +75,7 @@ Cuentas de demostración (contraseña `snipp2026` para todas):
 
 Las contraseñas se guardan solo como hash SHA-256 con sal (`shared/auth.ts`). El registro de Jefe (con su negocio y el mes de prueba) y el de Empleado crean cuentas de verdad. Cada rol ve solo sus secciones; otra sección muestra "No tienes acceso a esta sección". La sesión del panel se guarda en `localStorage` (todas las pestañas la comparten) y dura 8 horas.
 
-En el índice de desarrollo, `/panel?como=jefe|empleado|sin-negocio|admin` abre el panel con esa cuenta sin escribir la contraseña (solo en `npm run dev`).
+En el índice de desarrollo (`/pantallas`), `/panel?como=jefe|empleado|sin-negocio|admin` abre el panel con esa cuenta sin escribir la contraseña (solo en `npm run dev`).
 
 La estructura de carpetas de la web está en [`web/README.md`](web/README.md).
 
@@ -84,10 +86,10 @@ La app y el panel leen la misma base de datos simulada, guardada en el `localSto
 ```bash
 cd frontend/web
 npm run app        # exporta la app (Expo web) a web/public/app; repetir tras cambiar la app
-npm run dev        # app en http://localhost:3000/app, panel en http://localhost:3000/panel
+npm run dev        # app en http://localhost:3000/app, panel en http://localhost:3000
 ```
 
-Una cita reservada en `/app` aparece en la agenda del panel, y un cambio hecho en el panel aparece en la app; todo sobrevive a recargar. "Reiniciar datos de demo" (índice de desarrollo, menú del panel y Cuenta en la app) vuelve a los datos de ejemplo. La app en `localhost:8081` o en Android tiene su propia copia en memoria y no se cruza con la web hasta que exista la API.
+Una cita reservada en `/app` aparece en la agenda del panel, y un cambio hecho en el panel aparece en la app; todo sobrevive a recargar. "Reiniciar datos de demo" (índice de desarrollo en `/pantallas`, menú del panel y Cuenta en la app) vuelve a los datos de ejemplo. La app en `localhost:8081` o en Android tiene su propia copia en memoria y no se cruza con la web hasta que exista la API.
 
 `frontend/shared/` tiene:
 
@@ -223,7 +225,7 @@ Composición:
 | --- | --- | --- |
 | Inicio | `/inicio` | sin cita próxima, cargando, error, sin conexión |
 | Resultados | `/resultados?q=fade` | filtro por servicio, sin resultados (`?q=keratina`), cargando, sin conexión |
-| Perfil de sucursal | `/sucursal/los-compas-centro` | cargando, error, sin reseñas, sin conexión; `navaja-fina` sin fotos, sin perfiles de profesionales y sin reseñas |
+| Perfil de sucursal | `/sucursal/los-compas-centro` | cargando, error, sin reseñas, sin conexión; `navaja-fina` sin perfiles de profesionales y sin reseñas |
 
 Composición:
 - **Inicio**: la próxima cita es una línea de texto con los datos reales, arriba del buscador; debajo, "Lo más buscado" como texto subrayado y los negocios cercanos como lista de portadas grandes. Cada negocio se separa del siguiente solo con 32 px de espacio; el estado de apertura va en verde salvia solo cuando está abierto.
@@ -232,7 +234,7 @@ Composición:
 
 Datos que se agregaron (no venían en el prompt maestro y se pueden cambiar en `src/data/catalog.ts`): colonias de Los Compas Norte y Navaja Fina, teléfonos, distancias, calificaciones (Los Compas 4.7 de 212 reseñas, Norte 4.5 de 86, Estudio Marisol 4.8 de 143, Navaja Fina sin reseñas), horarios, qué servicios y qué profesionales hay en cada sucursal, y los textos de las reseñas.
 
-Las fotos de los profesionales se muestran como bloques con el nombre del archivo esperado (`luis-ortega.jpg`, etc.) hasta que haya fotos reales.
+Los profesionales se muestran con sus iniciales mientras no suban su foto. Una sucursal o un producto sin foto (por ejemplo, uno registrado en el panel) muestra un ícono de foto; el cliente nunca ve un nombre de archivo.
 
 ## Lote M3: flujo de reserva (hecho)
 
@@ -241,7 +243,7 @@ Las fotos de los profesionales se muestran como bloques con el nombre del archiv
 | Reserva (servicio, profesional, fecha y hora, confirmación) | `/reservar?sucursal=los-compas-centro` | horarios cargando, el horario se ocupa al confirmar, sucursal sin profesionales (`navaja-fina`), sin conexión |
 | Cita reservada | `/reserva-confirmada` | nota para la sucursal, abrir calendario |
 
-Se puede entrar a cualquier paso con `&servicio=fade&profesional=luis&fecha=2025-11-20&hora=17:30` (ver el índice en `/`).
+Se puede entrar a cualquier paso con `&servicio=fade&profesional=luis&fecha=2025-11-20&hora=17:30` (ver el índice en `/pantallas`).
 
 Composición:
 - Sin stepper: arriba se arma la frase de la cita ("Fade con Luis Ortega, jueves 20 de noviembre a las 5:30 pm"); cada parte va subrayada en terracota y al tocarla regresa a ese paso.
@@ -300,7 +302,7 @@ Composición:
 
 Pago: `src/services/payments.ts` deja escrito el flujo real con `@stripe/stripe-react-native` (PaymentSheet) y por ahora simula el resultado. Para conectarlo falta: el backend que cree el PaymentIntent y confirme con el webhook, instalar el SDK y hacer un build de desarrollo (PaymentSheet no corre en Expo Go ni en web). El monto siempre lo calcula el servidor.
 
-Datos agregados (en `src/data/shop.ts`): existencias de Los Compas Norte (pomada 3, cera 5) y Navaja Fina (aceite 4, pomada 8); Estudio Marisol sin productos; descripciones y modo de uso; regla de puntos de ejemplo ($10 = 1 punto, 1 punto = $1, la del lote W8); pedidos anteriores P-2264 (entregado) y P-2250 (cancelado con reembolso), que usa el lote M6. Solo la pomada usa una foto real (`producto-frasco.jpg`); los otros productos muestran el bloque con el nombre de archivo esperado.
+Datos agregados (en `src/data/shop.ts`): existencias de Los Compas Norte (pomada 3, cera 5) y Navaja Fina (aceite 4, pomada 8); Estudio Marisol sin productos; descripciones y modo de uso; regla de puntos de ejemplo ($10 = 1 punto, 1 punto = $1, la del lote W8); pedidos anteriores P-2264 (entregado) y P-2250 (cancelado con reembolso), que usa el lote M6. Los cuatro productos tienen foto (ver [Fotos](#fotos)).
 
 También: el perfil de sucursal ahora tiene la sección "Productos para recoger aquí" con acceso a la tienda.
 
@@ -478,7 +480,22 @@ El detalle y los colores están en la sección 12 de [`../PLAN-ACTUALIZACION-SRS
 
 ## Fotos
 
-Las fotos originales se optimizaron a 1400 px en `mobile/assets/photos/`. Ojo: `barberia-fachada.jpg` tiene el letrero con texto deformado ("Hugo prago… El echa derrilo"); si se usa como portada conviene recortarlo o reemplazarlo por una fachada real.
+Las fotos originales se optimizaron a 1400 px en `mobile/assets/photos/`; las de sucursales también están en `web/public/photos/` para el panel. Las sucursales van recortadas a 4:3 y los productos a cuadrado.
+
+Fotos de [Unsplash](https://unsplash.com) con su licencia gratuita (se pueden usar sin pagar ni citar; aquí se anota el origen para saber de dónde salió cada una):
+
+| Archivo | Dónde se usa | Autor |
+| --- | --- | --- |
+| `navaja-fina-portada.jpg` | portada de Navaja Fina | Barney Goodman |
+| `navaja-fina-sillones.jpg` | galería de Navaja Fina | Waves Barbershop |
+| `el-faro-portada.jpg` | portada de Barbería El Faro | František Čaník |
+| `unas-coral-portada.jpg` | portada de Uñas Coral | Maria Lupan |
+| `estudio-marisol-extensiones.jpg` | galería de Estudio Marisol | Yovanka Loria Salon |
+| `aceite-para-barba.jpg` | Aceite para barba | Pranay J |
+| `shampoo-matizador.jpg` | Shampoo matizador | andrew davies |
+| `cera-fijacion-media.jpg` | Cera fijación media | Apothecary 87 |
+
+Ojo: `barberia-fachada.jpg` tiene el letrero con texto deformado ("Hugo prago… El echa derrilo"); si se usa como portada conviene recortarlo o reemplazarlo por una fachada real.
 
 ## Actualización al SRS v1.1 (fases 1 y 2 del plan)
 
