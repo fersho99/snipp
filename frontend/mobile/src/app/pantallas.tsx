@@ -40,7 +40,7 @@ const SCREENS = [
       { title: 'Resultados de “fade”', path: '/resultados?q=fade', states: [['Cargando', 'cargando'], ['Sin conexión', 'sin-conexion']] },
       { title: 'Sin resultados (“keratina”)', path: '/resultados?q=keratina', states: [] },
       { title: 'Sucursal: Barbería Los Compas', path: '/sucursal/los-compas-centro', states: [['Cargando', 'cargando'], ['Error', 'error'], ['Sin reseñas', 'sin-resenas'], ['Sin conexión', 'sin-conexion']] },
-      { title: 'Sucursal sin reseñas ni fotos: Navaja Fina', path: '/sucursal/navaja-fina', states: [] },
+      { title: 'Sucursal sin reseñas: Navaja Fina', path: '/sucursal/navaja-fina', states: [] },
       { title: 'Sucursal: Estudio Marisol', path: '/sucursal/estudio-marisol', states: [] },
     ],
   },

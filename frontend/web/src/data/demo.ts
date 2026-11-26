@@ -13,6 +13,7 @@ export { DEMO_TODAY }
 
 const interior = '/photos/barberia-interior.jpg'
 const fade = '/photos/trabajo-fade.jpg'
+const photo = (name: string, id: string) => ({ id, src: `/photos/${name}`, name })
 
 // Subscription plans the Administrator manages (RF-W27). A plan created
 // there shows up here as an option when a Jefe registers. Prices are examples.
@@ -36,6 +37,26 @@ const PANEL_EXTRAS: Record<string, Pick<Branch, 'images' | 'coverId' | 'upcoming
     ],
     coverId: 'img-3',
     upcoming: 9,
+  },
+  'estudio-marisol': {
+    images: [photo('estudio-marisol-extensiones.jpg', 'img-5')],
+    coverId: 'img-5',
+    upcoming: 0,
+  },
+  'navaja-fina': {
+    images: [photo('navaja-fina-portada.jpg', 'img-6'), photo('navaja-fina-sillones.jpg', 'img-7')],
+    coverId: 'img-6',
+    upcoming: 0,
+  },
+  'el-faro': {
+    images: [photo('el-faro-portada.jpg', 'img-8')],
+    coverId: 'img-8',
+    upcoming: 0,
+  },
+  'unas-coral': {
+    images: [photo('unas-coral-portada.jpg', 'img-9')],
+    coverId: 'img-9',
+    upcoming: 0,
   },
 }
 
